@@ -1,0 +1,67 @@
+{
+  "_chart-vendor-DcZu8PHa.js": {
+    "file": "assets/chart-vendor-DcZu8PHa.js",
+    "name": "chart-vendor",
+    "imports": [
+      "_react-vendor-ChyfegPF.js"
+    ]
+  },
+  "_form-vendor-DUiEGwMO.js": {
+    "file": "assets/form-vendor-DUiEGwMO.js",
+    "name": "form-vendor",
+    "imports": [
+      "_react-vendor-ChyfegPF.js"
+    ]
+  },
+  "_frappe-vendor-Dsk6a3HO.js": {
+    "file": "assets/frappe-vendor-Dsk6a3HO.js",
+    "name": "frappe-vendor",
+    "imports": [
+      "_ui-vendor-CyMrn8QF.js",
+      "_react-vendor-ChyfegPF.js"
+    ]
+  },
+  "_icons-vendor-CHhAZHKl.js": {
+    "file": "assets/icons-vendor-CHhAZHKl.js",
+    "name": "icons-vendor",
+    "imports": [
+      "_react-vendor-ChyfegPF.js"
+    ]
+  },
+  "_query-vendor-T3-6PQQ6.js": {
+    "file": "assets/query-vendor-T3-6PQQ6.js",
+    "name": "query-vendor",
+    "imports": [
+      "_react-vendor-ChyfegPF.js",
+      "_ui-vendor-CyMrn8QF.js"
+    ]
+  },
+  "_react-vendor-ChyfegPF.js": {
+    "file": "assets/react-vendor-ChyfegPF.js",
+    "name": "react-vendor"
+  },
+  "_ui-vendor-CyMrn8QF.js": {
+    "file": "assets/ui-vendor-CyMrn8QF.js",
+    "name": "ui-vendor",
+    "imports": [
+      "_react-vendor-ChyfegPF.js"
+    ]
+  },
+  "index.html": {
+    "file": "assets/main-BEnFm_pY.js",
+    "name": "main",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_ui-vendor-CyMrn8QF.js",
+      "_react-vendor-ChyfegPF.js",
+      "_chart-vendor-DcZu8PHa.js",
+      "_icons-vendor-CHhAZHKl.js",
+      "_query-vendor-T3-6PQQ6.js",
+      "_frappe-vendor-Dsk6a3HO.js"
+    ],
+    "css": [
+      "assets/main-BPdMgpVQ.css"
+    ]
+  }
+}

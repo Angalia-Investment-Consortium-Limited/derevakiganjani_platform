@@ -32,6 +32,12 @@ app_license = "mit"
 # web_include_css = "/assets/derevahuduma_platform/css/derevahuduma_platform.css"
 # web_include_js = "/assets/derevahuduma_platform/js/derevahuduma_platform.js"
 
+# Website Route Rules
+# -------------------
+website_route_rules = [
+	{"from_route": "/landing/<path:app_path>", "to_route": "landing"},
+]
+
 # include custom scss in every website theme (without file extension ".scss")
 # website_theme_scss = "derevahuduma_platform/public/scss/website"
 
@@ -63,6 +69,12 @@ app_license = "mit"
 # role_home_page = {
 # 	"Role": "home_page"
 # }
+
+# Update website context
+# ----------------------
+update_website_context = [
+	"derevahuduma_platform.www.landing.get_context"
+]
 
 # Generators
 # ----------

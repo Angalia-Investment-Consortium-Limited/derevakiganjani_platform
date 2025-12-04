@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>{{ _("Dereva Huduma Platform") }}</title>
+	<link rel="icon" type="image/svg+xml" href="/assets/derevahuduma_platform/landing/vite.svg" />
+	{% for css_file in css_files %}
+	<link rel="stylesheet" crossorigin href="{{ css_file }}">
+	{% endfor %}
+	<script type="module" crossorigin src="{{ js_file }}"></script>
+</head>
+<body>
+	<div id="root"></div>
+	<script>
+		window.csrf_token = '{{ frappe.session.csrf_token }}';
+	</script>
+</body>
+</html>

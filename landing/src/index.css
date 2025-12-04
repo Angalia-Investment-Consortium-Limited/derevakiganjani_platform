@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Dereva Huduma Brand Colors - Updated for Better Eye Comfort */
+    /* Primary: Muted Green #1DB814 - hsla(117, 72%, 42%, 1) - Less bright, more professional */
+    /* Secondary: Medium Green #3EA621 - hsla(106, 66%, 39%, 1) */
+    /* Accent: Dark Green #348C1C - hsla(107, 66%, 32%, 1) */
+    /* Warm Accent: Red-Orange #DF4020 - hsla(10, 75%, 50%, 1) - Adds warmth from logo */
+    /* Destructive: Red #F20505 - hsla(0, 95%, 48%, 1) */
+    /* Dark: Near Black #0D0D0D - hsla(0, 0%, 5%, 1) */
+    
+    --background: 0 0% 100%;
+    --foreground: 0 0% 5%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 5%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 5%;
+    --primary: 117 72% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 106 66% 39%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 107 66% 32%;
+    --accent-foreground: 0 0% 100%;
+    --warm: 10 75% 50%;
+    --warm-foreground: 0 0% 100%;
+    --destructive: 0 95% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 91%;
+    --input: 0 0% 91%;
+    --ring: 117 72% 42%;
+    --success: 117 72% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    --radius: 0.75rem;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 0 0% 5%;
+    --sidebar-primary: 107 66% 32%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 117 72% 95%;
+    --sidebar-accent-foreground: 0 0% 5%;
+    --sidebar-border: 0 0% 91%;
+    --sidebar-ring: 117 72% 42%;
+  }
+
+  .dark {
+    --background: 0 0% 5%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 8%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 117 72% 45%;
+    --primary-foreground: 0 0% 5%;
+    --secondary: 106 66% 39%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 107 66% 32%;
+    --accent-foreground: 0 0% 100%;
+    --warm: 10 75% 55%;
+    --warm-foreground: 0 0% 5%;
+    --destructive: 0 95% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 117 72% 45%;
+    --success: 117 72% 45%;
+    --success-foreground: 0 0% 5%;
+    --warning: 38 92% 60%;
+    --warning-foreground: 0 0% 5%;
+    --sidebar-background: 0 0% 5%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 117 72% 45%;
+    --sidebar-primary-foreground: 0 0% 5%;
+    --sidebar-accent: 0 0% 15%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 117 72% 45%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: Inter, sans-serif;
+  }
+}
