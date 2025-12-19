@@ -1,248 +1,259 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Upload, FileText, CheckCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { FileText, RefreshCw, GraduationCap, Search, ArrowRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
 const LicenseRequest = () => {
-  const { t } = useLanguage();
+  const { language } = useLanguage();
   const navigate = useNavigate();
-  const [submitted, setSubmitted] = useState(false);
-  const [referenceNo, setReferenceNo] = useState('');
 
-  const handleSubmit = (e: React.FormEvent, type: 'new' | 'renewal') => {
-    e.preventDefault();
-    const refNo = `DRV-2025-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
-    setReferenceNo(refNo);
-    setSubmitted(true);
-    toast.success(t(type === 'new' ? 'New license request submitted!' : 'License renewal request submitted!'));
-  };
+  const services = [
+    {
+      id: 'new',
+      titleEn: 'New License',
+      titleSw: 'Leseni Mpya',
+      descriptionEn: 'Apply for a new driver\'s license',
+      descriptionSw: 'Omba leseni mpya ya udereva',
+      icon: FileText,
+      color: 'bg-blue-500',
+      path: '/license/apply/new',
+      featuresEn: [
+        'All license categories (A, B, C, D, E)',
+        'Upload required documents',
+        'Track application status'
+      ],
+      featuresSw: [
+        'Aina zote za leseni (A, B, C, D, E)',
+        'Pakia nyaraka zinazohitajika',
+        'Fuatilia hali ya maombi'
+      ]
+    },
+    {
+      id: 'renewal',
+      titleEn: 'License Renewal',
+      titleSw: 'Kufanya Upya Leseni',
+      descriptionEn: 'Renew your existing driver\'s license',
+      descriptionSw: 'Fanya upya leseni yako ya udereva',
+      icon: RefreshCw,
+      color: 'bg-green-500',
+      path: '/license/apply/renewal',
+      featuresEn: [
+        'Quick renewal process',
+        'Upload current license',
+        'Receive confirmation'
+      ],
+      featuresSw: [
+        'Mchakato wa haraka wa kufanya upya',
+        'Pakia leseni yako ya sasa',
+        'Pokea uthibitisho'
+      ]
+    },
+    {
+      id: 'latra',
+      titleEn: 'LATRA Exam',
+      titleSw: 'Mtihani wa LATRA',
+      descriptionEn: 'Register for PSV or HGV LATRA examination',
+      descriptionSw: 'Jisajili kwa mtihani wa PSV au HGV',
+      icon: GraduationCap,
+      color: 'bg-purple-500',
+      path: '/license/apply/latra',
+      featuresEn: [
+        'PSV (Passenger Service Vehicle)',
+        'HGV (Heavy Goods Vehicle)',
+        'Exam scheduling'
+      ],
+      featuresSw: [
+        'PSV (Magari ya Abiria)',
+        'HGV (Magari ya Mizigo)',
+        'Ratiba ya mtihani'
+      ]
+    },
+    {
+      id: 'status',
+      titleEn: 'Check Status',
+      titleSw: 'Angalia Hali',
+      descriptionEn: 'Track your application status',
+      descriptionSw: 'Fuatilia hali ya maombi yako',
+      icon: Search,
+      color: 'bg-orange-500',
+      path: '/license/track',
+      featuresEn: [
+        'Real-time status updates',
+        'View application details',
+        'Download documents'
+      ],
+      featuresSw: [
+        'Masasisho ya hali ya wakati halisi',
+        'Tazama maelezo ya maombi',
+        'Pakua nyaraka'
+      ]
+    }
+  ];
 
-  if (submitted) {
-    return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-secondary/5">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-8">
-          <Card className="max-w-2xl mx-auto text-center">
-            <CardHeader>
-              <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-success/10 flex items-center justify-center">
-                <CheckCircle className="h-8 w-8 text-success" />
-              </div>
-              <CardTitle className="text-2xl">{t('Request Submitted Successfully!')}</CardTitle>
-              <CardDescription className="text-lg">
-                {t('Reference Number')}: <span className="font-bold text-primary">{referenceNo}</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <p className="text-muted-foreground">
-                {t('Your license request has been received. You will be notified once it is processed.')}
-              </p>
-              <div className="flex gap-4 justify-center">
-                <Button onClick={() => navigate('/dashboard')}>{t('Back to Dashboard')}</Button>
-                <Button variant="outline" onClick={() => setSubmitted(false)}>{t('Submit Another Request')}</Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
+  const statusTypes = [
+    { labelEn: 'Pending', labelSw: 'Inasubiri', color: 'bg-yellow-500', icon: Clock },
+    { labelEn: 'Under Review', labelSw: 'Inakaguliwa', color: 'bg-blue-500', icon: AlertCircle },
+    { labelEn: 'Approved', labelSw: 'Imeidhinishwa', color: 'bg-green-500', icon: CheckCircle },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-secondary/5">
       <Header />
+      
       <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="mb-6">
-            <h1 className="text-3xl font-bold mb-2">{t('License Services - Leseni')}</h1>
-            <p className="text-muted-foreground">{t('Apply for a new license or renew your existing one')}</p>
+        <div className="max-w-7xl mx-auto">
+          {/* Header Section */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              {language === 'sw' ? 'Huduma za Leseni' : 'License Services'}
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              {language === 'sw' ? 'Chagua huduma unayohitaji' : 'Choose the service you need'}
+            </p>
           </div>
 
-          <Tabs defaultValue="new" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="new">{t('New License')}</TabsTrigger>
-              <TabsTrigger value="renewal">{t('License Renewal')}</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="new">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('Apply for New License')}</CardTitle>
-                  <CardDescription>{t('Submit your documents to apply for a new driver\'s license')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={(e) => handleSubmit(e, 'new')} className="space-y-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="new-name">{t('Full Name')}</Label>
-                        <Input id="new-name" placeholder={t('Enter your full name')} required />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="new-id">{t('National ID Number')}</Label>
-                        <Input id="new-id" placeholder={t('Enter your National ID')} required />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="new-category">{t('License Category')}</Label>
-                        <select 
-                          id="new-category" 
-                          className="w-full px-3 py-2 border border-input rounded-md bg-background"
-                          required
-                        >
-                          <option value="">{t('Select category')}</option>
-                          <option value="A">A - {t('Motorcycles')}</option>
-                          <option value="B">B - {t('Light vehicles')}</option>
-                          <option value="C">C - {t('Heavy vehicles')}</option>
-                          <option value="D">D - {t('Passenger vehicles')}</option>
-                          <option value="E">E - {t('Trailer vehicles')}</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="new-id-upload">{t('Upload National ID Photo')}</Label>
-                        <div className="mt-2 border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                          <Input 
-                            id="new-id-upload" 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*,.pdf"
-                            required 
-                          />
-                          <label htmlFor="new-id-upload" className="cursor-pointer">
-                            <span className="text-sm text-muted-foreground">{t('Click to upload or drag and drop')}</span>
-                            <br />
-                            <span className="text-xs text-muted-foreground">{t('PNG, JPG or PDF (max. 5MB)')}</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="new-photo">{t('Upload Passport Photo')}</Label>
-                        <div className="mt-2 border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                          <Input 
-                            id="new-photo" 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*"
-                            required 
-                          />
-                          <label htmlFor="new-photo" className="cursor-pointer">
-                            <span className="text-sm text-muted-foreground">{t('Click to upload or drag and drop')}</span>
-                            <br />
-                            <span className="text-xs text-muted-foreground">{t('PNG or JPG (max. 5MB)')}</span>
-                          </label>
-                        </div>
-                      </div>
+          {/* Service Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {services.map((service) => {
+              const Icon = service.icon;
+              return (
+                <Card 
+                  key={service.id}
+                  className="group hover:shadow-xl transition-all duration-300 cursor-pointer border-2 hover:border-primary"
+                  onClick={() => navigate(service.path)}
+                >
+                  <CardHeader>
+                    <div className={`w-16 h-16 rounded-full ${service.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                      <Icon className="h-8 w-8 text-white" />
                     </div>
-
-                    <Button type="submit" className="w-full" size="lg">
-                      <FileText className="mr-2 h-4 w-4" />
-                      {t('Submit Application')}
+                    <CardTitle className="text-xl mb-2">
+                      {language === 'sw' ? service.titleSw : service.titleEn}
+                    </CardTitle>
+                    <CardDescription className="text-sm">
+                      {language === 'sw' ? service.descriptionSw : service.descriptionEn}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2 mb-4">
+                      {(language === 'sw' ? service.featuresSw : service.featuresEn).map((feature: string, index: number) => (
+                        <li key={index} className="flex items-start gap-2 text-sm text-muted-foreground">
+                          <CheckCircle className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button className="w-full group-hover:bg-primary group-hover:text-primary-foreground">
+                      {language === 'sw' ? 'Anza' : 'Get Started'}
+                      <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                     </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-            <TabsContent value="renewal">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('Renew Your License')}</CardTitle>
-                  <CardDescription>{t('Submit your documents to renew your existing driver\'s license')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={(e) => handleSubmit(e, 'renewal')} className="space-y-6">
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="renewal-license">{t('Current License Number')}</Label>
-                        <Input id="renewal-license" placeholder={t('Enter your license number')} required />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="renewal-id">{t('National ID Number')}</Label>
-                        <Input id="renewal-id" placeholder={t('Enter your National ID')} required />
-                      </div>
-
-                      <div>
-                        <Label htmlFor="renewal-license-upload">{t('Upload Current License Photo')}</Label>
-                        <div className="mt-2 border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                          <Input 
-                            id="renewal-license-upload" 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*,.pdf"
-                            required 
-                          />
-                          <label htmlFor="renewal-license-upload" className="cursor-pointer">
-                            <span className="text-sm text-muted-foreground">{t('Click to upload or drag and drop')}</span>
-                            <br />
-                            <span className="text-xs text-muted-foreground">{t('PNG, JPG or PDF (max. 5MB)')}</span>
-                          </label>
+          {/* Information Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-12">
+            {/* Application Status Types */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  {language === 'sw' ? 'Aina za Hali za Maombi' : 'Application Status Types'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {statusTypes.map((status, index) => {
+                    const StatusIcon = status.icon;
+                    return (
+                      <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                        <div className={`w-10 h-10 rounded-full ${status.color} flex items-center justify-center`}>
+                          <StatusIcon className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{language === 'sw' ? status.labelSw : status.labelEn}</p>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
 
-                      <div>
-                        <Label htmlFor="renewal-id-upload">{t('Upload National ID Photo')}</Label>
-                        <div className="mt-2 border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                          <Input 
-                            id="renewal-id-upload" 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*,.pdf"
-                            required 
-                          />
-                          <label htmlFor="renewal-id-upload" className="cursor-pointer">
-                            <span className="text-sm text-muted-foreground">{t('Click to upload or drag and drop')}</span>
-                            <br />
-                            <span className="text-xs text-muted-foreground">{t('PNG, JPG or PDF (max. 5MB)')}</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="renewal-photo">{t('Upload Recent Passport Photo')}</Label>
-                        <div className="mt-2 border-2 border-dashed border-input rounded-lg p-6 text-center hover:border-primary/50 transition-colors cursor-pointer">
-                          <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                          <Input 
-                            id="renewal-photo" 
-                            type="file" 
-                            className="hidden" 
-                            accept="image/*"
-                            required 
-                          />
-                          <label htmlFor="renewal-photo" className="cursor-pointer">
-                            <span className="text-sm text-muted-foreground">{t('Click to upload or drag and drop')}</span>
-                            <br />
-                            <span className="text-xs text-muted-foreground">{t('PNG or JPG (max. 5MB)')}</span>
-                          </label>
-                        </div>
-                      </div>
+            {/* Required Documents */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  {language === 'sw' ? 'Nyaraka Zinazohitajika' : 'Required Documents'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold">1</span>
                     </div>
+                    <div>
+                      <p className="font-medium">{language === 'sw' ? 'Kitambulisho cha Taifa (NIDA)' : 'National ID (NIDA)'}</p>
+                      <p className="text-sm text-muted-foreground">{language === 'sw' ? 'Nakala wazi, PDF au Picha' : 'Clear copy, PDF or Image'}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold">2</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{language === 'sw' ? 'Picha ya Pasi' : 'Passport Photo'}</p>
+                      <p className="text-sm text-muted-foreground">{language === 'sw' ? 'Picha ya hivi karibuni, mandhari meupe' : 'Recent photo, white background'}</p>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                      <span className="text-primary font-bold">3</span>
+                    </div>
+                    <div>
+                      <p className="font-medium">{language === 'sw' ? 'Leseni ya Sasa (kwa kufanya upya)' : 'Current License (for renewal)'}</p>
+                      <p className="text-sm text-muted-foreground">{language === 'sw' ? 'Pande zote mbili, nakala wazi' : 'Both sides, clear copy'}</p>
+                    </div>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
 
-                    <Button type="submit" className="w-full" size="lg">
-                      <FileText className="mr-2 h-4 w-4" />
-                      {t('Submit Renewal Request')}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          {/* Help Section */}
+          <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+            <CardContent className="pt-6">
+              <div className="text-center">
+                <h3 className="text-2xl font-bold mb-2">{language === 'sw' ? 'Unahitaji Msaada?' : 'Need Help?'}</h3>
+                <p className="text-muted-foreground mb-6">
+                  {language === 'sw' ? 'Wasiliana nasi' : 'Contact us'}
+                </p>
+                <div className="flex flex-wrap justify-center gap-4 text-sm">
+                  <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg">
+                    <span className="text-2xl">📞</span>
+                    <span className="font-medium">+255 XXX XXX XXX</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg">
+                    <span className="text-2xl">✉️</span>
+                    <span className="font-medium">support@example.com</span>
+                  </div>
+                  <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg">
+                    <span className="text-2xl">🕐</span>
+                    <span className="font-medium">{language === 'sw' ? 'Jumatatu-Ijumaa, 8 Asubuhi-5 Jioni' : 'Mon-Fri, 8AM-5PM'}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
+      
       <Footer />
     </div>
   );

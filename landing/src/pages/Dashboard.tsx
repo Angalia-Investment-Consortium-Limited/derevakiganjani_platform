@@ -5,13 +5,15 @@ import { Button } from '@/components/ui/button';
 import { GraduationCap, FileText, BookOpen, TrendingUp, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const { user } = useAuth();
 
   const quickActions = [
-    { icon: GraduationCap, label: t('jiTesti'), description: 'Take a driving test', href: '/test/category', color: 'text-secondary' },
+    { icon: GraduationCap, label: t('jiTesti'), description: 'Take a driving test', href: '/jitesti', color: 'text-secondary' },
     { icon: BookOpen, label: t('elimika'), description: 'Continue learning', href: '/elimika', color: 'text-accent' },
     { icon: FileText, label: t('leseni'), description: 'Renew license', href: '/license-request', color: 'text-primary' },
     { icon: TrendingUp, label: 'Ajira ya Udereva', description: 'Find driver jobs', href: '/ajira/jobs', color: 'text-success' },
@@ -32,7 +34,7 @@ const Dashboard = () => {
         <div className="mb-8">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold">{t('welcome')}, John!</h1>
+              <h1 className="text-3xl font-bold">{t('welcome')}, {user?.full_name || 'Driver'}!</h1>
               <p className="text-muted-foreground mt-1">Here's your driver services overview</p>
             </div>
             <Button variant="outline" size="icon" onClick={() => navigate('/notifications')}>

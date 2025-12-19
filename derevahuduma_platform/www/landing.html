@@ -1,19 +1,32 @@
 <!doctype html>
 <html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>{{ _("Dereva Huduma Platform") }}</title>
-	<link rel="icon" type="image/svg+xml" href="/assets/derevahuduma_platform/landing/vite.svg" />
-	{% for css_file in css_files %}
-	<link rel="stylesheet" crossorigin href="{{ css_file }}">
-	{% endfor %}
-	<script type="module" crossorigin src="{{ js_file }}"></script>
-</head>
-<body>
-	<div id="root"></div>
-	<script>
-		window.csrf_token = '{{ frappe.session.csrf_token }}';
-	</script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dereva Huduma - Driver Digital Services Platform</title>
+    <meta name="description" content="Empowering safer drivers with digital services - License management, driver testing, and learning platform by MDV Vehicle Fleet Tanzania" />
+    <meta name="author" content="MDV Vehicle Fleet" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <meta property="og:title" content="Dereva Huduma - Driver Digital Services" />
+    <meta property="og:description" content="Empowering safer drivers with digital services - License management, driver testing, and learning platform" />
+    <meta property="og:type" content="website" />
+    
+
+   
+    <script type="module" crossorigin src="/assets/derevahuduma_platform/landing/assets/main-b9dC_gLE.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/derevahuduma_platform/landing/assets/react-vendor-ChyfegPF.js">
+    <link rel="modulepreload" crossorigin href="/assets/derevahuduma_platform/landing/assets/ui-vendor-CrCWfpD2.js">
+    <link rel="modulepreload" crossorigin href="/assets/derevahuduma_platform/landing/assets/chart-vendor-DcZu8PHa.js">
+    <link rel="modulepreload" crossorigin href="/assets/derevahuduma_platform/landing/assets/icons-vendor-Bbs2-n4u.js">
+    <link rel="modulepreload" crossorigin href="/assets/derevahuduma_platform/landing/assets/query-vendor-CxaHdPpK.js">
+    <link rel="modulepreload" crossorigin href="/assets/derevahuduma_platform/landing/assets/frappe-vendor-DDauFiJA.js">
+    <link rel="stylesheet" crossorigin href="/assets/derevahuduma_platform/landing/assets/main-CV__0KMm.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    	<script>window.csrf_token = '{{ frappe.session.csrf_token }}';</script>
+  </body>
 </html>

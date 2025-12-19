@@ -43,7 +43,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   );
 
   // Fetch user profile based on user type
-  const { data: profileData, mutate: mutateProfile } = useFrappeGetCall<{ message: DriverProfile | EmployerProfile | AdminProfile }>(
+  const { data: profileData, mutate: mutateProfile } = useFrappeGetCall<DriverProfile | EmployerProfile | AdminProfile>(
     authState.user ? 'derevahuduma_platform.api.auth.get_user_profile' : '',
     undefined,
     undefined,
@@ -79,10 +79,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Load profile data
   useEffect(() => {
-    if (profileData?.message) {
+    if (profileData) {
+      // The API now returns user data directly with user_type and roles
+      const userData = profileData as any;
       setAuthState(prev => ({
         ...prev,
-        profile: profileData.message,
+        user: userData.profile ? {
+          ...prev.user,
+          user_type: userData.user_type,
+          roles: userData.roles
+        } as User : prev.user,
+        profile: userData.profile || null,
       }));
     }
   }, [profileData]);
@@ -113,16 +120,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Wait a bit for the user data to be available
       await new Promise(resolve => setTimeout(resolve, 500));
       
-      // Fetch profile data
+      // Fetch profile data which includes user_type and roles
       const profileResponse = await mutateProfile();
       
       // Get the latest user data
       const userResponse = await mutateUser();
-      const user = userResponse?.message;
-      const profile = profileResponse?.message;
+      let user = userResponse?.message;
+      
+      // Profile response now contains user data with user_type, roles, and profile
+      const userData = profileResponse as any;
+      const profile = userData?.profile || null;
       
       if (!user) {
         throw new Error('Failed to load user data after login');
+      }
+      
+      // Create a new user object with user_type and roles merged in
+      if (userData) {
+        user = {
+          ...user,
+          user_type: userData.user_type,
+          roles: userData.roles
+        } as User;
       }
       
       setAuthState({

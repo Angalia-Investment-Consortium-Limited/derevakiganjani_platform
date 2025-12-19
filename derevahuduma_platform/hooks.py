@@ -189,6 +189,23 @@ update_website_context = [
 # override_whitelisted_methods = {
 # 	"frappe.desk.doctype.event.event.get_events": "derevahuduma_platform.event.get_events"
 # }
+
+#
+# Whitelisted API Methods
+# -----------------------
+# License Management API endpoints are whitelisted via @frappe.whitelist() decorator in:
+# - derevahuduma_platform.api.license
+# Available endpoints:
+# - get_regions()
+# - get_districts(region)
+# - submit_license_application(...)
+# - get_my_applications(...)
+# - get_application_status(ref_no)
+# - get_application_details(name)
+# - update_application_status(...) [Admin/Staff only]
+# - get_all_applications(...) [Admin/Staff only]
+# - get_application_statistics() [Admin/Staff only]
+#
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,

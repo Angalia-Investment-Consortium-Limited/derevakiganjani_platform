@@ -11,6 +11,7 @@ interface OTPState {
   error: string | null;
   otpSent: boolean;
   verified: boolean;
+  pinId?: string; // Store pin_id from Beem
 }
 
 export const useOTP = (options?: UseOTPOptions) => {
@@ -21,24 +22,27 @@ export const useOTP = (options?: UseOTPOptions) => {
     verified: false,
   });
 
-  const { call: sendOTPCall } = useFrappePostCall('derevahuduma_platform.api.otp.send_otp');
-  const { call: verifyOTPCall } = useFrappePostCall('derevahuduma_platform.api.otp.verify_otp');
-  const { call: resendOTPCall } = useFrappePostCall('derevahuduma_platform.api.otp.resend_otp');
+  // Use Beem OTP API endpoints
+  const { call: sendOTPCall } = useFrappePostCall('derevahuduma_platform.api.beem_otp.request_otp');
+  const { call: verifyOTPCall } = useFrappePostCall('derevahuduma_platform.api.beem_otp.verify_otp');
+  const { call: resendOTPCall } = useFrappePostCall('derevahuduma_platform.api.beem_otp.resend_otp');
 
   const sendOTP = async (mobile_no: string, purpose: 'registration' | 'login' | 'password_reset') => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      await sendOTPCall({
+      const result = await sendOTPCall({
         mobile_no,
         purpose,
       });
 
+      // Store pin_id from Beem response
       setState((prev) => ({
         ...prev,
         isLoading: false,
         otpSent: true,
         error: null,
+        pinId: result?.pin_id,
       }));
 
       options?.onSuccess?.();

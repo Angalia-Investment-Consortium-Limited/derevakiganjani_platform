@@ -1,9 +1,29 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ServiceCard } from '@/components/ServiceCard';
-import { Users, FileText, GraduationCap, BarChart3, BookOpen, Briefcase, ClipboardList, Wallet, Award, Download } from 'lucide-react';
+import { Users, FileText, GraduationCap, BarChart3, BookOpen, Briefcase, ClipboardList, Wallet, Award, Download, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useFrappeGetCall } from 'frappe-react-sdk';
+import { useEffect, useState } from 'react';
 
 const Admin = () => {
+  const [stats, setStats] = useState<any>(null);
+  
+  // Fetch dashboard statistics
+  const { data, error, isLoading } = useFrappeGetCall<any>(
+    'derevahuduma_platform.api.admin.get_dashboard_stats',
+    undefined,
+    undefined,
+    {
+      revalidateOnFocus: false,
+    }
+  );
+
+  useEffect(() => {
+    if (data?.message?.data) {
+      setStats(data.message.data);
+    }
+  }, [data]);
+
   const modules = [
     {
       icon: Users,
@@ -77,12 +97,19 @@ const Admin = () => {
     }
   ];
 
-  const kpis = [
-    { label: 'Total Drivers', value: '2,543' },
-    { label: 'Tests Taken', value: '1,892' },
-    { label: 'Courses Completed', value: '856' },
-    { label: 'Pending License Requests', value: '45' },
-    { label: 'Active Job Posts', value: '32' },
+  // Dynamic KPIs based on fetched data
+  const kpis = stats ? [
+    { label: 'Total Drivers', value: stats.total_drivers?.toString() || '0' },
+    { label: 'Total Employers', value: stats.total_employers?.toString() || '0' },
+    { label: 'Pending Licenses', value: stats.pending_license_requests?.toString() || '0' },
+    { label: 'Active Courses', value: stats.active_courses?.toString() || '0' },
+    { label: 'Active Job Posts', value: stats.active_job_posts?.toString() || '0' },
+  ] : [
+    { label: 'Total Drivers', value: '-' },
+    { label: 'Total Employers', value: '-' },
+    { label: 'Pending Licenses', value: '-' },
+    { label: 'Active Courses', value: '-' },
+    { label: 'Active Job Posts', value: '-' },
   ];
 
   return (
@@ -96,18 +123,35 @@ const Admin = () => {
 
         {/* Quick KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {kpis.map((kpi) => (
-            <Card key={kpi.label}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {kpi.label}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpi.value}</div>
+          {isLoading ? (
+            <Card className="col-span-full">
+              <CardContent className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2">Loading dashboard statistics...</span>
               </CardContent>
             </Card>
-          ))}
+          ) : error ? (
+            <Card className="col-span-full">
+              <CardContent className="py-8">
+                <p className="text-center text-destructive">
+                  Failed to load dashboard statistics. Please try again.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            kpis.map((kpi) => (
+              <Card key={kpi.label}>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {kpi.label}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{kpi.value}</div>
+                </CardContent>
+              </Card>
+            ))
+          )}
         </div>
 
         {/* Module Cards */}

@@ -17,7 +17,11 @@ import Login from "./pages/Login";
 import Register from "./pages/auth/Register";
 import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
+import AdminLogin from "./pages/auth/AdminLogin";
+import DriverLogin from "./pages/auth/DriverLogin";
+import EmployerLogin from "./pages/auth/EmployerLogin";
 import ProfileSetup from "./pages/ProfileSetup";
+import Profile from "./pages/Profile";
 import Dashboard from "./pages/Dashboard";
 import TestCategory from "./pages/TestCategory";
 import TestQuestions from "./pages/TestQuestions";
@@ -72,11 +76,35 @@ import RecruitmentReports from "./pages/admin/RecruitmentReports";
 import UsersManagement from "./pages/admin/UsersManagement";
 import UserForm from "./pages/admin/UserForm";
 import RolesPermissions from "./pages/admin/RolesPermissions";
+import LicenseDashboard from "./pages/license/LicenseDashboard";
+import LicenseApplicationWizard from "./pages/license/LicenseApplicationWizard";
+import ApplicationConfirmation from "./pages/license/ApplicationConfirmation";
+import TrackStatus from "./pages/license/TrackStatus";
+import MyLicenseApplications from "./pages/license/MyApplications";
+import ApplicationDetails from "./pages/license/ApplicationDetails";
+import LicenseApplicationsManagement from "./pages/admin/LicenseApplicationsManagement";
+import LicenseApplicationReview from "./pages/admin/LicenseApplicationReview";
+import LicenseStatistics from "./pages/admin/LicenseStatistics";
+import TestCategories from "./pages/jitesti/TestCategories";
+import WhatsAppPrivacyPolicy from "./pages/WhatsAppPrivacyPolicy";
 
 const queryClient = new QueryClient();
+  // We need to pass sitename only if the Frappe version is v15 or above.
+
+	const getSiteName = () => {
+		// @ts-ignore
+		if (window.frappe?.boot?.versions?.frappe && (window.frappe.boot.versions.frappe.startsWith('15') || window.frappe.boot.versions.frappe.startsWith('16'))) {
+			// @ts-ignore
+			return window.frappe?.boot?.sitename ?? import.meta.env.VITE_SITE_NAME
+		}
+		return import.meta.env.VITE_SITE_NAME
+
+	}
 
 const App = () => (
-  <FrappeProvider socketPort={import.meta.env.VITE_SOCKET_PORT ?? ''}>
+
+  <FrappeProvider socketPort={import.meta.env.VITE_SOCKET_PORT ?? ''}
+     siteName={getSiteName()}>
     <BrowserRouter basename={import.meta.env.VITE_BASE_PATH}>
     {/* <BrowserRouter basename={import.meta.env.MODE === 'production' ? '/landing' : '/'}> */}
       <QueryClientProvider client={queryClient}>
@@ -90,15 +118,23 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/services" element={<Services />} />
             <Route path="/contact" element={<Contact />} />
-            <Route path="/login" element={<Login />} />
+            <Route path="/ingia" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/auth/register" element={<Register />} />
             <Route path="/auth/login" element={<Login />} />
+            <Route path="/auth/admin-login" element={<AdminLogin />} />
+            <Route path="/auth/driver-login" element={<DriverLogin />} />
+            <Route path="/auth/employer-login" element={<EmployerLogin />} />
             <Route path="/auth/forgot" element={<ForgotPassword />} />
             <Route path="/auth/reset" element={<ResetPassword />} />
             <Route path="/profile-setup" element={
               <ProtectedRoute>
                 <ProfileSetup />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } />
             <Route path="/dashboard" element={
@@ -216,11 +252,7 @@ const App = () => (
                 <LicenseRequestsManagement />
               </RoleBasedRoute>
             } />
-            <Route path="/employer/pending-verification" element={
-              <RoleBasedRoute allowedRoles={['Employer']}>
-                <PendingVerification />
-              </RoleBasedRoute>
-            } />
+            <Route path="/employer/pending-verification" element={<PendingVerification />} />
             <Route path="/employer/dashboard" element={
               <RoleBasedRoute allowedRoles={['Employer']}>
                 <EmployerVerificationGuard>
@@ -398,6 +430,56 @@ const App = () => (
                 <RolesPermissions />
               </RoleBasedRoute>
             } />
+            
+            {/* JiTesti Routes */}
+            <Route path="/jitesti" element={
+              <ProtectedRoute>
+                <TestCategories />
+              </ProtectedRoute>
+            } />
+            
+            {/* License Management Routes */}
+            <Route path="/license" element={<LicenseDashboard />} />
+            <Route path="/license/apply/:type" element={
+              <ProtectedRoute>
+                <LicenseApplicationWizard />
+              </ProtectedRoute>
+            } />
+            <Route path="/license/confirmation/:refNo" element={
+              <ProtectedRoute>
+                <ApplicationConfirmation />
+              </ProtectedRoute>
+            } />
+            <Route path="/license/track" element={<TrackStatus />} />
+            <Route path="/license/my-applications" element={
+              <ProtectedRoute>
+                <MyLicenseApplications />
+              </ProtectedRoute>
+            } />
+            <Route path="/license/application/:id" element={
+              <ProtectedRoute>
+                <ApplicationDetails />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/license-applications" element={
+              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                <LicenseApplicationsManagement />
+              </RoleBasedRoute>
+            } />
+            <Route path="/admin/license-application/:id" element={
+              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                <LicenseApplicationReview />
+              </RoleBasedRoute>
+            } />
+            <Route path="/admin/license-statistics" element={
+              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                <LicenseStatistics />
+              </RoleBasedRoute>
+            } />
+            
+            {/* Privacy Policy Routes */}
+            <Route path="/privacy-policy/whatsapp" element={<WhatsAppPrivacyPolicy />} />
+            
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

@@ -12,21 +12,22 @@ from typing import Dict, Any, Optional
 import re
 
 
-def send_welcome_email(user, user_type, company_name=None):
+def get_driver_welcome_email_content(user_name, language='sw'):
     """
-    Send welcome email to newly registered user
+    Get driver welcome email content in specified language
     
     Args:
-        user: User document
-        user_type: Type of user (Driver/Employer)
-        company_name: Company name for employers
+        user_name: User's full name
+        language: 'en' for English, 'sw' for Swahili (default: 'sw')
+        
+    Returns:
+        Dictionary with subject and message
     """
-    try:
-        # Prepare email content based on user type
-        if user_type == 'Driver':
-            subject = "Welcome to Dereva Kiganjani - Driver Platform"
-            message = f"""
-            <h2>Welcome to Dereva Kiganjani, {user.full_name}!</h2>
+    if language == 'en':
+        return {
+            'subject': "Welcome to Dereva Kiganjani - Driver Platform",
+            'message': f"""
+            <h2>Welcome to Dereva Kiganjani, {user_name}!</h2>
             
             <p>Thank you for registering as a Driver on our platform.</p>
             
@@ -46,27 +47,85 @@ def send_welcome_email(user, user_type, company_name=None):
             Dereva Kiganjani Team<br>
             MDV Vehicle Fleet Limited</p>
             """
+        }
+    else:  # Swahili (sw)
+        return {
+            'subject': "Karibu Dereva Kiganjani - Jukwaa la Madereva",
+            'message': f"""
+            <h2>Karibu Dereva Kiganjani, {user_name}!</h2>
+            
+            <p>Asante kwa kujisajili kama Dereva kwenye jukwaa letu.</p>
+            
+            <h3>Huduma Zinazopatikana:</h3>
+            <ul>
+                <li><strong>Leseni</strong> - Huduma za Leseni: Simamia leseni yako ya udereva</li>
+                <li><strong>JiTesti</strong> - Mtihani wa Udereva: Fanya mitihani ya udereva mtandaoni</li>
+                <li><strong>Elimika</strong> - Kujifunza Udereva: Pata nyenzo za kujifunzia</li>
+                <li><strong>Ajira ya Udereva</strong> - Ajira za Madereva: Tafuta fursa za ajira</li>
+            </ul>
+            
+            <p>Sasa unaweza kuingia kwenye akaunti yako na kuanza kutumia huduma zetu.</p>
+            
+            <p>Ikiwa una maswali yoyote, tafadhali usisite kuwasiliana nasi.</p>
+            
+            <p>Kwa heshima,<br>
+            Timu ya Dereva Kiganjani<br>
+            MDV Vehicle Fleet Limited</p>
+            """
+        }
+
+
+def send_welcome_email(user, user_type, company_name=None, language='sw'):
+    """
+    Send welcome email to newly registered user
+    
+    Args:
+        user: User document
+        user_type: Type of user (Driver/Employer)
+        company_name: Company name for employers
+        language: Preferred language ('en' or 'sw', default: 'sw')
+    """
+    try:
+        # Prepare email content based on user type
+        if user_type == 'Driver':
+            email_content = get_driver_welcome_email_content(user.full_name, language)
+            subject = email_content['subject']
+            message = email_content['message']
         else:  # Employer
-            subject = "Welcome to Dereva Kiganjani - Employer Platform"
+            subject = "Welcome to Dereva Kiganjani - Account Verification Pending"
             message = f"""
             <h2>Welcome to Dereva Kiganjani, {company_name or user.full_name}!</h2>
             
             <p>Thank you for registering as an Employer on our platform.</p>
             
-            <h3>Available Services:</h3>
+            <h3>⏳ Account Verification Required</h3>
+            <p><strong>Your account is currently pending verification by our team.</strong></p>
+            
+            <p>To ensure the security and quality of our platform, all employer accounts must be verified before accessing our services. This process typically takes 24-48 hours.</p>
+            
+            <h3>What happens next?</h3>
+            <ol>
+                <li>Our team will review your company information</li>
+                <li>You will receive an email notification once your account is verified</li>
+                <li>After verification, you can log in and access all employer features</li>
+            </ol>
+            
+            <h3>Available Services (After Verification):</h3>
             <ul>
                 <li><strong>Ajiri Dereva</strong> - Hire a Driver: Post job openings and find qualified drivers</li>
                 <li><strong>Driver Database</strong> - Access our database of verified drivers</li>
                 <li><strong>Job Management</strong> - Manage your job postings and applications</li>
             </ul>
             
-            <p>You can now log in to your account and start posting job opportunities.</p>
+            <p><strong>Note:</strong> You can log in to your account to check your verification status at any time.</p>
             
-            <p>If you have any questions, please don't hesitate to contact us.</p>
+            <p>If you have any questions or need assistance, please don't hesitate to contact us.</p>
             
             <p>Best regards,<br>
             Dereva Kiganjani Team<br>
-            MDV Vehicle Fleet Limited</p>
+            MDV Vehicle Fleet Limited<br>
+            Email: support@derevakiganjani.co.tz<br>
+            Phone: +255 XXX XXX XXX</p>
             """
         
         # Send email using Frappe's email queue
@@ -160,7 +219,8 @@ def register(
     contact_person: str = None,
     company_registration: str = None,
     address: str = None,
-    website: str = None
+    website: str = None,
+    language: str = 'sw'
 ):
     """
     Register a new user
@@ -178,6 +238,7 @@ def register(
         company_registration: Company registration number (optional for Employer)
         address: Company address (optional for Employer)
         website: Company website (optional for Employer)
+        language: Preferred language ('en' or 'sw', default: 'sw')
         
     Returns:
         User and profile information
@@ -241,9 +302,23 @@ def register(
         # Add role
         user.add_roles(user_type)
         
+        # Validate language parameter
+        if language not in ['en', 'sw']:
+            language = 'sw'  # Default to Swahili if invalid
+        
+        # Debug logging - print to console
+        print(f"\n{'='*60}")
+        print(f"REGISTRATION DEBUG:")
+        print(f"User: {user.name}")
+        print(f"User Type: {user_type}")
+        print(f"Language Parameter Received: {language}")
+        print(f"{'='*60}\n")
+        
         # Send welcome email
         try:
-            send_welcome_email(user, user_type, company_name if user_type == 'Employer' else None)
+            print(f"Sending welcome email in language: {language}")
+            send_welcome_email(user, user_type, company_name if user_type == 'Employer' else None, language)
+            print(f"Welcome email sent successfully")
         except Exception as email_error:
             # Log email error but don't fail registration
             frappe.log_error(
@@ -262,6 +337,7 @@ def register(
                 'phone_number': mobile_no,
                 'email': email,
                 'national_id': national_id,
+                'preferred_language': language,
                 'status': 'Active'
             })
             profile.insert(ignore_permissions=True)
@@ -351,19 +427,23 @@ def get_user_profile():
             if profile_name:
                 profile = frappe.get_doc('Admin Profile', profile_name)
         
-        return {
-            'message': {
-                'name': user_doc.name,
-                'email': user_doc.email,
-                'full_name': user_doc.full_name,
-                'mobile_no': user_doc.mobile_no,
-                'user_image': user_doc.user_image,
-                'user_type': user_type,
-                'roles': [r.role for r in user_doc.roles],
-                'enabled': user_doc.enabled,
-                'profile': profile.as_dict() if profile else None
-            }
+        # Return user data with user_type and roles
+        user_data = {
+            'name': user_doc.name,
+            'email': user_doc.email,
+            'full_name': user_doc.full_name,
+            'mobile_no': user_doc.mobile_no,
+            'user_image': user_doc.user_image,
+            'user_type': user_type,
+            'roles': [r.role for r in user_doc.roles],
+            'enabled': user_doc.enabled
         }
+        
+        # Add profile data if exists
+        if profile:
+            user_data['profile'] = profile.as_dict()
+        
+        return user_data
         
     except Exception as e:
         frappe.log_error(

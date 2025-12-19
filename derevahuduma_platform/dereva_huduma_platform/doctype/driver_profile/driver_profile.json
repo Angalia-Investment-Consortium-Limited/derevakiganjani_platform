@@ -16,6 +16,7 @@
   "license_number",
   "license_category",
   "date_of_birth",
+  "preferred_language",
   "section_break_10",
   "address",
   "experience_years",
@@ -78,6 +79,14 @@
    "fieldname": "date_of_birth",
    "fieldtype": "Date",
    "label": "Date of Birth"
+  },
+  {
+   "fieldname": "preferred_language",
+   "fieldtype": "Select",
+   "label": "Preferred Language",
+   "options": "en\nsw",
+   "default": "sw",
+   "reqd": 1
   },
   {
    "fieldname": "section_break_10",

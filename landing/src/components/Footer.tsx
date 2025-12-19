@@ -35,6 +35,8 @@ export const Footer = () => {
               <li><Link to="/about" className="text-muted-foreground hover:text-primary transition-colors">About Us</Link></li>
               <li><Link to="/services" className="text-muted-foreground hover:text-primary transition-colors">Services</Link></li>
               <li><Link to="/contact" className="text-muted-foreground hover:text-primary transition-colors">Contact</Link></li>
+              <li><Link to="/login" className="text-muted-foreground hover:text-primary transition-colors font-medium">Admin Portal</Link></li>
+              <li><Link to="/privacy-policy/whatsapp" className="text-muted-foreground hover:text-primary transition-colors">WhatsApp Privacy Policy</Link></li>
             </ul>
           </div>
 

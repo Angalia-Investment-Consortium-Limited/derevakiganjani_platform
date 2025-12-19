@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && npm run copy-assets",
-    "copy-assets": "cp public/logo.png ../derevahuduma_platform/public/landing/logo.png",
+    "build": "tsc -b && vite build --base=/assets/derevahuduma_platform/landing/ && yarn copy-html-entry",
     "lint": "eslint .",
     "preview": "vite preview",
     "build:prod": "yarn build && cd ../../../ && bench --site derevakiganjani.mdvfleet.co.tz clear-cache && bench restart",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "copy-html-entry": "cp ../derevahuduma_platform/public/landing/index.html ../derevahuduma_platform/www/landing.html"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

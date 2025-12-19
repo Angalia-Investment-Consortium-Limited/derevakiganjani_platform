@@ -25,6 +25,7 @@ export interface DriverProfile {
   address?: string;
   experience_years?: number;
   bio?: string;
+  preferred_language?: 'en' | 'sw';
 }
 
 export interface EmployerProfile {
@@ -75,6 +76,7 @@ export interface RegisterData {
   // Additional fields based on user type
   // For Driver
   national_id?: string;
+  language?: 'en' | 'sw'; // Preferred language for emails and communications
   // For Employer
   company_name?: string;
   contact_person?: string;

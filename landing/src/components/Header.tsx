@@ -1,8 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Globe, User, LogOut, Settings, Bell } from 'lucide-react';
+import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import DerevaLogo from "../../public/logo.png"
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -47,6 +48,10 @@ export const Header = () => {
     }
   };
 
+  const isAdmin = () => {
+    return user?.user_type === 'Admin' || user?.user_type === 'Staff';
+  };
+
   const navItems = [
     { label: t('home'), href: '/' },
     { label: t('about'), href: '/about' },
@@ -58,7 +63,7 @@ export const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <Link to="/" className="flex items-center">
-          <img src="/logo.png" alt="Dereva Kiganjani" className="h-[140px] w-auto" />
+          <img src={DerevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto" />
         </Link>
 
         {/* Desktop Navigation */}
@@ -129,6 +134,12 @@ export const Header = () => {
                     <User className="mr-2 h-4 w-4" />
                     {t('dashboard')}
                   </DropdownMenuItem>
+                  {isAdmin() && (
+                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                      <Shield className="mr-2 h-4 w-4" />
+                      Admin Portal
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     {t('myProfile')}
@@ -150,8 +161,12 @@ export const Header = () => {
               <Button variant="ghost" onClick={() => navigate('/register')}>
                 {t('createAccount')}
               </Button>
-              <Button onClick={() => navigate('/login')}>
+              <Button onClick={() => navigate('/ingia')}>
                 {t('login')}
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => navigate('/auth/admin-login')} className="gap-2">
+                <Shield className="h-4 w-4" />
+                Admin
               </Button>
             </div>
           )}
@@ -192,6 +207,16 @@ export const Header = () => {
                   <User className="mr-2 h-4 w-4" />
                   {t('dashboard')}
                 </Button>
+                {isAdmin() && (
+                  <Button
+                    variant="outline"
+                    onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }}
+                    className="w-full justify-start"
+                  >
+                    <Shield className="mr-2 h-4 w-4" />
+                    Admin Portal
+                  </Button>
+                )}
                 <Button
                   variant="outline"
                   onClick={() => { navigate('/notifications'); setMobileMenuOpen(false); }}
@@ -222,8 +247,12 @@ export const Header = () => {
                 <Button variant="outline" onClick={() => { navigate('/register'); setMobileMenuOpen(false); }} className="w-full">
                   {t('createAccount')}
                 </Button>
-                <Button onClick={() => { navigate('/login'); setMobileMenuOpen(false); }} className="w-full">
+                <Button onClick={() => { navigate('/ingia'); setMobileMenuOpen(false); }} className="w-full">
                   {t('login')}
+                </Button>
+                <Button variant="outline" onClick={() => { navigate('/auth/admin-login'); setMobileMenuOpen(false); }} className="w-full justify-start gap-2">
+                  <Shield className="h-4 w-4" />
+                  Admin Login
                 </Button>
               </div>
             )}

@@ -102,7 +102,7 @@ const Home = () => {
           <p className="text-lg max-w-2xl mx-auto opacity-90">
             Join thousands of drivers improving their skills and managing licenses digitally
           </p>
-          <Button size="lg" variant="secondary" onClick={() => navigate('/login')}>
+          <Button size="lg" variant="secondary" onClick={() => navigate('/ingia')}>
             {t('getStarted')}
           </Button>
         </div>

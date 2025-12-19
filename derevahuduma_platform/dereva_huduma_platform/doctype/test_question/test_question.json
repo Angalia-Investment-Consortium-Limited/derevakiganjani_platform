@@ -1,0 +1,200 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:QUEST-{#####}",
+ "creation": "2025-01-09 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "question_text_en",
+  "question_text_sw",
+  "category",
+  "question_type",
+  "column_break_5",
+  "difficulty",
+  "is_active",
+  "section_break_8",
+  "image",
+  "video_url",
+  "section_break_11",
+  "option_a_en",
+  "option_a_sw",
+  "option_b_en",
+  "option_b_sw",
+  "option_c_en",
+  "option_c_sw",
+  "option_d_en",
+  "option_d_sw",
+  "column_break_20",
+  "correct_answer",
+  "section_break_22",
+  "explanation_en",
+  "explanation_sw"
+ ],
+ "fields": [
+  {
+   "fieldname": "question_text_en",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Question Text (English)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "question_text_sw",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Question Text (Swahili)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Link",
+   "options": "Test Category",
+   "in_list_view": 1,
+   "label": "Category",
+   "reqd": 1
+  },
+  {
+   "fieldname": "question_type",
+   "fieldtype": "Select",
+   "options": "MCQ\\nImage\\nVideo",
+   "label": "Question Type",
+   "default": "MCQ",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "difficulty",
+   "fieldtype": "Select",
+   "options": "Easy\\nMedium\\nHard",
+   "label": "Difficulty",
+   "default": "Medium"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": "1"
+  },
+  {
+   "fieldname": "section_break_8",
+   "fieldtype": "Section Break",
+   "label": "Media"
+  },
+  {
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Image"
+  },
+  {
+   "fieldname": "video_url",
+   "fieldtype": "Data",
+   "label": "Video URL"
+  },
+  {
+   "fieldname": "section_break_11",
+   "fieldtype": "Section Break",
+   "label": "Options"
+  },
+  {
+   "fieldname": "option_a_en",
+   "fieldtype": "Data",
+   "label": "Option A (English)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "option_a_sw",
+   "fieldtype": "Data",
+   "label": "Option A (Swahili)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "option_b_en",
+   "fieldtype": "Data",
+   "label": "Option B (English)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "option_b_sw",
+   "fieldtype": "Data",
+   "label": "Option B (Swahili)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "option_c_en",
+   "fieldtype": "Data",
+   "label": "Option C (English)"
+  },
+  {
+   "fieldname": "option_c_sw",
+   "fieldtype": "Data",
+   "label": "Option C (Swahili)"
+  },
+  {
+   "fieldname": "option_d_en",
+   "fieldtype": "Data",
+   "label": "Option D (English)"
+  },
+  {
+   "fieldname": "option_d_sw",
+   "fieldtype": "Data",
+   "label": "Option D (Swahili)"
+  },
+  {
+   "fieldname": "column_break_20",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "correct_answer",
+   "fieldtype": "Select",
+   "options": "A\\nB\\nC\\nD",
+   "label": "Correct Answer",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_22",
+   "fieldtype": "Section Break",
+   "label": "Explanation"
+  },
+  {
+   "fieldname": "explanation_en",
+   "fieldtype": "Text",
+   "label": "Explanation (English)"
+  },
+  {
+   "fieldname": "explanation_sw",
+   "fieldtype": "Text",
+   "label": "Explanation (Swahili)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-09 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dereva Huduma Platform",
+ "name": "Test Question",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

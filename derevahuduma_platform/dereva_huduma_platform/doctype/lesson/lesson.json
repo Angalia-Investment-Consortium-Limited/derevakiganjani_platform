@@ -1,0 +1,242 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:LESSON-{#####}",
+ "creation": "2025-01-20 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "lesson_title_en",
+  "lesson_title_sw",
+  "column_break_3",
+  "course",
+  "lesson_order",
+  "section_break_6",
+  "content_type",
+  "column_break_8",
+  "duration_minutes",
+  "section_break_10",
+  "content_text_en",
+  "content_text_sw",
+  "section_break_13",
+  "content_file",
+  "column_break_15",
+  "video_url",
+  "video_type",
+  "section_break_18",
+  "summary_en",
+  "summary_sw",
+  "section_break_21",
+  "is_locked",
+  "unlock_after_lesson",
+  "column_break_24",
+  "is_active"
+ ],
+ "fields": [
+  {
+   "fieldname": "lesson_title_en",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lesson Title (English)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lesson_title_sw",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Lesson Title (Swahili)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_3",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Course",
+   "options": "Course",
+   "reqd": 1
+  },
+  {
+   "fieldname": "lesson_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Lesson Order",
+   "reqd": 1
+  },
+  {
+   "fieldname": "section_break_6",
+   "fieldtype": "Section Break",
+   "label": "Content Type"
+  },
+  {
+   "fieldname": "content_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Content Type",
+   "options": "text\npdf\nimage\nvideo",
+   "default": "text",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_8",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "duration_minutes",
+   "fieldtype": "Int",
+   "label": "Duration (Minutes)"
+  },
+  {
+   "fieldname": "section_break_10",
+   "fieldtype": "Section Break",
+   "label": "Text Content",
+   "depends_on": "eval:doc.content_type=='text'"
+  },
+  {
+   "fieldname": "content_text_en",
+   "fieldtype": "Text Editor",
+   "label": "Content (English)"
+  },
+  {
+   "fieldname": "content_text_sw",
+   "fieldtype": "Text Editor",
+   "label": "Content (Swahili)"
+  },
+  {
+   "fieldname": "section_break_13",
+   "fieldtype": "Section Break",
+   "label": "File Content",
+   "depends_on": "eval:doc.content_type=='pdf' || doc.content_type=='image'"
+  },
+  {
+   "fieldname": "content_file",
+   "fieldtype": "Attach",
+   "label": "File (PDF/Image)"
+  },
+  {
+   "fieldname": "column_break_15",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "video_url",
+   "fieldtype": "Data",
+   "label": "YouTube Video URL",
+   "depends_on": "eval:doc.content_type=='video'"
+  },
+  {
+   "fieldname": "video_type",
+   "fieldtype": "Select",
+   "label": "Video Type",
+   "options": "public\nprivate\nunlisted",
+   "default": "unlisted",
+   "depends_on": "eval:doc.content_type=='video'"
+  },
+  {
+   "fieldname": "section_break_18",
+   "fieldtype": "Section Break",
+   "label": "Summary"
+  },
+  {
+   "fieldname": "summary_en",
+   "fieldtype": "Small Text",
+   "label": "Summary (English)"
+  },
+  {
+   "fieldname": "summary_sw",
+   "fieldtype": "Small Text",
+   "label": "Summary (Swahili)"
+  },
+  {
+   "fieldname": "section_break_21",
+   "fieldtype": "Section Break",
+   "label": "Settings"
+  },
+  {
+   "fieldname": "is_locked",
+   "fieldtype": "Check",
+   "label": "Is Locked",
+   "default": "0"
+  },
+  {
+   "fieldname": "unlock_after_lesson",
+   "fieldtype": "Link",
+   "label": "Unlock After Lesson",
+   "options": "Lesson",
+   "depends_on": "eval:doc.is_locked==1"
+  },
+  {
+   "fieldname": "column_break_24",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": "1"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-01-20 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dereva Huduma Platform",
+ "name": "Lesson",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Admin",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Staff",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Driver",
+   "share": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

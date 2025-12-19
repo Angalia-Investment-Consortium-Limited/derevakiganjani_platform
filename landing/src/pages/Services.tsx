@@ -190,7 +190,7 @@ export default function Services() {
               <p className="text-lg text-muted-foreground">
                 {t('readyToStartText')}
               </p>
-              <Button size="lg" onClick={() => navigate('/login')}>
+              <Button size="lg" onClick={() => navigate('/ingia')}>
                 {t('getStarted')}
               </Button>
             </div>

@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from '@/components/ui/breadcrumb';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { User, Building2, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { User, Building2, CheckCircle2, XCircle, Loader2, Languages } from 'lucide-react';
 import { useFrappePostCall } from 'frappe-react-sdk';
 import {
   Dialog,
@@ -18,6 +20,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 
 type UserType = 'driver' | 'employer';
 
@@ -37,6 +41,7 @@ const Register = () => {
   // Driver-specific fields
   const [fullName, setFullName] = useState('');
   const [nationalId, setNationalId] = useState('');
+  const [preferredLanguage, setPreferredLanguage] = useState<'en' | 'sw'>('sw'); // Default to Swahili
   
   // Employer-specific fields
   const [companyName, setCompanyName] = useState('');
@@ -50,7 +55,14 @@ const Register = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { t } = useLanguage();
+  const { t, language: uiLanguage } = useLanguage();
+  
+  // Sync preferred language with UI language on mount (can be overridden by user)
+  useEffect(() => {
+    if (uiLanguage) {
+      setPreferredLanguage(uiLanguage);
+    }
+  }, [uiLanguage]);
   const { register: registerUser, isAuthenticated, user } = useAuth();
   
   const { call: checkAvailability } = useFrappePostCall('derevahuduma_platform.api.auth.check_availability');
@@ -160,7 +172,7 @@ const Register = () => {
 
     // Validation based on user type
     if (userType === 'driver') {
-      if (!fullName || !phone || !password) {
+      if (!fullName || !phone || !password || !preferredLanguage) {
         toast({
           title: t('error'),
           description: t('fillAllRequired'),
@@ -224,6 +236,7 @@ const Register = () => {
           password: password,
           user_type: 'Driver',
           national_id: nationalId || undefined,
+          language: preferredLanguage,
         });
       } else {
         // Employer registration
@@ -246,17 +259,32 @@ const Register = () => {
         });
       }
 
-      toast({
-        title: t('success'),
-        description: userType === 'employer' 
-          ? 'Account created successfully! Please login to continue. Your account will be verified by our team.'
-          : 'Account created successfully! Please login to continue.',
-      });
+      if (userType === 'employer') {
+        toast({
+          title: t('success'),
+          description: 'Account created successfully! Your account is pending verification. Please check your email for further instructions.',
+        });
 
-      // Redirect to login page after successful registration
-      setTimeout(() => {
-        navigate('/login', { replace: true });
-      }, 2000);
+        // Redirect employer to pending verification page
+        setTimeout(() => {
+          navigate('/employer/pending-verification', { 
+            replace: true,
+            state: { 
+              message: 'Your employer account has been created and is pending verification. You will receive an email once your account is verified.'
+            }
+          });
+        }, 2000);
+      } else {
+        toast({
+          title: t('success'),
+          description: 'Account created successfully! Please login to continue.',
+        });
+
+        // Redirect driver to login page
+        setTimeout(() => {
+          navigate('/ingia', { replace: true });
+        }, 2000);
+      }
     } catch (error: any) {
       // Parse error message to provide specific feedback
       let errorMessage = 'Registration failed. Please try again.';
@@ -386,8 +414,23 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
-      <Card className="w-full max-w-2xl">
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Register</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="flex items-center justify-center">
+          <Card className="w-full max-w-2xl">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
             <img src="/logo.png" alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
@@ -489,6 +532,38 @@ const Register = () => {
                       onChange={(e) => setNationalId(e.target.value)}
                       placeholder={t('enterNationalId')}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="preferredLanguage">
+                      <div className="flex items-center gap-2">
+                        <Languages className="h-4 w-4" />
+                        <span>Preferred Language / Lugha Unayopendelea</span>
+                        <span className="text-destructive">*</span>
+                      </div>
+                    </Label>
+                    <Select value={preferredLanguage} onValueChange={(value) => setPreferredLanguage(value as 'en' | 'sw')} required>
+                      <SelectTrigger id="preferredLanguage">
+                        <SelectValue placeholder="Select language / Chagua lugha" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="sw">
+                          <div className="flex flex-col">
+                            <span className="font-medium">Kiswahili</span>
+                            <span className="text-xs text-muted-foreground">Swahili - Default / Chaguo-msingi</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="en">
+                          <div className="flex flex-col">
+                            <span className="font-medium">English</span>
+                            <span className="text-xs text-muted-foreground">English Language</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      This will be used for all emails and communications / Hii itatumika kwa barua pepe na mawasiliano yote
+                    </p>
                   </div>
                 </>
               ) : (
@@ -646,13 +721,14 @@ const Register = () => {
 
             <div className="text-center text-sm">
               <span className="text-muted-foreground">{t('alreadyHaveAccount')} </span>
-              <Link to="/login" className="text-primary hover:underline font-medium">
+              <Link to="/ingia" className="text-primary hover:underline font-medium">
                 {t('loginHere')}
               </Link>
             </div>
           </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* OTP Verification Dialog */}
       <Dialog open={showOtpDialog} onOpenChange={setShowOtpDialog}>
@@ -687,6 +763,8 @@ const Register = () => {
           </div>
         </DialogContent>
       </Dialog>
+      </main>
+      <Footer />
     </div>
   );
 };
