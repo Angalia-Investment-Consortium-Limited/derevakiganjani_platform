@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useFrappePostCall } from 'frappe-react-sdk';
+import derevaLogo from '../../assets/logo.png';
 
 const ResetPassword = () => {
   const [mobileNo, setMobileNo] = useState('');
@@ -124,7 +125,7 @@ const ResetPassword = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <img src="/logo.png" alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
+            <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
           </div>
           <CardTitle className="text-2xl text-center">Reset Password</CardTitle>
           <CardDescription className="text-center">

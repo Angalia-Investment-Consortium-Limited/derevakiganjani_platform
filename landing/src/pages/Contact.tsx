@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Mail, Phone, MapPin, MessageCircle, Clock } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import contactHeroImage from '@/assets/images/10.jpg';
 
 export default function Contact() {
   const { t } = useLanguage();
@@ -87,13 +88,17 @@ export default function Contact() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-b from-primary/5 to-background py-20">
-          <div className="container">
+        <section 
+          className="relative py-20 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${contactHeroImage})` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/60" />
+          <div className="container relative z-10">
             <div className="max-w-3xl mx-auto text-center space-y-6">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
                 {t('contactTitle')}
               </h1>
-              <p className="text-xl text-muted-foreground">
+              <p className="text-xl text-white/90">
                 {t('contactSubtitle')}
               </p>
             </div>

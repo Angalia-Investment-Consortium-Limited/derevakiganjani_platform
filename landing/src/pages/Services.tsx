@@ -6,6 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useNavigate } from 'react-router-dom';
 import { Award, FileCheck, BookOpen, Briefcase, UserCheck } from 'lucide-react';
+import servicesHeroImage from '@/assets/images/15.jpg';
+import howItWorksImage from '@/assets/images/18.jpg';
+import ctaImage from '@/assets/images/22.jpg';
 
 export default function Services() {
   const { t } = useLanguage();
@@ -91,13 +94,17 @@ export default function Services() {
       
       <main className="flex-1">
         {/* Hero Section */}
-        <section className="bg-gradient-to-b from-primary/5 to-background py-20">
-          <div className="container">
+        <section 
+          className="relative py-20 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${servicesHeroImage})` }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 to-black/60" />
+          <div className="container relative z-10">
             <div className="max-w-3xl mx-auto text-center space-y-6">
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight">
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
                 {t('servicesTitle')}
               </h1>
-              <p className="text-xl text-muted-foreground">
+              <p className="text-xl text-white/90">
                 {t('servicesSubtitle')}
               </p>
             </div>
@@ -137,8 +144,12 @@ export default function Services() {
         </section>
 
         {/* How It Works */}
-        <section className="py-16 bg-muted/30">
-          <div className="container">
+        <section 
+          className="relative py-16 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${howItWorksImage})` }}
+        >
+          <div className="absolute inset-0 bg-white/95" />
+          <div className="container relative z-10">
             <h2 className="text-3xl font-bold text-center mb-12">{t('howItWorksTitle')}</h2>
             <div className="max-w-4xl mx-auto">
               <div className="relative">
@@ -183,14 +194,18 @@ export default function Services() {
         </section>
 
         {/* CTA Section */}
-        <section className="py-16 bg-muted/30">
-          <div className="container">
+        <section 
+          className="relative py-16 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${ctaImage})` }}
+        >
+          <div className="absolute inset-0 bg-primary/90" />
+          <div className="container relative z-10">
             <div className="max-w-2xl mx-auto text-center space-y-6">
-              <h2 className="text-3xl font-bold">{t('readyToStartTitle')}</h2>
-              <p className="text-lg text-muted-foreground">
+              <h2 className="text-3xl font-bold text-white">{t('readyToStartTitle')}</h2>
+              <p className="text-lg text-white/90">
                 {t('readyToStartText')}
               </p>
-              <Button size="lg" onClick={() => navigate('/ingia')}>
+              <Button size="lg" onClick={() => navigate('/ingia')} variant="secondary">
                 {t('getStarted')}
               </Button>
             </div>

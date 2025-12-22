@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ArrowLeft } from 'lucide-react';
 import { useFrappePostCall } from 'frappe-react-sdk';
+import  derevaLogo from '../../assets/logo.png';
 
 const ForgotPassword = () => {
   const [phoneOrEmail, setPhoneOrEmail] = useState('');
@@ -88,7 +89,7 @@ const ForgotPassword = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <img src="/logo.png" alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
+            <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
           </div>
           <CardTitle className="text-2xl text-center">{t('forgotPassword')}</CardTitle>
           <CardDescription className="text-center">

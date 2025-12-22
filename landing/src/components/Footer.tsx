@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Facebook, Twitter, Instagram, Mail, Phone, MapPin } from 'lucide-react';
+import derevalogo from "../assets/logo.png"
 
 export const Footer = () => {
   return (
@@ -9,7 +10,7 @@ export const Footer = () => {
           {/* Brand */}
           <div className="space-y-4">
             <div className="flex items-center">
-              <img src="/logo.png" alt="Dereva Kiganjani" className="h-[140px] w-auto" />
+              <img src={derevalogo} alt="Dereva Kiganjani" className="h-[140px] w-auto" />
             </div>
             <p className="text-sm text-muted-foreground">
               Empowering safer drivers through digital services and continuous learning.
@@ -73,7 +74,7 @@ export const Footer = () => {
 
         <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
           <p>© {new Date().getFullYear()} MDV Vehicle Fleet. All rights reserved.</p>
-          <p className="mt-2">Dereva Huduma — a program by MDV Vehicle Fleet Limited.</p>
+          <p className="mt-2">Dereva Kiganjani — a program by MDV Vehicle Fleet Limited.</p>
         </div>
       </div>
     </footer>

@@ -18,7 +18,7 @@ const PendingVerification = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login');
+      navigate('/ingia');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -130,7 +130,7 @@ const PendingVerification = () => {
                     <Phone className="h-5 w-5 text-primary" />
                     <div>
                       <p className="text-xs text-muted-foreground">{t('phoneLabel')}</p>
-                      <p className="text-sm font-medium">+255 XXX XXX XXX</p>
+                      <p className="text-sm font-medium">+255 748 467 348</p>
                     </div>
                   </div>
                 </div>

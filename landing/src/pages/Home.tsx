@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { FileText, GraduationCap, BookOpen, Briefcase, UserPlus, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
+import heroImage from '@/assets/images/1.jpg';
+import ctaImage from '@/assets/images/5.jpg';
 
 const Home = () => {
   const navigate = useNavigate();
@@ -53,23 +55,27 @@ const Home = () => {
       <Header />
       
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-primary/5 via-warm/5 to-secondary/5 py-20">
-        <div className="container">
+      <section 
+        className="relative py-20 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${heroImage})` }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-black/70 via-black/60 to-black/70" />
+        <div className="container relative z-10">
           <div className="max-w-3xl mx-auto text-center space-y-6">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-white">
               {t('heroTitle')}
             </h1>
-            <p className="text-xl md:text-2xl text-primary font-semibold">
+            <p className="text-xl md:text-2xl text-white font-semibold">
               {t('heroSubtitle')}
             </p>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg text-white/90 max-w-2xl mx-auto">
               {t('heroDescription')}
             </p>
             <div className="flex flex-wrap gap-4 justify-center pt-6">
               <Button size="lg" onClick={() => navigate('/test/category')} className="font-semibold">
                 {t('startTest')}
               </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/elimika')}>
+              <Button size="lg" variant="outline" onClick={() => navigate('/elimika')} className="bg-white/10 text-white border-white/30 hover:bg-white/20">
                 {t('learnMore')}
               </Button>
             </div>
@@ -96,10 +102,14 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="bg-primary text-primary-foreground py-16">
-        <div className="container text-center space-y-6">
-          <h2 className="text-3xl md:text-4xl font-bold">Ready to Get Started?</h2>
-          <p className="text-lg max-w-2xl mx-auto opacity-90">
+      <section 
+        className="relative py-16 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${ctaImage})` }}
+      >
+        <div className="absolute inset-0 bg-primary/90" />
+        <div className="container relative z-10 text-center space-y-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-white">Ready to Get Started?</h2>
+          <p className="text-lg max-w-2xl mx-auto text-white/90">
             Join thousands of drivers improving their skills and managing licenses digitally
           </p>
           <Button size="lg" variant="secondary" onClick={() => navigate('/ingia')}>

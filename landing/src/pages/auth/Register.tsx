@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { User, Building2, CheckCircle2, XCircle, Loader2, Languages } from 'lucide-react';
 import { useFrappePostCall } from 'frappe-react-sdk';
+import derevaLogo from '../../assets/logo.png' 
 import {
   Dialog,
   DialogContent,
@@ -433,7 +434,7 @@ const Register = () => {
           <Card className="w-full max-w-2xl">
         <CardHeader className="space-y-4">
           <div className="flex justify-center">
-            <img src="/logo.png" alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
+            <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
           </div>
           <CardTitle className="text-2xl text-center">{t('createAccount')}</CardTitle>
           <CardDescription className="text-center">{t('registerSubtitle')}</CardDescription>

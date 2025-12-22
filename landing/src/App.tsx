@@ -104,7 +104,7 @@ const queryClient = new QueryClient();
 const App = () => (
 
   <FrappeProvider socketPort={import.meta.env.VITE_SOCKET_PORT ?? ''}
-     siteName={getSiteName()}>
+                  siteName={getSiteName()}>
     <BrowserRouter basename={import.meta.env.VITE_BASE_PATH}>
     {/* <BrowserRouter basename={import.meta.env.MODE === 'production' ? '/landing' : '/'}> */}
       <QueryClientProvider client={queryClient}>
@@ -252,7 +252,11 @@ const App = () => (
                 <LicenseRequestsManagement />
               </RoleBasedRoute>
             } />
-            <Route path="/employer/pending-verification" element={<PendingVerification />} />
+            <Route path="/employer/pending-verification" element={
+              <RoleBasedRoute allowedRoles={['Employer']}>
+                <PendingVerification />
+              </RoleBasedRoute>
+            } />
             <Route path="/employer/dashboard" element={
               <RoleBasedRoute allowedRoles={['Employer']}>
                 <EmployerVerificationGuard>

@@ -18,6 +18,7 @@ interface AuthContextType extends AuthState {
   register: (data: RegisterData) => Promise<void>;
   updateProfile: (data: Partial<DriverProfile | EmployerProfile | AdminProfile>) => Promise<void>;
   refreshUser: () => Promise<void>;
+  getUserCookie: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,131 +32,135 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     error: null,
   });
 
-  const { currentUser, isValidating, login: frappeLogin, logout: frappeLogout } = useFrappeAuth();
-  const { data: userData, error: userError, mutate: mutateUser } = useFrappeGetCall<{ message: User }>(
-    'frappe.auth.get_logged_user',
-    undefined,
-    undefined,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  );
+  // Use useFrappeAuth hook - this is the primary source of auth state
+  const { 
+    currentUser, 
+    isValidating, 
+    login: frappeLogin, 
+    logout: frappeLogout,
+    updateCurrentUser,
+    getUserCookie
+  } = useFrappeAuth();
 
   // Fetch user profile based on user type
-  const { data: profileData, mutate: mutateProfile } = useFrappeGetCall<DriverProfile | EmployerProfile | AdminProfile>(
-    authState.user ? 'derevahuduma_platform.api.auth.get_user_profile' : '',
+  // Only fetch if currentUser exists (user is logged in)
+  const profileKey = currentUser ? 'derevahuduma_platform.api.auth.get_user_profile' : null;
+  const { data: profileData, mutate: mutateProfile } = useFrappeGetCall<any>(
+    profileKey as string,
     undefined,
-    undefined,
+    profileKey as string,
     {
       revalidateOnFocus: false,
+      shouldRetryOnError: false,
     }
   );
 
   const { call: registerCall } = useFrappePostCall('derevahuduma_platform.api.auth.register');
   const { call: updateProfileCall } = useFrappePostCall('derevahuduma_platform.api.auth.update_profile');
 
-  // Initialize auth state
+  // Initialize auth state from currentUser (provided by useFrappeAuth)
+  // Note: currentUser is just the username string, we need to fetch full user data
   useEffect(() => {
-    if (currentUser && userData?.message) {
-      const user = userData.message;
+    if (currentUser) {
+      // User is logged in, but we need profile data for full user info
       setAuthState(prev => ({
         ...prev,
-        user,
         isAuthenticated: true,
-        isLoading: false,
+        isLoading: isValidating || !profileData,
         error: null,
       }));
     } else if (!isValidating) {
-      setAuthState(prev => ({
-        ...prev,
+      // User is not logged in and not validating
+      setAuthState({
         user: null,
         profile: null,
         isAuthenticated: false,
         isLoading: false,
-      }));
-    }
-  }, [currentUser, userData, isValidating]);
-
-  // Load profile data
-  useEffect(() => {
-    if (profileData) {
-      // The API now returns user data directly with user_type and roles
-      const userData = profileData as any;
+        error: null,
+      });
+    } else {
+      // Still validating
       setAuthState(prev => ({
         ...prev,
-        user: userData.profile ? {
+        isLoading: true,
+      }));
+    }
+  }, [currentUser, isValidating, profileData]);
+
+  // Load profile data when available
+  useEffect(() => {
+    if (profileData) {
+      // The API returns user data with user_type, roles, and profile
+      const userData = profileData;
+      
+      setAuthState(prev => ({
+        ...prev,
+        user: {
           ...prev.user,
           user_type: userData.user_type,
           roles: userData.roles
-        } as User : prev.user,
+        } as User,
         profile: userData.profile || null,
       }));
     }
   }, [profileData]);
 
-  // Handle user errors
-  useEffect(() => {
-    if (userError) {
-      setAuthState(prev => ({
-        ...prev,
-        error: 'Failed to load user data',
-        isLoading: false,
-      }));
-    }
-  }, [userError]);
-
   const login = async (credentials: LoginCredentials) => {
     try {
       setAuthState(prev => ({ ...prev, isLoading: true, error: null }));
       
+      // Use Frappe's login function
       await frappeLogin({
         username: credentials.usr,
         password: credentials.pwd,
       });
       
-      // Wait for user data to be fetched
-      await mutateUser();
+      // Refresh current user data
+      await updateCurrentUser();
       
-      // Wait a bit for the user data to be available
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Fetch profile data which includes user_type and roles
+      // Fetch profile data which includes user_type, roles, and full user info
       const profileResponse = await mutateProfile();
       
-      // Get the latest user data
-      const userResponse = await mutateUser();
-      let user = userResponse?.message;
-      
-      // Profile response now contains user data with user_type, roles, and profile
-      const userData = profileResponse as any;
-      const profile = userData?.profile || null;
-      
-      if (!user) {
+      if (!profileResponse) {
         throw new Error('Failed to load user data after login');
       }
       
-      // Create a new user object with user_type and roles merged in
-      if (userData) {
-        user = {
-          ...user,
-          user_type: userData.user_type,
-          roles: userData.roles
-        } as User;
-      }
+      // Profile response contains user data with user_type, roles, and profile
+      const userData = profileResponse as any;
+      const profile = userData?.profile || null;
+      
+      // Create user object from profile response
+      const enhancedUser: User = {
+        name: currentUser || '',
+        email: userData?.email || '',
+        full_name: userData?.full_name || '',
+        user_image: userData?.user_image,
+        mobile_no: userData?.mobile_no,
+        user_type: userData?.user_type,
+        roles: userData?.roles || [],
+        enabled: true,
+      };
       
       setAuthState({
-        user,
-        profile: profile || null,
+        user: enhancedUser,
+        profile: profile,
         isAuthenticated: true,
         isLoading: false,
         error: null,
       });
       
-      return { user, profile: profile || null };
+      return { user: enhancedUser, profile };
     } catch (error: any) {
+      // Reset auth state on error
+      if (error.httpStatus === 403 || error.httpStatus === 401) {
+        getUserCookie(); // Reset auth cookie state
+      }
+      
       setAuthState(prev => ({
         ...prev,
+        user: null,
+        profile: null,
+        isAuthenticated: false,
         error: error.message || 'Login failed',
         isLoading: false,
       }));
@@ -178,6 +183,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.error('Logout error:', error);
       // Force logout even if API call fails
       removeAuthToken();
+      getUserCookie(); // Reset auth state
       setAuthState({
         user: null,
         profile: null,
@@ -230,6 +236,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const refreshUser = async () => {
     try {
+      await updateCurrentUser();
       await mutateProfile();
     } catch (error) {
       console.error('Failed to refresh user:', error);
@@ -245,6 +252,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         register,
         updateProfile,
         refreshUser,
+        getUserCookie,
       }}
     >
       {children}
