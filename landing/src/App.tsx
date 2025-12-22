@@ -87,6 +87,7 @@ import LicenseApplicationReview from "./pages/admin/LicenseApplicationReview";
 import LicenseStatistics from "./pages/admin/LicenseStatistics";
 import TestCategories from "./pages/jitesti/TestCategories";
 import WhatsAppPrivacyPolicy from "./pages/WhatsAppPrivacyPolicy";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const queryClient = new QueryClient();
   // We need to pass sitename only if the Frappe version is v15 or above.
@@ -482,7 +483,9 @@ const App = () => (
             } />
             
             {/* Privacy Policy Routes */}
+            <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/privacy-policy/whatsapp" element={<WhatsAppPrivacyPolicy />} />
+
             
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

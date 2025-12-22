@@ -21,8 +21,8 @@
       "_react-vendor-ChyfegPF.js"
     ]
   },
-  "_icons-vendor-Bbs2-n4u.js": {
-    "file": "assets/icons-vendor-Bbs2-n4u.js",
+  "_icons-vendor-CnBq6QaZ.js": {
+    "file": "assets/icons-vendor-CnBq6QaZ.js",
     "name": "icons-vendor",
     "imports": [
       "_react-vendor-ChyfegPF.js"
@@ -48,7 +48,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/main-ByBBgswj.js",
+    "file": "assets/main-ZLDR3mlC.js",
     "name": "main",
     "src": "index.html",
     "isEntry": true,
@@ -56,7 +56,7 @@
       "_ui-vendor-CrCWfpD2.js",
       "_react-vendor-ChyfegPF.js",
       "_chart-vendor-DcZu8PHa.js",
-      "_icons-vendor-Bbs2-n4u.js",
+      "_icons-vendor-CnBq6QaZ.js",
       "_query-vendor-CxaHdPpK.js",
       "_frappe-vendor-DDauFiJA.js"
     ],
