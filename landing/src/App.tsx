@@ -495,7 +495,7 @@ const App = () => (
         </LanguageProvider>
       </QueryClientProvider>
     </BrowserRouter>
-  </FrappeProvider>
-);
+    </FrappeProvider>
+  );
 
-export default App;
+  export default App;
