@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useFrappeAuth } from 'frappe-react-sdk';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,10 +19,13 @@ const AdminLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { login, logout } = useAuth();
+  
+  // Use frappe-react-sdk directly
+  const { login: frappeLogin, logout: frappeLogout } = useFrappeAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,42 +44,18 @@ const AdminLogin = () => {
     try {
       console.log('[AdminLogin] Attempting login for:', email);
       
-      const { user: loggedInUser } = await login({
-        usr: email,
-        pwd: password,
-      });
-
-      console.log('[AdminLogin] Login successful, user:', loggedInUser);
-
-      // Verify user has admin role
-      const hasAdminRole = loggedInUser.roles && Array.isArray(loggedInUser.roles) && (
-        loggedInUser.roles.includes('Admin') || 
-        loggedInUser.roles.includes('Staff') ||
-        loggedInUser.roles.some((role: any) => role === 'System Manager')
-      );
-
-      // Check if user has admin privileges
-      if (!hasAdminRole && loggedInUser.user_type !== 'Admin' && loggedInUser.user_type !== 'Staff') {
-        console.warn('[AdminLogin] User does not have admin privileges');
-        
-        toast({
-          title: 'Access Denied',
-          description: 'You do not have admin privileges. Please use the appropriate login page.',
-          variant: 'destructive',
-        });
-        
-        // Logout the user since they don't have proper access
-        await logout();
-        return;
-      }
+      // Use frappe-react-sdk login directly
+      await frappeLogin({ username: email, password });
+      
+      console.log('[AdminLogin] Login successful');
 
       toast({
         title: t('success'),
         description: t('Welcome to Admin Portal!'),
       });
 
-      // Navigate to admin dashboard
-      navigate('/admin', { replace: true });
+      // Reload to fetch boot info and profile
+      window.location.replace('/admin');
     } catch (error: any) {
       console.error('[AdminLogin] Login error:', error);
       
@@ -124,7 +104,7 @@ const AdminLogin = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/landing/ingia" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
+                <BreadcrumbLink href="/login" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>

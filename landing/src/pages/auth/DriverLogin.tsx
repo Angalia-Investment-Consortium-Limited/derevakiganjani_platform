@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useFrappeAuth } from 'frappe-react-sdk';
+import { useOTP } from '@/hooks/useOTP';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
@@ -22,10 +23,14 @@ const DriverLogin = () => {
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { login } = useAuth();
+  
+  // Use frappe-react-sdk directly
+  const { login: frappeLogin, updateCurrentUser } = useFrappeAuth();
+  const { sendOTP, verifyOTP, isLoading: otpLoading } = useOTP();
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,20 +49,18 @@ const DriverLogin = () => {
     try {
       console.log('[DriverLogin] Attempting login for:', email);
       
-      const result = await login({
-        usr: email,
-        pwd: password,
-      });
+      // Use frappe-react-sdk login directly
+      await frappeLogin({ username: email, password });
       
-      console.log('[DriverLogin] Login successful:', result);
+      console.log('[DriverLogin] Login successful');
 
       toast({
         title: t('success'),
         description: t('Welcome back!'),
       });
 
-      // Navigate to dashboard
-      navigate('/dashboard', { replace: true });
+      // Reload to fetch boot info
+      window.location.replace('/dashboard');
     } catch (error: any) {
       console.error('[DriverLogin] Login error:', error);
       
@@ -92,43 +95,71 @@ const DriverLogin = () => {
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    
+    if (!phoneNumber) {
+      toast({
+        title: t('error'),
+        description: 'Please enter your phone number',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     try {
+      console.log('[DriverLogin] Sending OTP to:', phoneNumber);
+      
+      await sendOTP(phoneNumber, 'login');
+      
       setOtpSent(true);
       toast({
         title: t('success'),
-        description: "Please check your phone for the verification code",
+        description: 'OTP sent successfully to your phone',
       });
     } catch (error: any) {
+      console.error('[DriverLogin] OTP send error:', error);
       toast({
         title: t('error'),
-        description: error.message || 'Failed to send OTP',
+        description: error.message || 'Failed to send OTP. Please try again.',
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleVerifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      toast({
-        title: t('success'),
-        description: "Welcome!",
-      });
-      navigate('/dashboard', { replace: true });
-    } catch (error: any) {
+    
+    if (!otp) {
       toast({
         title: t('error'),
-        description: error.message || 'Invalid OTP',
+        description: 'Please enter the OTP',
         variant: 'destructive',
       });
-    } finally {
-      setIsLoading(false);
+      return;
+    }
+
+    try {
+      console.log('[DriverLogin] Verifying OTP:', otp);
+      
+      // Verify OTP (backend creates session)
+      await verifyOTP(phoneNumber, otp, 'login');
+      
+      // Update auth state
+      await updateCurrentUser();
+      
+      toast({
+        title: t('success'),
+        description: 'Login successful!',
+      });
+
+      // Reload to fetch boot info
+      window.location.replace('/dashboard');
+    } catch (error: any) {
+      console.error('[DriverLogin] OTP verification error:', error);
+      toast({
+        title: t('error'),
+        description: error.message || 'Invalid OTP. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -148,7 +179,7 @@ const DriverLogin = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/landing/ingia" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
+                <BreadcrumbLink href="/login" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
@@ -216,14 +247,14 @@ const DriverLogin = () => {
                           <Input
                             id="phone-otp"
                             type="tel"
-                            placeholder="+255 712 345 678"
+                            placeholder="255712345678"
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
                             required
                           />
                         </div>
-                        <Button type="submit" className="w-full" disabled={isLoading}>
-                          {isLoading ? 'Sending...' : 'Send OTP'}
+                        <Button type="submit" className="w-full" disabled={otpLoading}>
+                          {otpLoading ? 'Sending...' : 'Send OTP'}
                         </Button>
                       </form>
                     ) : (
@@ -240,8 +271,8 @@ const DriverLogin = () => {
                             maxLength={6}
                           />
                         </div>
-                        <Button type="submit" className="w-full" disabled={isLoading}>
-                          {isLoading ? 'Verifying...' : 'Verify & Login'}
+                        <Button type="submit" className="w-full" disabled={otpLoading}>
+                          {otpLoading ? 'Verifying...' : 'Verify & Login'}
                         </Button>
                         <Button
                           type="button"

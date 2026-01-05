@@ -1,7 +1,6 @@
 import json
 import os
 import re
-
 import frappe
 import frappe.sessions  # Added for consistency
 from frappe import _  # Added for localization (if needed)
@@ -51,20 +50,9 @@ def get_context(context):
         "csrf_token": csrf_token,
     })
     
-    # App name and branding (from raven.py) - adapted for your app
-    app_name = frappe.get_website_settings("app_name") or frappe.get_system_settings("app_name")
-    if app_name and app_name != "Frappe":
-        context["app_name"] = app_name + " | " + "Dereva Huduma Platform"  # Change to your app name
-    else:
-        context["app_name"] = "Dereva Huduma Platform"
+    
     
     # Favicons and icons (from raven.py) - adapt paths to your app
-    favicon = frappe.get_website_settings("favicon")
-    context["icon_96"] = favicon or "/assets/derevahuduma_platform/manifest/favicon-96x96.png"  # Update path
-    context["apple_touch_icon"] = favicon or "/assets/derevahuduma_platform/manifest/apple-touch-icon.png"
-    context["mask_icon"] = favicon or "/assets/derevahuduma_platform/manifest/safari-pinned-tab.svg"
-    context["favicon_svg"] = favicon or "/assets/derevahuduma_platform/manifest/favicon.svg"
-    context["favicon_ico"] = favicon or "/assets/derevahuduma_platform/manifest/favicon.ico"
     context["sitename"] = boot.get("sitename")
     
     # Telemetry and preloads (from raven.py) - adapted for logged-in users

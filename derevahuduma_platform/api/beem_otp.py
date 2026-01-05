@@ -258,18 +258,29 @@ def request_otp(mobile_no: str, purpose: str):
         # Normalize phone number
         mobile_no = mobile_no.strip()
         
+        # Normalize phone number for database lookup (with + prefix)
+        check_no = mobile_no
+        if not check_no.startswith('+'):
+            if check_no.startswith('0'):
+                check_no = '+255' + check_no[1:]
+            elif check_no.startswith('255'):
+                check_no = '+' + check_no
+            else:
+                check_no = '+255' + check_no
+        
         # For registration, check if user already exists
         if purpose == 'registration':
-            # Check with + prefix
-            check_no = mobile_no if mobile_no.startswith('+') else f'+{mobile_no}'
-            existing_user = frappe.db.exists('User', {'mobile_no': check_no})
+            # Check both with and without + prefix
+            existing_user = frappe.db.exists('User', {'mobile_no': check_no}) or \
+                           frappe.db.exists('User', {'mobile_no': check_no[1:]})
             if existing_user:
                 frappe.throw(_('A user with this mobile number already exists'))
         
         # For login and password reset, check if user exists
         if purpose in ['login', 'password_reset']:
-            check_no = mobile_no if mobile_no.startswith('+') else f'+{mobile_no}'
-            user_exists = frappe.db.exists('User', {'mobile_no': check_no})
+            # Check both with and without + prefix
+            user_exists = frappe.db.exists('User', {'mobile_no': check_no}) or \
+                         frappe.db.exists('User', {'mobile_no': check_no[1:]})
             if not user_exists:
                 frappe.throw(_('No user found with this mobile number'))
         
@@ -280,13 +291,20 @@ def request_otp(mobile_no: str, purpose: str):
         if not result['success']:
             frappe.throw(_(result['message']))
         
-        # Store pin_id in database for later verification
+        # Store pin_id in database for later verification (always use + prefix for storage)
+        storage_mobile = check_no  # Already normalized with + prefix
+        
+        # Calculate expiry time (default 5 minutes from now)
+        from frappe.utils import now_datetime, add_to_date
+        expires_at = add_to_date(now_datetime(), minutes=5)
+        
         otp_doc = frappe.get_doc({
             'doctype': 'OTP Verification',
-            'mobile_no': mobile_no if mobile_no.startswith('+') else f'+{mobile_no}',
+            'mobile_no': storage_mobile,
             'otp_code': result['pin_id'],  # Store pin_id instead of actual OTP
             'purpose': purpose,
             'verified': 0,
+            'expires_at': expires_at,
             'attempts': 0,
             'max_attempts': 3
         })
@@ -296,7 +314,7 @@ def request_otp(mobile_no: str, purpose: str):
         return {
             'message': result['message'],
             'pin_id': result['pin_id'],
-            'mobile_no': mobile_no
+            'mobile_no': storage_mobile
         }
         
     except Exception as e:
@@ -368,6 +386,24 @@ def verify_otp(mobile_no: str, otp_code: str, purpose: str):
             # Mark as verified
             frappe.db.set_value('OTP Verification', otp_doc.name, 'verified', 1)
             frappe.db.commit()
+            
+            # For login purpose, create a session for the user
+            if purpose == 'login':
+                # Find user by mobile number (check both formats)
+                user = frappe.db.get_value('User', {'mobile_no': mobile_no}, 'name')
+                if not user:
+                    # Try without + prefix
+                    user = frappe.db.get_value('User', {'mobile_no': mobile_no[1:]}, 'name')
+                
+                if user:
+                    # Create Frappe session
+                    frappe.local.login_manager.login_as(user)
+                    frappe.local.login_manager.post_login()
+                    frappe.db.commit()
+                    
+                    frappe.logger().info(f"User {user} logged in successfully via OTP")
+                else:
+                    frappe.throw(_('User not found'))
             
             return {
                 'message': result['message'],

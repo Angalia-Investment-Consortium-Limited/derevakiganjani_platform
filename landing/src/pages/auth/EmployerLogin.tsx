@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { useFrappeAuth } from 'frappe-react-sdk';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,10 +20,14 @@ const EmployerLogin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { login } = useAuth();
+  
+  // Use frappe-react-sdk directly
+  const { login: frappeLogin } = useFrappeAuth();
+  const { profile } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,32 +46,18 @@ const EmployerLogin = () => {
     try {
       console.log('[EmployerLogin] Attempting login for:', email);
       
-      const { profile } = await login({
-        usr: email,
-        pwd: password,
-      });
-
-      console.log('[EmployerLogin] Login successful, profile:', profile);
+      // Use frappe-react-sdk login directly
+      await frappeLogin({ username: email, password });
+      
+      console.log('[EmployerLogin] Login successful');
 
       toast({
         title: t('success'),
         description: t('Welcome back!'),
       });
 
-      // Check employer verification status
-      const employerProfile = profile as EmployerProfile;
-      const isVerified = employerProfile && (
-        employerProfile.verified === true || 
-        (employerProfile.verified as any) === 1 ||
-        employerProfile.verification_status === 'Verified'
-      );
-
-      // Navigate based on verification status
-      if (isVerified) {
-        navigate('/employer/dashboard', { replace: true });
-      } else {
-        navigate('/employer/pending-verification', { replace: true });
-      }
+      // Reload to fetch boot info and profile
+      window.location.replace('/employer/dashboard');
     } catch (error: any) {
       console.error('[EmployerLogin] Login error:', error);
       
@@ -115,7 +106,7 @@ const EmployerLogin = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/landing/ingia" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
+                <BreadcrumbLink href="/login" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>

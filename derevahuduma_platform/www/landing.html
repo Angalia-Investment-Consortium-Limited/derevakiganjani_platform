@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Dereva Huduma - Driver Digital Services Platform</title>
+    <title>Dereva Kiganjani - Driver Digital Services Platform</title>
     <meta name="description" content="Empowering safer drivers with digital services - License management, driver testing, and learning platform by MDV Vehicle Fleet Tanzania" />
     <meta name="author" content="MDV Vehicle Fleet" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <meta property="og:title" content="Dereva Huduma - Driver Digital Services" />
+    <meta property="og:title" content="Dereva Kiganjani- Driver Digital Services" />
     <meta property="og:description" content="Empowering safer drivers with digital services - License management, driver testing, and learning platform" />
     <meta property="og:type" content="website" />
     
@@ -28,11 +28,6 @@
   <body>
     <div id="root"></div>
     	<script>window.csrf_token = '{{ frappe.session.csrf_token }}';
-
-    if (!window.frappe) window.frappe = {};
-
-
-     window.app_name = "{{ app_name }}";
 
     frappe.boot = JSON.parse({{ boot }});
 
