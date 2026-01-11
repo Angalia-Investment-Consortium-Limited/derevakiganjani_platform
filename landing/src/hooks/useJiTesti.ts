@@ -2,11 +2,11 @@
  * useJiTesti Hook
  * 
  * Custom React hook for JiTesti (Driver Testing) module
- * Provides methods to interact with JiTesti API endpoints
+ * Provides methods to interact with JiTesti API endpoints using Frappe React SDK
  */
 
 import { useState } from 'react';
-import { useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappePostCall, useFrappeGetDocList } from 'frappe-react-sdk';
 import type {
   TestCategory,
   CategoryDetails,
@@ -19,7 +19,6 @@ import type {
   CompleteTestResponse,
   TestResultResponse,
   CertificateResponse,
-  CategoriesResponse,
   CategoryDetailsResponse,
   QuestionsResponse,
   QuestionResponse,
@@ -37,53 +36,57 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
   const [error, setError] = useState<string | null>(null);
 
   // ============================================================================
-  // Category Methods
+  // Category Methods - Using Frappe React SDK
   // ============================================================================
 
-  const { call: getCategoriesCall } = useFrappePostCall<CategoriesResponse>(
-    'derevahuduma_platform.api.jitesti.get_categories'
-  );
+  /**
+   * Hook to fetch all active test categories using useFrappeGetDocList
+   * This follows Frappe React SDK best practices for data fetching
+   */
+  const useCategoriesList = () => {
+    return useFrappeGetDocList<TestCategory>('Test Category', {
+      fields: [
+        'name',
+        'category_code',
+        'name_en',
+        'name_sw',
+        'description_en',
+        'description_sw',
+        'price',
+        'pass_mark',
+        'duration_minutes',
+        'total_questions',
+        'display_order',
+        'is_active'
+      ],
+      filters: [['is_active', '=', 1]],
+      orderBy: {
+        field: 'display_order',
+        order: 'asc'
+      }
+    });
+  };
 
+  /**
+   * Legacy method for backward compatibility
+   * @deprecated Use useCategoriesList hook instead
+   */
   const getCategories = async (): Promise<TestCategory[]> => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log('[useJiTesti] Calling get_categories API...');
-      const result = await getCategoriesCall({});
-      console.log('[useJiTesti] API response:', result);
+      console.log('[useJiTesti] Fetching categories using legacy method...');
+      console.warn('[useJiTesti] Consider using useCategoriesList hook instead for better performance');
       
-      if (result?.success && result.categories) {
-        console.log('[useJiTesti] Categories fetched successfully:', result.categories.length);
-        return result.categories;
-      }
-      
-      const errorMsg = result?.message || 'Failed to fetch categories';
-      console.error('[useJiTesti] API returned error:', errorMsg);
-      throw new Error(errorMsg);
+      // This is a fallback - the component should use useCategoriesList directly
+      throw new Error('Please use useCategoriesList hook instead of getCategories method');
     } catch (err: any) {
       console.error('[useJiTesti] Exception caught:', err);
       
-      // Extract proper error message
-      let errorMessage = 'Failed to fetch categories';
-      if (typeof err === 'string') {
-        errorMessage = err;
-      } else if (err instanceof Error) {
-        errorMessage = err.message;
-      } else if (err?.message) {
-        errorMessage = err.message;
-      } else if (err?.error) {
-        errorMessage = err.error;
-      } else if (err?.exc) {
-        // Frappe error format
-        errorMessage = err.exc;
-      }
-      
-      console.error('[useJiTesti] Processed error message:', errorMessage);
+      const errorMessage = err?.message || 'Failed to fetch categories';
       setError(errorMessage);
       options?.onError?.(new Error(errorMessage));
-      
-      // Throw a proper Error object with string message
       throw new Error(errorMessage);
     } finally {
       setLoading(false);
@@ -596,7 +599,8 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     error,
     
     // Category methods
-    getCategories,
+    useCategoriesList, // New: Direct Frappe SDK hook
+    getCategories, // Deprecated: Legacy method
     getCategoryDetails,
     
     // Question methods (Admin)

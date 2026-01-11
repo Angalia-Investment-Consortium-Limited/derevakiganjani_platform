@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, FileCheck, Award, Briefcase } from 'lucide-react';
+import abtImage from '../assets/logo.png'
 
 export default function About() {
   const { t } = useLanguage();
@@ -78,7 +79,7 @@ export default function About() {
               <Card>
                 <CardHeader className="text-center">
                   <div className="flex justify-center mb-4">
-                    <img src="/logo.png" alt="Dereva Kiganjani" className="h-[140px] w-auto" />
+                    <img src={abtImage} alt="Dereva Kiganjani" className="h-[140px] w-auto" />
                   </div>
                   <CardTitle className="text-2xl">{t('backedByMDVTitle')}</CardTitle>
                   <CardDescription className="text-base">

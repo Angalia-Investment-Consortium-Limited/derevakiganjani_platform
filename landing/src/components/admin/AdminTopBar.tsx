@@ -54,7 +54,7 @@ export function AdminTopBar() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Quick Add Menu */}
+          {/* Quick Create Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -64,21 +64,17 @@ export function AdminTopBar() {
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Quick Create</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/admin/jobs/new')}>
-                <Plus className="w-4 h-4 mr-2" />
-                New Job Post
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/admin/courses')}>
                 <Plus className="w-4 h-4 mr-2" />
-                New Course
+                Course Manager
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate('/admin/job-posts')}>
+                <Plus className="w-4 h-4 mr-2" />
+                Job Post Management
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate('/admin/questions')}>
                 <Plus className="w-4 h-4 mr-2" />
-                New Question
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/license-requests')}>
-                <Plus className="w-4 h-4 mr-2" />
-                New License Note
+                Question Bank Manager
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

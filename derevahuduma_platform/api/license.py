@@ -133,3 +133,132 @@ def submit_license_application(
         user = frappe.session.user
         
         if user == 'Guest':
+            frappe.throw(_('Please login to submit an application'))
+        
+        # Validate required fields
+        if not all([application_type, full_name, phone_number, region, district, license_category]):
+            frappe.throw(_('All required fields must be provided'))
+        
+        # Create the license application
+        doc = frappe.get_doc({
+            'doctype': 'License Application',
+            'user': user,
+            'application_type': application_type,
+            'full_name': full_name,
+            'phone_number': phone_number,
+            'email': email,
+            'region': region,
+            'district': district,
+            'license_category': license_category,
+            'latra_type': latra_type,
+            'current_license_number': current_license_number,
+            'status': 'Pending',
+            'submission_date': now_datetime()
+        })
+        
+        # Add documents if provided
+        if documents:
+            try:
+                docs_list = json.loads(documents) if isinstance(documents, str) else documents
+                for doc_item in docs_list:
+                    doc.append('documents', {
+                        'document_type': doc_item.get('document_type'),
+                        'file_url': doc_item.get('file_url'),
+                        'file_name': doc_item.get('file_name')
+                    })
+            except Exception as e:
+                frappe.log_error(f"Error parsing documents: {str(e)}")
+        
+        doc.insert()
+        frappe.db.commit()
+        
+        return {
+            'message': 'Application submitted successfully',
+            'application': {
+                'name': doc.name,
+                'reference_number': doc.name,
+                'application_type': doc.application_type,
+                'status': doc.status,
+                'submission_date': doc.submission_date
+            }
+        }
+        
+    except Exception as e:
+        frappe.log_error(
+            title="Submit License Application Error",
+            message=str(e)
+        )
+        frappe.throw(_('Failed to submit application: {0}').format(str(e)))
+
+
+@frappe.whitelist()
+def get_my_applications(status=None, limit=20, offset=0):
+    """Get current user's license applications"""
+    try:
+        user = frappe.session.user
+        
+        if user == 'Guest':
+            frappe.throw(_('Please login to view applications'))
+        
+        filters = {'user': user}
+        if status:
+            filters['status'] = status
+        
+        applications = frappe.get_all(
+            'License Application',
+            fields=['name', 'application_type', 'license_category', 'status', 'submission_date', 'region', 'district'],
+            filters=filters,
+            order_by='creation desc',
+            limit_page_length=limit,
+            limit_start=offset
+        )
+        
+        total = frappe.db.count('License Application', filters)
+        
+        return {
+            'message': 'Applications retrieved successfully',
+            'applications': applications,
+            'total': total,
+            'limit': limit,
+            'offset': offset
+        }
+        
+    except Exception as e:
+        frappe.log_error(
+            title="Get My Applications Error",
+            message=str(e)
+        )
+        frappe.throw(_('Failed to get applications'))
+
+
+@frappe.whitelist(allow_guest=True)
+def get_application_status(ref_no):
+    """Get application status by reference number"""
+    try:
+        if not ref_no:
+            frappe.throw(_('Reference number is required'))
+        
+        application = frappe.get_doc('License Application', ref_no)
+        
+        return {
+            'message': 'Application found',
+            'application': {
+                'name': application.name,
+                'application_type': application.application_type,
+                'full_name': application.full_name,
+                'license_category': application.license_category,
+                'status': application.status,
+                'submission_date': application.submission_date,
+                'review_date': application.review_date,
+                'reviewer_notes': application.reviewer_notes
+            }
+        }
+        
+    except frappe.DoesNotExistError:
+        frappe.throw(_('Application not found'))
+    except Exception as e:
+        frappe.log_error(
+            title="Get Application Status Error",
+            message=str(e)
+        )
+        frappe.throw(_('Failed to get application status'))

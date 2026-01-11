@@ -152,7 +152,7 @@ const DriverLogin = () => {
       });
 
       // Reload to fetch boot info
-      window.location.replace('/dashboard');
+      window.location.replace('/landing/dashboard');
     } catch (error: any) {
       console.error('[DriverLogin] OTP verification error:', error);
       toast({
@@ -179,7 +179,7 @@ const DriverLogin = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/login" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
+                <BreadcrumbLink href="/ingia" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>

@@ -8,5 +8,6 @@ from . import auth
 from . import otp
 from . import sms
 from . import jitesti
+from . import admin
 
-__all__ = ['auth', 'otp', 'sms', 'jitesti']
+__all__ = ['auth', 'otp', 'sms', 'jitesti', 'admin']

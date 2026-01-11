@@ -8,7 +8,7 @@
  * - Step 4: Review & Submit
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -23,8 +23,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   useApplicationForm, 
-  useRegions, 
-  useDistricts, 
   useSubmitApplication 
 } from '@/hooks/useLicense';
 import { MultiDocumentUpload } from '@/components/license/DocumentUpload';
@@ -45,10 +43,21 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useFrappeGetCall } from 'frappe-react-sdk';
+
+interface GetRegionsResponse {
+  message: string;
+  regions: string[];
+}
+
+interface GetDistrictsResponse {
+  message: string;
+  districts: string[];
+}
 
 export default function LicenseApplicationWizard() {
   const { type } = useParams<{ type: 'new' | 'renewal' | 'latra' }>();
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -85,40 +94,53 @@ export default function LicenseApplicationWizard() {
     email: user?.email || ''
   });
 
-  // API hooks
-  const { regions, isLoading: regionsLoading } = useRegions();
-  const { districts, isLoading: districtsLoading } = useDistricts(formData.region || null);
+  // Fetch regions using frappe-react-sdk
+  const { data: regionsData, isLoading: regionsLoading } = useFrappeGetCall<GetRegionsResponse>(
+    'derevahuduma_platform.api.license.get_regions',
+    undefined,
+    'license-regions',
+    { revalidateOnFocus: false }
+  );
+
+  const regions = useMemo(() => regionsData?.regions || [], [regionsData]);
+
+  // Fetch districts using frappe-react-sdk
+  const { data: districtsData, isLoading: districtsLoading } = useFrappeGetCall<GetDistrictsResponse>(
+    'derevahuduma_platform.api.license.get_districts',
+    formData.region ? { region: formData.region } : undefined,
+    formData.region ? `license-districts-${formData.region}` : null,
+    { revalidateOnFocus: false }
+  );
+
+  const districts = useMemo(() => districtsData?.districts || [], [districtsData]);
+
   const { submitApplication, isSubmitting, error: submitError } = useSubmitApplication();
 
   // Wizard steps
   const steps = [
     {
       id: 1,
-      title: t('Taarifa Binafsi'),
-      titleEn: 'Personal Information',
+      title: language === 'sw' ? 'Taarifa Binafsi' : 'Personal Information',
       icon: User,
-      description: t('Jaza taarifa zako binafsi')
+      description: language === 'sw' ? 'Jaza taarifa zako binafsi' : 'Fill in your personal information'
     },
     {
       id: 2,
-      title: t('Mahali na Leseni'),
-      titleEn: 'Location & License',
+      title: language === 'sw' ? 'Mahali na Leseni' : 'Location & License',
       icon: MapPin,
-      description: t('Chagua mkoa, wilaya na aina ya leseni')
+      description: language === 'sw' ? 'Chagua mkoa, wilaya na aina ya leseni' : 'Select region, district and license category'
     },
     {
       id: 3,
-      title: t('Pakia Nyaraka'),
-      titleEn: 'Upload Documents',
+      title: language === 'sw' ? 'Pakia Nyaraka' : 'Upload Documents',
       icon: Upload,
-      description: t('Pakia nyaraka zinazohitajika')
+      description: language === 'sw' ? 'Pakia nyaraka zinazohitajika' : 'Upload required documents'
     },
     {
       id: 4,
-      title: t('Kagua na Wasilisha'),
-      titleEn: 'Review & Submit',
+      title: language === 'sw' ? 'Kagua na Wasilisha' : 'Review & Submit',
       icon: FileText,
-      description: t('Kagua taarifa na wasilisha ombi')
+      description: language === 'sw' ? 'Kagua taarifa na wasilisha ombi' : 'Review information and submit application'
     }
   ];
 
@@ -262,10 +284,10 @@ export default function LicenseApplicationWizard() {
               {t('Rudi')}
             </Button>
             <h1 className="text-3xl font-bold mb-2">
-              {APPLICATION_TYPES[applicationType].nameSwahili}
+              {language === 'sw' ? APPLICATION_TYPES[applicationType].nameSwahili : APPLICATION_TYPES[applicationType].name}
             </h1>
             <p className="text-muted-foreground">
-              {APPLICATION_TYPES[applicationType].descriptionSwahili}
+              {language === 'sw' ? APPLICATION_TYPES[applicationType].descriptionSwahili : APPLICATION_TYPES[applicationType].description}
             </p>
           </div>
 
@@ -273,10 +295,10 @@ export default function LicenseApplicationWizard() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">
-                {t('Hatua')} {currentStep + 1} {t('ya')} {steps.length}
+                {language === 'sw' ? 'Hatua' : 'Step'} {currentStep + 1} {language === 'sw' ? 'ya' : 'of'} {steps.length}
               </span>
               <span className="text-sm text-muted-foreground">
-                {Math.round(progress)}% {t('Imekamilika')}
+                {Math.round(progress)}% {language === 'sw' ? 'Imekamilika' : 'Complete'}
               </span>
             </div>
             <Progress value={progress} className="h-2" />

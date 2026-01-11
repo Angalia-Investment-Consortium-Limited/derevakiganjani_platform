@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Search, Filter, Eye, Calendar, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,47 +12,97 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useMyApplications } from '@/hooks/useLicense';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { STATUS_TRANSLATIONS, APPLICATION_TYPES, STATUS_COLORS } from '@/types/license';
-import type { ApplicationStatus, ApplicationType, ApplicationFilter } from '@/types/license';
+import type { ApplicationStatus, ApplicationType, LicenseApplication } from '@/types/license';
+import { useFrappeGetDocList, useFrappeDocTypeEventListener, type Filter as FrappeFilter } from 'frappe-react-sdk';
+import useDebounce from '@/hooks/useDebounce';
 
 export default function MyApplications() {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<ApplicationFilter>({});
-  const [searchTerm, setSearchTerm] = useState('');
   
-  const { applications, isLoading, error } = useMyApplications(filter);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [typeFilter, setTypeFilter] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [pageLimitStart, setPageLimitStart] = useState(0);
+  
+  // Debounce search term
+  const debouncedSearch = useDebounce(searchTerm, 500);
+  
+  const currentUser = user?.email || '';
+  
+  // Build filters using useMemo
+  const filters = useMemo(() => {
+    const f: FrappeFilter[] = [];
+    
+    // Always filter by current user
+    if (currentUser) {
+      f.push(['user', '=', currentUser]);
+    }
+    
+    // Status filter
+    if (statusFilter) {
+      f.push(['status', '=', statusFilter]);
+    }
+    
+    // Type filter
+    if (typeFilter) {
+      f.push(['application_type', '=', typeFilter]);
+    }
+    
+    // Search filter (search in name or full_name)
+    if (debouncedSearch) {
+      f.push(['full_name', 'like', `%${debouncedSearch}%`]);
+    }
+    
+    return f;
+  }, [currentUser, statusFilter, typeFilter, debouncedSearch]);
+  
+  // Fetch applications using frappe-react-sdk
+  const { data: applications, mutate, error, isLoading } = useFrappeGetDocList<LicenseApplication>(
+    'License Application',
+    {
+      fields: [
+        'name',
+        'application_type',
+        'license_category',
+        'status',
+        'submission_date',
+        'region',
+        'district',
+        'latra_type',
+        'reviewer_notes',
+        'full_name',
+        'phone_number'
+      ],
+      filters,
+      limit: 20,
+      limit_start: pageLimitStart,
+      orderBy: {
+        field: 'creation',
+        order: 'desc'
+      }
+    },
+    currentUser ? 'my-license-applications' : null
+  );
+  
+  // Real-time updates
+  useFrappeDocTypeEventListener('License Application', () => {
+    mutate();
+  });
 
   const handleStatusFilter = (status: string) => {
-    if (status === 'all') {
-      setFilter({ ...filter, status: undefined });
-    } else {
-      setFilter({ ...filter, status: status as ApplicationStatus });
-    }
+    setStatusFilter(status === 'all' ? '' : status);
+    setPageLimitStart(0); // Reset pagination
   };
 
   const handleTypeFilter = (type: string) => {
-    if (type === 'all') {
-      setFilter({ ...filter, application_type: undefined });
-    } else {
-      setFilter({ ...filter, application_type: type as ApplicationType });
-    }
+    setTypeFilter(type === 'all' ? '' : type);
+    setPageLimitStart(0); // Reset pagination
   };
-
-  const handleSearch = () => {
-    setFilter({ ...filter, search: searchTerm });
-  };
-
-  const filteredApplications = applications?.filter(app => {
-    if (!searchTerm) return true;
-    return (
-      app.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      app.phone_number.includes(searchTerm)
-    );
-  });
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '-';
@@ -97,16 +147,14 @@ export default function MyApplications() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
-            <div className="flex gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder={language === 'sw' ? 'Tafuta...' : 'Search...'}
+                placeholder={language === 'sw' ? 'Tafuta kwa jina...' : 'Search by name...'}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                className="pl-10"
               />
-              <Button onClick={handleSearch} size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
             </div>
 
             {/* Status Filter */}
@@ -184,7 +232,7 @@ export default function MyApplications() {
       )}
 
       {/* Empty State */}
-      {!isLoading && !error && (!filteredApplications || filteredApplications.length === 0) && (
+      {!isLoading && !error && (!applications || applications.length === 0) && (
         <Card>
           <CardContent className="pt-12 pb-12 text-center">
             <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
@@ -204,9 +252,9 @@ export default function MyApplications() {
       )}
 
       {/* Applications List */}
-      {!isLoading && !error && filteredApplications && filteredApplications.length > 0 && (
+      {!isLoading && !error && applications && applications.length > 0 && (
         <div className="space-y-4">
-          {filteredApplications.map((application) => (
+          {applications.map((application) => (
             <Card key={application.name} className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -279,57 +327,24 @@ export default function MyApplications() {
         </div>
       )}
 
-      {/* Summary Stats */}
-      {!isLoading && !error && applications && applications.length > 0 && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>
-              {language === 'sw' ? 'Muhtasari' : 'Summary'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="text-center">
-                <p className="text-2xl font-bold">{applications.length}</p>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'sw' ? 'Jumla' : 'Total'}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-yellow-600">
-                  {applications.filter(a => a.status === 'Pending').length}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'sw' ? 'Inasubiri' : 'Pending'}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-blue-600">
-                  {applications.filter(a => a.status === 'Under Review').length}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'sw' ? 'Inakaguliwa' : 'In Review'}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-green-600">
-                  {applications.filter(a => a.status === 'Approved').length}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'sw' ? 'Imeidhinishwa' : 'Approved'}
-                </p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold text-purple-600">
-                  {applications.filter(a => a.status === 'Completed').length}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  {language === 'sw' ? 'Imekamilika' : 'Completed'}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Pagination */}
+      {!isLoading && !error && applications && applications.length >= 20 && (
+        <div className="mt-6 flex justify-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setPageLimitStart(Math.max(0, pageLimitStart - 20))}
+            disabled={pageLimitStart === 0}
+          >
+            {language === 'sw' ? 'Nyuma' : 'Previous'}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setPageLimitStart(pageLimitStart + 20)}
+            disabled={applications.length < 20}
+          >
+            {language === 'sw' ? 'Mbele' : 'Next'}
+          </Button>
+        </div>
       )}
     </div>
   );

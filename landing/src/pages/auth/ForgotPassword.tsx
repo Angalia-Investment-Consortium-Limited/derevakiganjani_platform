@@ -122,7 +122,7 @@ const ForgotPassword = () => {
 
               <div className="text-center text-sm space-y-2">
                 <Link
-                  to="/login"
+                  to="/ingia"
                   className="text-muted-foreground hover:text-primary inline-flex items-center gap-1"
                 >
                   <ArrowLeft className="h-4 w-4" />
@@ -152,7 +152,7 @@ const ForgotPassword = () => {
 
               <div className="text-center text-sm">
                 <Link
-                  to="/login"
+                  to="/ingia"
                   className="text-muted-foreground hover:text-primary inline-flex items-center gap-1"
                 >
                   <ArrowLeft className="h-4 w-4" />

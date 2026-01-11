@@ -106,7 +106,7 @@ const EmployerLogin = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/login" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
+                <BreadcrumbLink href="/ingia" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
@@ -166,7 +166,7 @@ const EmployerLogin = () => {
                     </Link>
                   </div>
                   <div className="text-center">
-                    <Link to="/login" className="text-sm text-muted-foreground hover:text-primary flex items-center justify-center gap-2">
+                    <Link to="/ingia" className="text-sm text-muted-foreground hover:text-primary flex items-center justify-center gap-2">
                       <ArrowLeft className="h-4 w-4" />
                       Back to main login
                     </Link>

@@ -13,16 +13,16 @@
       "_react-vendor-ChyfegPF.js"
     ]
   },
-  "_frappe-vendor-DDauFiJA.js": {
-    "file": "assets/frappe-vendor-DDauFiJA.js",
+  "_frappe-vendor-DaGeQbGI.js": {
+    "file": "assets/frappe-vendor-DaGeQbGI.js",
     "name": "frappe-vendor",
     "imports": [
       "_ui-vendor-CrCWfpD2.js",
       "_react-vendor-ChyfegPF.js"
     ]
   },
-  "_icons-vendor-CnBq6QaZ.js": {
-    "file": "assets/icons-vendor-CnBq6QaZ.js",
+  "_icons-vendor-BSGvuiF2.js": {
+    "file": "assets/icons-vendor-BSGvuiF2.js",
     "name": "icons-vendor",
     "imports": [
       "_react-vendor-ChyfegPF.js"
@@ -48,7 +48,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/main-ZLDR3mlC.js",
+    "file": "assets/main-D1kDhTKi.js",
     "name": "main",
     "src": "index.html",
     "isEntry": true,
@@ -56,12 +56,12 @@
       "_ui-vendor-CrCWfpD2.js",
       "_react-vendor-ChyfegPF.js",
       "_chart-vendor-DcZu8PHa.js",
-      "_icons-vendor-CnBq6QaZ.js",
+      "_icons-vendor-BSGvuiF2.js",
       "_query-vendor-CxaHdPpK.js",
-      "_frappe-vendor-DDauFiJA.js"
+      "_frappe-vendor-DaGeQbGI.js"
     ],
     "css": [
-      "assets/main-mhbrGGBP.css"
+      "assets/main-BsMzcIgz.css"
     ],
     "assets": [
       "assets/logo-DQrYtaup.png",

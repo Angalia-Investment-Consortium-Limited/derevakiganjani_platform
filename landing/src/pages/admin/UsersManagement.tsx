@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Button } from '@/components/ui/button';
@@ -24,64 +24,112 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Search, MoreVertical, Download } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Plus, Search, MoreVertical, Download, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useUserManagement } from '@/hooks/useUsers';
+import useDebounce from '@/hooks/useDebounce';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const UsersManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
 
-  // TODO: Fetch from API
-  const users = [
-    {
-      id: '1',
-      name: 'John Doe',
-      phone: '+255 712 345 678',
-      email: 'john@example.com',
-      role: 'Driver',
-      status: 'Active',
-      createdOn: '2024-01-15',
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      phone: '+255 787 654 321',
-      email: 'jane@company.com',
-      role: 'Employer',
-      status: 'Active',
-      createdOn: '2024-02-10',
-    },
-    {
-      id: '3',
-      name: 'Admin User',
-      phone: '+255 756 123 456',
-      email: 'admin@dereva.co.tz',
-      role: 'Admin',
-      status: 'Active',
-      createdOn: '2023-12-01',
-    },
-    {
-      id: '4',
-      name: 'Michael Johnson',
-      phone: '+255 713 987 654',
-      email: 'michael@example.com',
-      role: 'Driver',
-      status: 'Suspended',
-      createdOn: '2024-03-05',
-    },
-  ];
+  const {
+    users,
+    total,
+    isLoading,
+    error,
+    searchQuery,
+    setSearchQuery,
+    roleFilter,
+    setRoleFilter,
+    statusFilter,
+    setStatusFilter,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    toggleUserStatus,
+    deleteUser,
+    toggling,
+    deleting,
+    refresh,
+  } = useUserManagement();
 
-  const handleSuspendUser = (_userId: string, userName: string) => {
-    // TODO: PATCH /api/admin/users/:id
-    toast({
-      title: 'User Suspended',
-      description: `${userName} has been suspended.`,
-    });
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  // Debounce search query
+  const [debouncedSearchQuery] = useDebounce(searchQuery, 500);
+
+  // Refresh data when debounced search changes
+  useEffect(() => {
+    refresh();
+  }, [debouncedSearchQuery, roleFilter, statusFilter, currentPage, refresh]);
+
+  const handleSuspendUser = async (userId: string, userName: string, currentStatus: boolean) => {
+    try {
+      const newStatus = !currentStatus;
+      await toggleUserStatus(userId, newStatus);
+      
+      toast({
+        title: newStatus ? 'User Activated' : 'User Suspended',
+        description: `${userName} has been ${newStatus ? 'activated' : 'suspended'}.`,
+      });
+      
+      // Refresh the list
+      refresh();
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to update user status',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleDeleteClick = (userId: string, userName: string) => {
+    setUserToDelete({ id: userId, name: userName });
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete) return;
+
+    try {
+      await deleteUser(userToDelete.id);
+      
+      toast({
+        title: 'User Deleted',
+        description: `${userToDelete.name} has been permanently deleted.`,
+      });
+      
+      // Close dialog and reset state
+      setDeleteDialogOpen(false);
+      setUserToDelete(null);
+      
+      // Refresh the list
+      refresh();
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err?.message || 'Failed to delete user',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleExport = () => {
@@ -89,7 +137,7 @@ const UsersManagement = () => {
       title: 'Export Started',
       description: 'User data is being exported to CSV...',
     });
-    // TODO: Export logic
+    // TODO: Implement actual export logic
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -104,6 +152,32 @@ const UsersManagement = () => {
         return 'outline';
     }
   };
+
+  // Show error state
+  if (error && !isLoading) {
+    return (
+      <AdminLayout>
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-bold">Users Management</h1>
+              <p className="text-muted-foreground mt-1">Manage user accounts and roles</p>
+            </div>
+          </div>
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center py-8">
+                <p className="text-destructive mb-4">
+                  Failed to load users: {typeof error === 'string' ? error : error?.message || 'Unknown error'}
+                </p>
+                <Button onClick={refresh}>Retry</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
@@ -128,7 +202,9 @@ const UsersManagement = () => {
         <Card>
           <CardHeader>
             <CardTitle>All Users</CardTitle>
-            <CardDescription>View and manage all registered users</CardDescription>
+            <CardDescription>
+              View and manage all registered users ({total} total)
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Filters */}
@@ -180,45 +256,146 @@ const UsersManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell className="font-medium">{user.name}</TableCell>
-                      <TableCell>{user.phone}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={getRoleBadgeColor(user.role)}>{user.role}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.status === 'Active' ? 'default' : 'secondary'}>
-                          {user.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{user.createdOn}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSuspendUser(user.id, user.name)}>
-                              {user.status === 'Active' ? 'Suspend' : 'Activate'}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                  {isLoading ? (
+                    // Loading skeleton
+                    Array.from({ length: 5 }).map((_, index) => (
+                      <TableRow key={index}>
+                        <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+                      </TableRow>
+                    ))
+                  ) : users.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No users found. Try adjusting your filters.
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    users.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell>{user.phone || '-'}</TableCell>
+                        <TableCell>{user.email || '-'}</TableCell>
+                        <TableCell>
+                          <Badge variant={getRoleBadgeColor(user.user_type || '')}>
+                            {user.user_type || 'Unknown'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={user.status === 'Active' ? 'default' : 'secondary'}>
+                            {user.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {user.created_on ? new Date(user.created_on).toLocaleDateString() : '-'}
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" disabled={toggling}>
+                                {toggling ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreVertical className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleSuspendUser(user.id, user.name, user.enabled)}
+                              >
+                                {user.status === 'Active' ? 'Suspend' : 'Activate'}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteClick(user.id, user.name)}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  Showing {users.length} of {total} users
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 0 || isLoading}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm">
+                      Page {currentPage + 1} of {totalPages}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage >= totalPages - 1 || isLoading}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the user{' '}
+              <span className="font-semibold">{userToDelete?.name}</span> and remove all their data from the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };

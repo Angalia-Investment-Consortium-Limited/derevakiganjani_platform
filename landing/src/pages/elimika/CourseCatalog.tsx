@@ -8,94 +8,33 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { BookOpen, Clock, GraduationCap, Search } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BookOpen, Clock, GraduationCap, Search, AlertCircle } from "lucide-react";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useElimika } from "@/hooks/useElimika";
+import useDebounce from "@/hooks/useDebounce";
+import type { CourseFilters } from "@/types/elimika";
 
 const CourseCatalog = () => {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [levelFilter, setLevelFilter] = useState("all");
+  const { language } = useLanguage();
+  const { useCourses } = useElimika();
+  
+  const [searchQuery, setSearchQuery] = useDebounce("");
+  const [levelFilter, setLevelFilter] = useState<"all" | "Basic" | "Intermediate" | "Advanced">("all");
 
-  const courses = [
-    {
-      id: 1,
-      title: "Road Safety Fundamentals",
-      titleSw: "Misingi ya Usalama Barabarani",
-      description: "Master essential road safety rules and regulations",
-      descriptionSw: "Jifunze sheria muhimu za usalama barabarani",
-      lessons: 12,
-      duration: "4 hours",
-      level: "Basic",
-      progress: 0,
-      image: "🚦"
-    },
-    {
-      id: 2,
-      title: "Traffic Signs & Signals",
-      titleSw: "Alama za Trafiki",
-      description: "Learn to recognize and understand all traffic signs",
-      descriptionSw: "Jifunze kutambua na kuelewa alama zote za trafiki",
-      lessons: 15,
-      duration: "5 hours",
-      level: "Basic",
-      progress: 0,
-      image: "🚸"
-    },
-    {
-      id: 3,
-      title: "Defensive Driving",
-      titleSw: "Udereva wa Kujilinda",
-      description: "Advanced techniques for safe driving",
-      descriptionSw: "Mbinu za juu za udereva salama",
-      lessons: 18,
-      duration: "6 hours",
-      level: "Intermediate",
-      progress: 0,
-      image: "🛡️"
-    },
-    {
-      id: 4,
-      title: "Vehicle Maintenance Basics",
-      titleSw: "Misingi ya Matengenezo ya Gari",
-      description: "Essential vehicle care and maintenance",
-      descriptionSw: "Matengenezo muhimu ya gari",
-      lessons: 10,
-      duration: "3 hours",
-      level: "Basic",
-      progress: 0,
-      image: "🔧"
-    },
-    {
-      id: 5,
-      title: "Emergency Response",
-      titleSw: "Majibu ya Dharura",
-      description: "How to handle road emergencies",
-      descriptionSw: "Jinsi ya kushughulikia dharura barabarani",
-      lessons: 8,
-      duration: "3 hours",
-      level: "Intermediate",
-      progress: 0,
-      image: "🚨"
-    },
-    {
-      id: 6,
-      title: "Commercial Driving",
-      titleSw: "Udereva wa Biashara",
-      description: "Professional driving for commercial vehicles",
-      descriptionSw: "Udereva wa kitaaluma wa magari ya biashara",
-      lessons: 20,
-      duration: "8 hours",
-      level: "Advanced",
-      progress: 0,
-      image: "🚛"
-    }
-  ];
+  // Build filters
+  const filters: CourseFilters = {};
+  if (levelFilter !== "all") {
+    filters.level = levelFilter;
+  }
+  if (searchQuery) {
+    filters.search = searchQuery;
+  }
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         course.titleSw.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesLevel = levelFilter === "all" || course.level === levelFilter;
-    return matchesSearch && matchesLevel;
-  });
+  // Fetch courses with filters
+  const { data: courses, isLoading, error } = useCourses(filters);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -129,7 +68,7 @@ const CourseCatalog = () => {
               className="pl-10"
             />
           </div>
-          <Select value={levelFilter} onValueChange={setLevelFilter}>
+          <Select value={levelFilter} onValueChange={(value) => setLevelFilter(value as "all" | "Basic" | "Intermediate" | "Advanced")}>
             <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue placeholder="Filter by level" />
             </SelectTrigger>
@@ -142,43 +81,113 @@ const CourseCatalog = () => {
           </Select>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredCourses.map((course) => (
-            <Card key={course.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="text-5xl mb-4">{course.image}</div>
-                <CardTitle>{course.title}</CardTitle>
-                <CardDescription>{course.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <BookOpen className="h-4 w-4" />
-                    <span>{course.lessons} lessons</span>
+        {/* Loading State */}
+        {isLoading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-16 w-16 rounded-full mb-4" />
+                  <Skeleton className="h-6 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-4 w-1/3" />
+                    <Skeleton className="h-4 w-1/4" />
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    <span>{course.duration}</span>
+                </CardContent>
+                <CardFooter>
+                  <Skeleton className="h-10 w-full" />
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && (
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>
+              Failed to load courses. Please try again later.
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Empty State */}
+        {!isLoading && !error && courses && courses.length === 0 && (
+          <div className="text-center py-12">
+            <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No courses found</h3>
+            <p className="text-muted-foreground">
+              {searchQuery || levelFilter !== "all" 
+                ? "Try adjusting your filters" 
+                : "No courses are available at the moment"}
+            </p>
+          </div>
+        )}
+
+        {/* Courses Grid */}
+        {!isLoading && !error && courses && courses.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {courses.map((course) => (
+              <Card key={course.name} className="hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <div className="text-5xl mb-4">
+                    {course.thumbnail_emoji || "📚"}
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <GraduationCap className="h-4 w-4" />
-                    <Badge variant={course.level === "Basic" ? "secondary" : course.level === "Intermediate" ? "default" : "destructive"}>
-                      {course.level}
-                    </Badge>
+                  <CardTitle>
+                    {language === 'en' ? course.course_name_en : course.course_name_sw}
+                  </CardTitle>
+                  <CardDescription>
+                    {language === 'en' 
+                      ? (course.description_en || course.course_name_en)
+                      : (course.description_sw || course.course_name_sw)}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <BookOpen className="h-4 w-4" />
+                      <span>{course.total_lessons || 0} lessons</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" />
+                      <span>{course.duration_hours || 0} hours</span>
+                    </div>
+                    {course.level && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <GraduationCap className="h-4 w-4" />
+                        <Badge 
+                          variant={
+                            course.level === "Basic" 
+                              ? "secondary" 
+                              : course.level === "Intermediate" 
+                              ? "default" 
+                              : "destructive"
+                          }
+                        >
+                          {course.level}
+                        </Badge>
+                      </div>
+                    )}
                   </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button 
-                  className="w-full" 
-                  onClick={() => navigate(`/elimika/course/${course.id}`)}
-                >
-                  Start Course
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => navigate(`/elimika/course/${course.name}`)}
+                  >
+                    {language === 'en' ? 'Start Course' : 'Anza Kozi'}
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
       </main>
 
       <Footer />

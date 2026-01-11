@@ -18,7 +18,9 @@ class BeemOTPService:
     def __init__(self):
         self.api_key = frappe.conf.get('beem_api_key')
         self.secret_key = frappe.conf.get('beem_secret_key')
-        self.app_id = frappe.conf.get('beem_app_id', 1)  # Default app ID
+        # Ensure app_id is an integer
+        app_id_value = frappe.conf.get('beem_app_id', 1)
+        self.app_id = int(app_id_value) if app_id_value else 1
         self.base_url = 'https://apiotp.beem.africa/v1'
         
         if not self.api_key or not self.secret_key:

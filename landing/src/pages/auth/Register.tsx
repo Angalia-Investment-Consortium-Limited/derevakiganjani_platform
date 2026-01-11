@@ -706,7 +706,7 @@ const Register = () => {
 
                 <div className="text-center text-sm">
                   <span className="text-muted-foreground">{t('alreadyHaveAccount')} </span>
-                  <Link to="/login" className="text-primary hover:underline font-medium">
+                  <Link to="/ingia" className="text-primary hover:underline font-medium">
                     {t('loginHere')}
                   </Link>
                 </div>

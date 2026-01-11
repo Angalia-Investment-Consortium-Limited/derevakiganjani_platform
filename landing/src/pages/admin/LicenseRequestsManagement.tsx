@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   Dialog,
   DialogContent,
@@ -41,24 +42,38 @@ import {
   Download,
   Filter,
   ChevronLeft,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useFrappeGetDocList, useFrappeDocTypeEventListener, useFrappeUpdateDoc } from 'frappe-react-sdk';
+import type { Filter as FrappeFilter } from 'frappe-react-sdk';
+import useDebounce from '@/hooks/useDebounce';
 
 interface LicenseRequest {
-  id: string;
-  refNo: string;
-  driverName: string;
-  driverPhone: string;
-  type: 'New' | 'Renewal';
-  category: 'A' | 'B' | 'C' | 'D' | 'E';
-  nationalId: string;
-  currentLicense?: string;
-  submittedOn: string;
-  status: 'Submitted' | 'Under Review' | 'Approved' | 'Rejected';
-  adminNotes?: string;
-  documents: { name: string; url: string }[];
+  name: string;
+  user: string;
+  application_type: string;
+  full_name: string;
+  phone_number: string;
+  email?: string;
+  region: string;
+  district: string;
+  license_category: string;
+  latra_type?: string;
+  current_license_number?: string;
+  status: string;
+  submission_date: string;
+  review_date?: string;
+  reviewer?: string;
+  reviewer_notes?: string;
+  documents?: Array<{
+    document_type: string;
+    file_url: string;
+    file_name: string;
+  }>;
 }
 
 const LicenseRequestsManagement = () => {
@@ -72,75 +87,71 @@ const LicenseRequestsManagement = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useDebounce('');
+  const [pageLimitStart, setPageLimitStart] = useState(0);
+  const pageLimit = 20;
 
-  // Sample data - replace with API call
-  const requests: LicenseRequest[] = [
-    {
-      id: '1',
-      refNo: 'DRV-2025-ABC123',
-      driverName: 'John Mushi',
-      driverPhone: '+255 712 345 678',
-      type: 'New',
-      category: 'B',
-      nationalId: '19850612-45678-12345-67',
-      submittedOn: '2025-01-15',
-      status: 'Submitted',
-      documents: [
-        { name: 'National ID', url: '#' },
-        { name: 'Passport Photo', url: '#' },
-      ],
-    },
-    {
-      id: '2',
-      refNo: 'DRV-2025-DEF456',
-      driverName: 'Mary Ngowi',
-      driverPhone: '+255 754 876 543',
-      type: 'Renewal',
-      category: 'C',
-      nationalId: '19900320-78901-23456-78',
-      currentLicense: 'TZ-C-2020-12345',
-      submittedOn: '2025-01-14',
-      status: 'Under Review',
-      documents: [
-        { name: 'National ID', url: '#' },
-        { name: 'Current License', url: '#' },
-        { name: 'Passport Photo', url: '#' },
-      ],
-    },
-    {
-      id: '3',
-      refNo: 'DRV-2025-GHI789',
-      driverName: 'Peter Kondo',
-      driverPhone: '+255 765 234 567',
-      type: 'New',
-      category: 'A',
-      nationalId: '19950815-34567-89012-34',
-      submittedOn: '2025-01-13',
-      status: 'Approved',
-      adminNotes: 'All documents verified. License ready for printing.',
-      documents: [
-        { name: 'National ID', url: '#' },
-        { name: 'Passport Photo', url: '#' },
-      ],
-    },
-    {
-      id: '4',
-      refNo: 'DRV-2025-JKL012',
-      driverName: 'Sarah Hassan',
-      driverPhone: '+255 713 456 789',
-      type: 'Renewal',
-      category: 'D',
-      nationalId: '19880225-56789-01234-56',
-      currentLicense: 'TZ-D-2019-67890',
-      submittedOn: '2025-01-12',
-      status: 'Rejected',
-      adminNotes: 'Incomplete documents. National ID photo is not clear.',
-      documents: [
-        { name: 'National ID', url: '#' },
-        { name: 'Current License', url: '#' },
-      ],
-    },
-  ];
+  // Build filters for Frappe query
+  const filters = useMemo(() => {
+    const f: FrappeFilter[] = [];
+    
+    if (statusFilter !== 'all') {
+      f.push(['status', '=', statusFilter]);
+    }
+    
+    if (categoryFilter !== 'all') {
+      f.push(['license_category', '=', categoryFilter]);
+    }
+    
+    if (typeFilter !== 'all') {
+      f.push(['application_type', '=', typeFilter]);
+    }
+    
+    if (searchQuery) {
+      // Search in name (reference number) or full_name
+      f.push(['name', 'like', `%${searchQuery}%`]);
+    }
+    
+    return f;
+  }, [statusFilter, categoryFilter, typeFilter, searchQuery]);
+
+  // Fetch license applications from Frappe
+  const { data: requests, mutate, error, isLoading } = useFrappeGetDocList<LicenseRequest>('License Application', {
+    fields: [
+      'name',
+      'user',
+      'application_type',
+      'full_name',
+      'phone_number',
+      'email',
+      'region',
+      'district',
+      'license_category',
+      'latra_type',
+      'current_license_number',
+      'status',
+      'submission_date',
+      'review_date',
+      'reviewer',
+      'reviewer_notes',
+      'documents'
+    ],
+    filters: filters,
+    limit: pageLimit,
+    limit_start: pageLimitStart,
+    orderBy: {
+      field: 'submission_date',
+      order: 'desc'
+    }
+  });
+
+  // Listen for real-time updates
+  useFrappeDocTypeEventListener('License Application', () => {
+    mutate();
+  });
+
+  // Update document hook
+  const { updateDoc, loading: updateLoading } = useFrappeUpdateDoc();
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -168,60 +179,113 @@ const LicenseRequestsManagement = () => {
     }
   };
 
-  const filteredRequests = requests.filter((req) => {
-    if (statusFilter !== 'all' && req.status !== statusFilter) return false;
-    if (categoryFilter !== 'all' && req.category !== categoryFilter) return false;
-    if (typeFilter !== 'all' && req.type !== typeFilter) return false;
-    return true;
-  });
+  const handleStatusChange = async (status: 'Under Review' | 'Approved' | 'Rejected') => {
+    if (!selectedRequest) return;
 
-  const handleStatusChange = (status: 'Under Review' | 'Approved' | 'Rejected') => {
     if (status === 'Approved' || status === 'Rejected') {
       setActionType(status.toLowerCase() as 'approve' | 'reject');
     } else {
       // Update status directly
-      toast.success(`Request moved to ${status}`);
-      setReviewMode(false);
-      setSelectedRequest(null);
+      try {
+        await updateDoc('License Application', selectedRequest.name, {
+          status: status,
+          review_date: new Date().toISOString(),
+          reviewer_notes: adminNotes || selectedRequest.reviewer_notes
+        });
+        toast.success(`Request moved to ${status}`);
+        mutate();
+        setReviewMode(false);
+        setSelectedRequest(null);
+      } catch (error) {
+        toast.error('Failed to update status');
+        console.error(error);
+      }
     }
   };
 
-  const confirmAction = () => {
-    if (!actionType) return;
-    toast.success(
-      actionType === 'approve'
-        ? t('Request approved successfully')
-        : t('Request rejected successfully')
-    );
-    setActionType(null);
-    setReviewMode(false);
-    setSelectedRequest(null);
-    setAdminNotes('');
+  const confirmAction = async () => {
+    if (!actionType || !selectedRequest) return;
+    
+    const newStatus = actionType === 'approve' ? 'Approved' : 'Rejected';
+    
+    try {
+      await updateDoc('License Application', selectedRequest.name, {
+        status: newStatus,
+        review_date: new Date().toISOString(),
+        reviewer_notes: adminNotes || selectedRequest.reviewer_notes
+      });
+      
+      toast.success(
+        actionType === 'approve'
+          ? t('Request approved successfully')
+          : t('Request rejected successfully')
+      );
+      
+      mutate();
+      setActionType(null);
+      setReviewMode(false);
+      setSelectedRequest(null);
+      setAdminNotes('');
+    } catch (error) {
+      toast.error('Failed to update request');
+      console.error(error);
+    }
   };
 
-  const handleBulkAction = (action: 'approve' | 'reject' | 'review') => {
+  const handleBulkAction = async (action: 'approve' | 'reject' | 'review') => {
     if (selectedRequests.length === 0) {
       toast.error(t('Please select at least one request'));
       return;
     }
-    toast.success(
-      `${selectedRequests.length} request(s) ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'moved to review'}`
-    );
-    setSelectedRequests([]);
+
+    const newStatus = action === 'approve' ? 'Approved' : action === 'reject' ? 'Rejected' : 'Under Review';
+    
+    try {
+      // Update all selected requests
+      await Promise.all(
+        selectedRequests.map(requestName =>
+          updateDoc('License Application', requestName, {
+            status: newStatus,
+            review_date: new Date().toISOString()
+          })
+        )
+      );
+      
+      toast.success(
+        `${selectedRequests.length} request(s) ${action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : 'moved to review'}`
+      );
+      
+      mutate();
+      setSelectedRequests([]);
+    } catch (error) {
+      toast.error('Failed to update requests');
+      console.error(error);
+    }
   };
 
-  const toggleSelectRequest = (id: string) => {
+  const toggleSelectRequest = (name: string) => {
     setSelectedRequests((prev) =>
-      prev.includes(id) ? prev.filter((reqId) => reqId !== id) : [...prev, id]
+      prev.includes(name) ? prev.filter((reqName) => reqName !== name) : [...prev, name]
     );
   };
 
   const stats = [
-    { label: 'Total Requests', value: requests.length, color: 'text-primary' },
-    { label: 'Pending Review', value: requests.filter((r) => r.status === 'Submitted').length, color: 'text-warning' },
-    { label: 'Under Review', value: requests.filter((r) => r.status === 'Under Review').length, color: 'text-secondary' },
-    { label: 'Approved', value: requests.filter((r) => r.status === 'Approved').length, color: 'text-success' },
+    { label: 'Total Requests', value: requests?.length || 0, color: 'text-primary' },
+    { label: 'Pending Review', value: requests?.filter((r) => r.status === 'Pending').length || 0, color: 'text-warning' },
+    { label: 'Under Review', value: requests?.filter((r) => r.status === 'Under Review').length || 0, color: 'text-secondary' },
+    { label: 'Approved', value: requests?.filter((r) => r.status === 'Approved').length || 0, color: 'text-success' },
   ];
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
 
   return (
     <AdminLayout>
@@ -231,135 +295,164 @@ const LicenseRequestsManagement = () => {
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => navigate('/admin')}>
               <ChevronLeft className="h-5 w-5" />
-              </Button>
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">{t('License Requests Management')}</h1>
+              <p className="text-muted-foreground">{t('Review and process license applications')}</p>
+            </div>
+          </div>
+          <Button variant="outline">
+            <Download className="mr-2 h-4 w-4" />
+            {t('Export')}
+          </Button>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          {stats.map((stat) => (
+            <Card key={stat.label}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t(stat.label)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Error Display */}
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              {error.message || 'Failed to load license requests'}
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="h-5 w-5" />
+              {t('Filters')}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div>
-                <h1 className="text-3xl font-bold">{t('License Requests Management')}</h1>
-                <p className="text-muted-foreground">{t('Review and process license applications')}</p>
+                <Label htmlFor="search">{t('Search')}</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    id="search" 
+                    placeholder={t('Ref No. or Name')} 
+                    className="pl-10"
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="status-filter">{t('Status')}</Label>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger id="status-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('All Status')}</SelectItem>
+                    <SelectItem value="Pending">{t('Pending')}</SelectItem>
+                    <SelectItem value="Under Review">{t('Under Review')}</SelectItem>
+                    <SelectItem value="Approved">{t('Approved')}</SelectItem>
+                    <SelectItem value="Rejected">{t('Rejected')}</SelectItem>
+                    <SelectItem value="Completed">{t('Completed')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="type-filter">{t('Type')}</Label>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger id="type-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('All Types')}</SelectItem>
+                    <SelectItem value="New License">{t('New License')}</SelectItem>
+                    <SelectItem value="License Renewal">{t('License Renewal')}</SelectItem>
+                    <SelectItem value="LATRA Exam">{t('LATRA Exam')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="category-filter">{t('Category')}</Label>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger id="category-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('All Categories')}</SelectItem>
+                    <SelectItem value="A">A</SelectItem>
+                    <SelectItem value="B">B</SelectItem>
+                    <SelectItem value="C">C</SelectItem>
+                    <SelectItem value="D">D</SelectItem>
+                    <SelectItem value="E">E</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              {t('Export')}
-            </Button>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            {stats.map((stat) => (
-              <Card key={stat.label}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">
-                    {t(stat.label)}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className={`text-3xl font-bold ${stat.color}`}>{stat.value}</div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Filters */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                {t('Filters')}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Label htmlFor="search">{t('Search')}</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="search" placeholder={t('Ref No. or Name')} className="pl-10" />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="status-filter">{t('Status')}</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger id="status-filter">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('All Status')}</SelectItem>
-                      <SelectItem value="Submitted">{t('Submitted')}</SelectItem>
-                      <SelectItem value="Under Review">{t('Under Review')}</SelectItem>
-                      <SelectItem value="Approved">{t('Approved')}</SelectItem>
-                      <SelectItem value="Rejected">{t('Rejected')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="type-filter">{t('Type')}</Label>
-                  <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger id="type-filter">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('All Types')}</SelectItem>
-                      <SelectItem value="New">{t('New')}</SelectItem>
-                      <SelectItem value="Renewal">{t('Renewal')}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="category-filter">{t('Category')}</Label>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger id="category-filter">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{t('All Categories')}</SelectItem>
-                      <SelectItem value="A">A</SelectItem>
-                      <SelectItem value="B">B</SelectItem>
-                      <SelectItem value="C">C</SelectItem>
-                      <SelectItem value="D">D</SelectItem>
-                      <SelectItem value="E">E</SelectItem>
-                    </SelectContent>
-                  </Select>
+        {/* Bulk Actions */}
+        {selectedRequests.length > 0 && (
+          <Card className="mb-6 bg-primary/5 border-primary">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <span className="font-medium">
+                  {selectedRequests.length} {t('request(s) selected')}
+                </span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => handleBulkAction('review')} disabled={updateLoading}>
+                    <Clock className="mr-2 h-4 w-4" />
+                    {t('Move to Review')}
+                  </Button>
+                  <Button size="sm" variant="default" onClick={() => handleBulkAction('approve')} disabled={updateLoading}>
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    {t('Approve')}
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => handleBulkAction('reject')} disabled={updateLoading}>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    {t('Reject')}
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
+        )}
 
-          {/* Bulk Actions */}
-          {selectedRequests.length > 0 && (
-            <Card className="mb-6 bg-primary/5 border-primary">
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">
-                    {selectedRequests.length} {t('request(s) selected')}
-                  </span>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => handleBulkAction('review')}>
-                      <Clock className="mr-2 h-4 w-4" />
-                      {t('Move to Review')}
-                    </Button>
-                    <Button size="sm" variant="default" onClick={() => handleBulkAction('approve')}>
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      {t('Approve')}
-                    </Button>
-                    <Button size="sm" variant="destructive" onClick={() => handleBulkAction('reject')}>
-                      <XCircle className="mr-2 h-4 w-4" />
-                      {t('Reject')}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Requests Table */}
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('License Requests')}</CardTitle>
-              <CardDescription>
-                {filteredRequests.length} {t('request(s) found')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        {/* Requests Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('License Requests')}</CardTitle>
+            <CardDescription>
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t('Loading...')}
+                </span>
+              ) : (
+                <span>{requests?.length || 0} {t('request(s) found')}</span>
+              )}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : requests && requests.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -369,12 +462,12 @@ const LicenseRequestsManagement = () => {
                           type="checkbox"
                           className="rounded border-input"
                           checked={
-                            selectedRequests.length === filteredRequests.length &&
-                            filteredRequests.length > 0
+                            selectedRequests.length === requests.length &&
+                            requests.length > 0
                           }
                           onChange={(e) => {
                             if (e.target.checked) {
-                              setSelectedRequests(filteredRequests.map((r) => r.id));
+                              setSelectedRequests(requests.map((r) => r.name));
                             } else {
                               setSelectedRequests([]);
                             }
@@ -391,21 +484,21 @@ const LicenseRequestsManagement = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRequests.map((request) => (
-                      <tr key={request.id} className="border-b hover:bg-muted/50 transition-colors">
+                    {requests.map((request) => (
+                      <tr key={request.name} className="border-b hover:bg-muted/50 transition-colors">
                         <td className="py-3 px-4">
                           <input
                             type="checkbox"
                             className="rounded border-input"
-                            checked={selectedRequests.includes(request.id)}
-                            onChange={() => toggleSelectRequest(request.id)}
+                            checked={selectedRequests.includes(request.name)}
+                            onChange={() => toggleSelectRequest(request.name)}
                           />
                         </td>
-                        <td className="py-3 px-4 font-mono text-sm">{request.refNo}</td>
-                        <td className="py-3 px-4 font-medium">{request.driverName}</td>
-                        <td className="py-3 px-4">{t(request.type)}</td>
-                        <td className="py-3 px-4 font-semibold">{request.category}</td>
-                        <td className="py-3 px-4 text-sm text-muted-foreground">{request.submittedOn}</td>
+                        <td className="py-3 px-4 font-mono text-sm">{request.name}</td>
+                        <td className="py-3 px-4 font-medium">{request.full_name}</td>
+                        <td className="py-3 px-4">{t(request.application_type)}</td>
+                        <td className="py-3 px-4 font-semibold">{request.license_category}</td>
+                        <td className="py-3 px-4 text-sm text-muted-foreground">{formatDate(request.submission_date)}</td>
                         <td className="py-3 px-4">
                           <Badge variant={getStatusVariant(request.status)} className="gap-1">
                             {getStatusIcon(request.status)}
@@ -419,7 +512,7 @@ const LicenseRequestsManagement = () => {
                             onClick={() => {
                               setSelectedRequest(request);
                               setReviewMode(true);
-                              setAdminNotes(request.adminNotes || '');
+                              setAdminNotes(request.reviewer_notes || '');
                             }}
                           >
                             <Eye className="h-4 w-4 mr-1" />
@@ -431,12 +524,18 @@ const LicenseRequestsManagement = () => {
                   </tbody>
                 </table>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p>{t('No license requests found')}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-        {/* Review Dialog */}
-        <Dialog open={reviewMode} onOpenChange={(open) => !open && setReviewMode(false)}>
+      {/* Review Dialog */}
+      <Dialog open={reviewMode} onOpenChange={(open) => !open && setReviewMode(false)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -449,7 +548,7 @@ const LicenseRequestsManagement = () => {
               )}
             </DialogTitle>
             <DialogDescription>
-              {t('Reference No.')}: {selectedRequest?.refNo}
+              {t('Reference No.')}: {selectedRequest?.name}
             </DialogDescription>
           </DialogHeader>
 
@@ -463,20 +562,22 @@ const LicenseRequestsManagement = () => {
                 <CardContent className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="text-muted-foreground">{t('Full Name')}</Label>
-                    <p className="font-medium">{selectedRequest.driverName}</p>
+                    <p className="font-medium">{selectedRequest.full_name}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">{t('Phone Number')}</Label>
-                    <p className="font-medium">{selectedRequest.driverPhone}</p>
+                    <p className="font-medium">{selectedRequest.phone_number}</p>
                   </div>
-                  <div>
-                    <Label className="text-muted-foreground">{t('National ID')}</Label>
-                    <p className="font-medium font-mono text-sm">{selectedRequest.nationalId}</p>
-                  </div>
-                  {selectedRequest.currentLicense && (
+                  {selectedRequest.email && (
+                    <div>
+                      <Label className="text-muted-foreground">{t('Email')}</Label>
+                      <p className="font-medium">{selectedRequest.email}</p>
+                    </div>
+                  )}
+                  {selectedRequest.current_license_number && (
                     <div>
                       <Label className="text-muted-foreground">{t('Current License')}</Label>
-                      <p className="font-medium font-mono text-sm">{selectedRequest.currentLicense}</p>
+                      <p className="font-medium font-mono text-sm">{selectedRequest.current_license_number}</p>
                     </div>
                   )}
                 </CardContent>
@@ -490,45 +591,66 @@ const LicenseRequestsManagement = () => {
                 <CardContent className="grid grid-cols-3 gap-4">
                   <div>
                     <Label className="text-muted-foreground">{t('Type')}</Label>
-                    <p className="font-medium">{t(selectedRequest.type)}</p>
+                    <p className="font-medium">{t(selectedRequest.application_type)}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">{t('Category')}</Label>
-                    <p className="font-medium">{selectedRequest.category}</p>
+                    <p className="font-medium">{selectedRequest.license_category}</p>
                   </div>
                   <div>
                     <Label className="text-muted-foreground">{t('Submitted On')}</Label>
-                    <p className="font-medium">{selectedRequest.submittedOn}</p>
+                    <p className="font-medium">{formatDate(selectedRequest.submission_date)}</p>
                   </div>
+                  <div>
+                    <Label className="text-muted-foreground">{t('Region')}</Label>
+                    <p className="font-medium">{selectedRequest.region}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">{t('District')}</Label>
+                    <p className="font-medium">{selectedRequest.district}</p>
+                  </div>
+                  {selectedRequest.latra_type && (
+                    <div>
+                      <Label className="text-muted-foreground">{t('LATRA Type')}</Label>
+                      <p className="font-medium">{selectedRequest.latra_type}</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
               {/* Documents */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">{t('Documents')}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {selectedRequest.documents.map((doc, index) => (
-                      <Card
-                        key={index}
-                        className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <FileText className="h-8 w-8 text-primary" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{t(doc.name)}</p>
-                            <Button variant="link" size="sm" className="h-auto p-0 text-xs">
-                              {t('View')}
-                            </Button>
+              {selectedRequest.documents && selectedRequest.documents.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{t('Documents')}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {selectedRequest.documents.map((doc, index) => (
+                        <Card
+                          key={index}
+                          className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <FileText className="h-8 w-8 text-primary" />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{t(doc.document_type)}</p>
+                              <Button 
+                                variant="link" 
+                                size="sm" 
+                                className="h-auto p-0 text-xs"
+                                onClick={() => window.open(doc.file_url, '_blank')}
+                              >
+                                {t('View')}
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                        </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Admin Notes */}
               <div>
@@ -551,8 +673,9 @@ const LicenseRequestsManagement = () => {
                 variant="outline"
                 onClick={() => handleStatusChange('Under Review')}
                 className="flex-1 sm:flex-none"
+                disabled={updateLoading}
               >
-                <Clock className="mr-2 h-4 w-4" />
+                {updateLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Clock className="mr-2 h-4 w-4" />}
                 {t('Move to Review')}
               </Button>
             </div>
@@ -561,6 +684,7 @@ const LicenseRequestsManagement = () => {
                 variant="destructive"
                 onClick={() => handleStatusChange('Rejected')}
                 className="flex-1 sm:flex-none"
+                disabled={updateLoading}
               >
                 <XCircle className="mr-2 h-4 w-4" />
                 {t('Reject')}
@@ -569,6 +693,7 @@ const LicenseRequestsManagement = () => {
                 variant="default"
                 onClick={() => handleStatusChange('Approved')}
                 className="flex-1 sm:flex-none"
+                disabled={updateLoading}
               >
                 <CheckCircle className="mr-2 h-4 w-4" />
                 {t('Approve')}
@@ -592,8 +717,9 @@ const LicenseRequestsManagement = () => {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>{t('Cancel')}</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmAction}>
+            <AlertDialogCancel disabled={updateLoading}>{t('Cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmAction} disabled={updateLoading}>
+              {updateLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {t('Confirm')}
             </AlertDialogAction>
           </AlertDialogFooter>

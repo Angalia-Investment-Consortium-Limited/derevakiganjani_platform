@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { CategoryCard } from '@/components/jitesti/CategoryCard';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useJiTesti } from '@/hooks/useJiTesti';
-import { Loader2, Search, Filter } from 'lucide-react';
+import { Loader2, Search, Filter, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,56 +14,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 export default function TestCategories() {
   const { t, language } = useLanguage();
-  const { getCategories } = useJiTesti();
-  const [categories, setCategories] = useState<any[]>([]);
-  const [filteredCategories, setFilteredCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { useCategoriesList } = useJiTesti();
+  
+  // Use Frappe React SDK hook to fetch categories
+  const { data: categories, isLoading, error, mutate } = useCategoriesList();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [priceFilter, setPriceFilter] = useState<string>('all');
 
+  // Log data for debugging
   useEffect(() => {
-    loadCategories();
-  }, []);
+    console.log('[JiTesti] Categories data:', categories);
+    console.log('[JiTesti] Loading state:', isLoading);
+    console.log('[JiTesti] Error state:', error);
+  }, [categories, isLoading, error]);
 
-  useEffect(() => {
-    filterCategories();
-  }, [categories, searchTerm, priceFilter]);
-
-  const loadCategories = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('[JiTesti] Loading categories...');
-      const data = await getCategories();
-      console.log('[JiTesti] Categories loaded:', data);
-      
-      setCategories(data || []);
-    } catch (err: any) {
-      console.error('[JiTesti] Error loading categories:', err);
-      
-      // Ensure error message is a string
-      let errorMessage = 'Failed to load categories';
-      if (typeof err === 'string') {
-        errorMessage = err;
-      } else if (err?.message) {
-        errorMessage = err.message;
-      } else if (err?.error) {
-        errorMessage = err.error;
-      }
-      
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const filterCategories = () => {
+  // Filter categories based on search and price filter
+  const filteredCategories = useMemo(() => {
+    if (!categories) return [];
+    
     let filtered = [...categories];
 
     // Search filter
@@ -72,9 +45,9 @@ export default function TestCategories() {
         const name = language === 'sw' ? cat.name_sw : cat.name_en;
         const desc = language === 'sw' ? cat.description_sw : cat.description_en;
         return (
-          name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          desc.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          cat.category_code.toLowerCase().includes(searchTerm.toLowerCase())
+          name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          desc?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          cat.category_code?.toLowerCase().includes(searchTerm.toLowerCase())
         );
       });
     }
@@ -90,8 +63,8 @@ export default function TestCategories() {
       }
     }
 
-    setFilteredCategories(filtered);
-  };
+    return filtered;
+  }, [categories, searchTerm, priceFilter, language]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -135,39 +108,70 @@ export default function TestCategories() {
         </div>
 
         {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        {isLoading && (
+          <div className="flex flex-col justify-center items-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+            <p className="text-muted-foreground">
+              {t('loadingCategories') || 'Loading test categories...'}
+            </p>
           </div>
         )}
 
         {/* Error State */}
         {error && (
           <Alert variant="destructive" className="mb-6">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>{t('error') || 'Error'}</AlertTitle>
+            <AlertDescription>
+              {error?.message || error?.toString() || 'Failed to load categories'}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => mutate()}
+                className="mt-2 ml-2"
+              >
+                {t('retry') || 'Retry'}
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* No Data State */}
+        {!isLoading && !error && (!categories || categories.length === 0) && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>{t('noData') || 'No Categories Available'}</AlertTitle>
+            <AlertDescription>
+              {t('noCategoriesMessage') || 'There are no test categories available at the moment. Please check back later or contact support.'}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => mutate()}
+                className="mt-2 ml-2"
+              >
+                {t('refresh') || 'Refresh'}
+              </Button>
+            </AlertDescription>
           </Alert>
         )}
 
         {/* Categories Grid */}
-        {!loading && !error && (
+        {!isLoading && !error && categories && categories.length > 0 && (
           <>
             {filteredCategories.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-muted-foreground">
-                  {t('noCategories') || 'No categories found'}
+                <p className="text-muted-foreground mb-4">
+                  {t('noMatchingCategories') || 'No categories match your search criteria'}
                 </p>
-                {searchTerm && (
-                  <Button
-                    variant="link"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setPriceFilter('all');
-                    }}
-                    className="mt-2"
-                  >
-                    {t('clearFilters') || 'Clear filters'}
-                  </Button>
-                )}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setPriceFilter('all');
+                  }}
+                >
+                  {t('clearFilters') || 'Clear filters'}
+                </Button>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

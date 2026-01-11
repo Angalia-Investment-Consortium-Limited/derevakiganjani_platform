@@ -76,7 +76,7 @@ const ResetPassword = () => {
 
       // Redirect to login after 2 seconds
       setTimeout(() => {
-        navigate('/login');
+        navigate('/ingia');
       }, 2000);
     } catch (error: any) {
       // Parse error message
@@ -211,7 +211,7 @@ const ResetPassword = () => {
                 </Link>
               </p>
               <p>
-                <Link to="/login" className="text-muted-foreground hover:text-primary">
+                <Link to="/ingia" className="text-muted-foreground hover:text-primary">
                   {t('backToLogin')}
                 </Link>
               </p>

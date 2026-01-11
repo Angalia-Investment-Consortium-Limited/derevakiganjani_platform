@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Image, Video } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Image, Video, Loader2, AlertCircle } from "lucide-react";
+import { useFrappeGetDocList, useFrappeDocTypeEventListener } from "frappe-react-sdk";
+import type { TestQuestion } from "@/types/management";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const QuestionBankManager = () => {
   const navigate = useNavigate();
@@ -15,60 +18,57 @@ const QuestionBankManager = () => {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const questions = [
-    {
-      id: 1,
-      text: "What is the maximum speed limit in a residential area?",
-      category: "B",
-      hasImage: true,
-      hasVideo: false,
-      status: "published",
-      answers: 4
-    },
-    {
-      id: 2,
-      text: "When must you stop at a railway crossing?",
-      category: "B",
-      hasImage: false,
-      hasVideo: true,
-      status: "published",
-      answers: 4
-    },
-    {
-      id: 3,
-      text: "What does a red traffic light mean?",
-      category: "A",
-      hasImage: true,
-      hasVideo: false,
-      status: "published",
-      answers: 3
-    },
-    {
-      id: 4,
-      text: "How often should you check your motorcycle's chain tension?",
-      category: "A",
-      hasImage: false,
-      hasVideo: false,
-      status: "draft",
-      answers: 4
-    },
-    {
-      id: 5,
-      text: "What is the minimum safe following distance?",
-      category: "C",
-      hasImage: true,
-      hasVideo: true,
-      status: "published",
-      answers: 4
+  // Build filters for Frappe query
+  const filters = useMemo(() => {
+    const f: any[] = [];
+    
+    if (categoryFilter !== "all") {
+      f.push(['category', '=', categoryFilter]);
     }
-  ];
+    
+    if (statusFilter !== "all") {
+      f.push(['is_active', '=', statusFilter === 'published' ? 1 : 0]);
+    }
+    
+    return f;
+  }, [categoryFilter, statusFilter]);
 
-  const filteredQuestions = questions.filter(question => {
-    const matchesSearch = question.text.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory = categoryFilter === "all" || question.category === categoryFilter;
-    const matchesStatus = statusFilter === "all" || question.status === statusFilter;
-    return matchesSearch && matchesCategory && matchesStatus;
+  // Fetch questions from Frappe
+  const { data: questions, isLoading, error, mutate } = useFrappeGetDocList<TestQuestion>('Test Question', {
+    fields: [
+      'name',
+      'question_text_en',
+      'question_text_sw',
+      'category',
+      'question_type',
+      'image',
+      'video_url',
+      'is_active',
+      'difficulty'
+    ],
+    filters,
+    orderBy: {
+      field: 'modified',
+      order: 'desc'
+    }
   });
+
+  // Real-time updates
+  useFrappeDocTypeEventListener('Test Question', () => {
+    mutate();
+  });
+
+  // Filter questions by search query
+  const filteredQuestions = useMemo(() => {
+    if (!questions) return [];
+    
+    return questions.filter(question => {
+      const matchesSearch = 
+        question.question_text_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        question.question_text_sw.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
+  }, [questions, searchQuery]);
 
   return (
     <AdminLayout>
@@ -121,67 +121,112 @@ const QuestionBankManager = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Question Text</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Media</TableHead>
-                  <TableHead>Answers</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredQuestions.map((question) => (
-                  <TableRow key={question.id}>
-                    <TableCell className="font-medium max-w-md truncate">{question.text}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">Cat {question.category}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        {question.hasImage && (
-                          <Badge variant="secondary" className="gap-1">
-                            <Image className="h-3 w-3" />
-                            Image
-                          </Badge>
-                        )}
-                        {question.hasVideo && (
-                          <Badge variant="secondary" className="gap-1">
-                            <Video className="h-3 w-3" />
-                            Video
-                          </Badge>
-                        )}
-                        {!question.hasImage && !question.hasVideo && (
-                          <span className="text-muted-foreground text-sm">None</span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>{question.answers}</TableCell>
-                    <TableCell>
-                      <Badge variant={question.status === "published" ? "default" : "secondary"}>
-                        {question.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          onClick={() => navigate(`/admin/question/edit/${question.id}`)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {isLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2">Loading questions...</span>
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Failed to load questions. Please try again later.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!isLoading && !error && filteredQuestions.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground mb-4">No questions found.</p>
+                <Button onClick={() => navigate("/admin/question/new")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create your first question
+                </Button>
+              </div>
+            )}
+
+            {!isLoading && !error && filteredQuestions.length > 0 && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Question Text</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Media</TableHead>
+                    <TableHead>Difficulty</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredQuestions.map((question) => (
+                    <TableRow key={question.name}>
+                      <TableCell className="font-medium max-w-md">
+                        <div className="truncate">{question.question_text_en}</div>
+                        <div className="text-sm text-muted-foreground truncate">{question.question_text_sw}</div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{question.category}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{question.question_type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {question.image && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Image className="h-3 w-3" />
+                              Image
+                            </Badge>
+                          )}
+                          {question.video_url && (
+                            <Badge variant="secondary" className="gap-1">
+                              <Video className="h-3 w-3" />
+                              Video
+                            </Badge>
+                          )}
+                          {!question.image && !question.video_url && (
+                            <span className="text-muted-foreground text-sm">None</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {question.difficulty && (
+                          <Badge variant={
+                            question.difficulty === 'Easy' ? 'default' :
+                            question.difficulty === 'Medium' ? 'secondary' :
+                            'destructive'
+                          }>
+                            {question.difficulty}
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={question.is_active === 1 ? "default" : "secondary"}>
+                          {question.is_active === 1 ? "Published" : "Draft"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => navigate(`/admin/question/${question.name}`)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
       </Card>
     </AdminLayout>

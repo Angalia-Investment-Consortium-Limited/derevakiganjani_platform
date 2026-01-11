@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -6,41 +7,251 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { BookOpen, Clock, GraduationCap, Lock, CheckCircle2, Award, Video } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BookOpen, Clock, GraduationCap, Lock, CheckCircle2, Award, Video, FileText, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useElimika } from "@/hooks/useElimika";
+import { useToast } from "@/hooks/use-toast";
+import type { Lesson } from "@/types/elimika";
 
 const CourseDetail = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
-
-  const course = {
-    id: courseId,
-    title: "Road Safety Fundamentals",
-    description: "Master essential road safety rules and regulations for confident driving",
-    lessons: 12,
-    duration: "4 hours",
-    level: "Basic",
-    progress: 33,
-    completedLessons: 4,
-    image: "🚦"
+  const { currentUser, profile } = useAuth();
+  const { language } = useLanguage();
+  const { toast } = useToast();
+  
+  // Get hooks from useElimika
+  const { useCourse, useLessons, useDriverProfileByUser, useEnrollmentStatus, useLessonProgress, enrollInCourse } = useElimika();
+  
+  // Query Driver Profile by user email
+  // AuthContext returns user email in profile.name, so we need to query Driver Profile doctype
+  const { data: driverProfileData, isLoading: profileLoading } = useDriverProfileByUser(currentUser || undefined);
+  
+  // Extract Driver Profile ID from query result
+  const driverProfileId = useMemo(() => {
+    if (!driverProfileData || driverProfileData.length === 0) {
+      console.warn('[CourseDetail] No Driver Profile found for user:', currentUser);
+      return undefined;
+    }
+    
+    const driverProfile = driverProfileData[0];
+    console.log('[CourseDetail] Found Driver Profile:', driverProfile.name);
+    return driverProfile.name; // Returns "DRV-00001" instead of email
+  }, [driverProfileData, currentUser]);
+  
+  // Fetch course data
+  const { data: course, isLoading: courseLoading, error: courseError } = useCourse(courseId);
+  
+  // Fetch lessons for this course
+  const { data: lessons, isLoading: lessonsLoading, error: lessonsError } = useLessons(courseId);
+  
+  // Check enrollment status
+  const { data: enrollmentData, isLoading: enrollmentLoading, mutate: mutateEnrollment } = useEnrollmentStatus(courseId, driverProfileId);
+  const enrollment = enrollmentData && enrollmentData.length > 0 ? enrollmentData[0] : null;
+  
+  // Fetch lesson progress
+  const { data: progressData, isLoading: progressLoading } = useLessonProgress(driverProfileId, enrollment?.name);
+  
+  // Enrollment hook
+  const { enroll, loading: enrolling } = enrollInCourse();
+  
+  // Calculate completed lesson IDs
+  const completedLessonIds = useMemo(() => {
+    if (!progressData) return [];
+    return progressData
+      .filter(p => p.status === 'Completed')
+      .map(p => p.lesson);
+  }, [progressData]);
+  
+  // Calculate progress
+  const progress = useMemo(() => {
+    if (enrollment) {
+      return enrollment.progress_percentage || 0;
+    }
+    return 0;
+  }, [enrollment]);
+  
+  const completedLessonsCount = useMemo(() => {
+    if (enrollment) {
+      return enrollment.completed_lessons || 0;
+    }
+    return completedLessonIds.length;
+  }, [enrollment, completedLessonIds]);
+  
+  // Check if lesson is locked
+  const isLessonLocked = (lesson: Lesson) => {
+    if (!lesson.is_locked) return false;
+    if (!lesson.unlock_after_lesson) return false;
+    return !completedLessonIds.includes(lesson.unlock_after_lesson);
   };
+  
+  // Check if lesson is completed
+  const isLessonCompleted = (lessonId: string) => {
+    return completedLessonIds.includes(lessonId);
+  };
+  
+  // Get content type icon
+  const getContentTypeIcon = (contentType: string) => {
+    switch (contentType) {
+      case 'video':
+        return <Video className="h-4 w-4 text-primary" />;
+      case 'pdf':
+        return <FileText className="h-4 w-4 text-primary" />;
+      case 'image':
+        return <ImageIcon className="h-4 w-4 text-primary" />;
+      default:
+        return null;
+    }
+  };
+  
+  // Handle enrollment
+  const handleEnroll = async () => {
+    if (!driverProfileId || !courseId) {
+      toast({
+        title: language === 'en' ? "Error" : "Kosa",
+        description: language === 'en' 
+          ? "Please log in to enroll in this course" 
+          : "Tafadhali ingia ili kujisajili kwenye kozi hii",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      await enroll({
+        driver: driverProfileId,
+        course: courseId
+      });
+      
+      toast({
+        title: language === 'en' ? "Enrolled Successfully!" : "Umejisajili Kikamilifu!",
+        description: language === 'en' 
+          ? "You can now start learning" 
+          : "Unaweza kuanza kujifunza sasa"
+      });
+      
+      // Refresh enrollment status
+      mutateEnrollment();
+    } catch (error: any) {
+      console.error('Enrollment error:', error);
+      toast({
+        title: language === 'en' ? "Enrollment Failed" : "Usajili Umeshindwa",
+        description: error?.message || (language === 'en' 
+          ? "Failed to enroll. Please try again." 
+          : "Imeshindwa kusajili. Tafadhali jaribu tena."),
+        variant: "destructive"
+      });
+    }
+  };
+  
+  // Find next incomplete lesson
+  const nextLesson = useMemo(() => {
+    if (!lessons) return null;
+    return lessons.find(lesson => !isLessonCompleted(lesson.name) && !isLessonLocked(lesson));
+  }, [lessons, completedLessonIds]);
+  
+  const isCompleted = progress === 100;
+  const isLoading = courseLoading || lessonsLoading || profileLoading || enrollmentLoading || progressLoading;
 
-  const lessons = [
-    { id: 1, title: "Introduction to Road Safety", duration: "15 min", completed: true, locked: false, hasVideo: true },
-    { id: 2, title: "Understanding Traffic Laws", duration: "20 min", completed: true, locked: false, hasVideo: false },
-    { id: 3, title: "Right of Way Rules", duration: "25 min", completed: true, locked: false, hasVideo: true },
-    { id: 4, title: "Speed Limits and Regulations", duration: "20 min", completed: true, locked: false, hasVideo: false },
-    { id: 5, title: "Pedestrian Safety", duration: "15 min", completed: false, locked: false, hasVideo: false },
-    { id: 6, title: "Weather Conditions Driving", duration: "20 min", completed: false, locked: true, hasVideo: true },
-    { id: 7, title: "Night Driving Safety", duration: "20 min", completed: false, locked: true, hasVideo: true },
-    { id: 8, title: "Highway Driving", duration: "25 min", completed: false, locked: true, hasVideo: false },
-    { id: 9, title: "Urban Driving Challenges", duration: "20 min", completed: false, locked: true, hasVideo: true },
-    { id: 10, title: "Parking Techniques", duration: "15 min", completed: false, locked: true, hasVideo: true },
-    { id: 11, title: "Accident Prevention", duration: "20 min", completed: false, locked: true, hasVideo: false },
-    { id: 12, title: "Final Assessment", duration: "30 min", completed: false, locked: true, hasVideo: false }
-  ];
-
-  const isCompleted = course.progress === 100;
-
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <Skeleton className="h-6 w-64 mb-6" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-16 w-16 rounded-full mb-4" />
+                  <Skeleton className="h-8 w-3/4 mb-2" />
+                  <Skeleton className="h-4 w-full" />
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <Skeleton className="h-2 w-full" />
+                    <Skeleton className="h-4 w-1/2" />
+                    {[1, 2, 3].map((i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-10 w-full" />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+  
+  // Error state
+  if (courseError || lessonsError) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>{language === 'en' ? 'Error' : 'Kosa'}</AlertTitle>
+            <AlertDescription>
+              {language === 'en' 
+                ? 'Failed to load course details. Please try again later.' 
+                : 'Imeshindwa kupakia maelezo ya kozi. Tafadhali jaribu tena baadaye.'}
+            </AlertDescription>
+          </Alert>
+          <Button className="mt-4" onClick={() => navigate('/elimika')}>
+            {language === 'en' ? 'Back to Courses' : 'Rudi kwa Kozi'}
+          </Button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+  
+  // Empty state
+  if (!course) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <BookOpen className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              {language === 'en' ? 'Course not found' : 'Kozi haijapatikana'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {language === 'en' 
+                ? 'The course you are looking for does not exist.' 
+                : 'Kozi unayoitafuta haipo.'}
+            </p>
+            <Button onClick={() => navigate('/elimika')}>
+              {language === 'en' ? 'Browse Courses' : 'Tazama Kozi'}
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+  
+  const courseName = language === 'en' ? course.course_name_en : (course.course_name_sw || course.course_name_en);
+  const courseDescription = language === 'en' ? course.description_en : (course.description_sw || course.description_en);
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -49,7 +260,9 @@ const CourseDetail = () => {
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
+              <BreadcrumbLink href="/dashboard">
+                {language === 'en' ? 'Home' : 'Nyumbani'}
+              </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -57,7 +270,7 @@ const CourseDetail = () => {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{course.title}</BreadcrumbPage>
+              <BreadcrumbPage>{courseName}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -66,72 +279,92 @@ const CourseDetail = () => {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <div className="text-6xl mb-4">{course.image}</div>
-                <CardTitle className="text-3xl">{course.title}</CardTitle>
-                <CardDescription className="text-base">{course.description}</CardDescription>
+                <div className="text-6xl mb-4">{course.thumbnail_emoji || "📚"}</div>
+                <CardTitle className="text-3xl">{courseName}</CardTitle>
+                <CardDescription className="text-base">{courseDescription}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="font-medium">Course Progress</span>
-                      <span className="text-muted-foreground">{course.progress}% Complete</span>
+                  {enrollment && (
+                    <div>
+                      <div className="flex justify-between text-sm mb-2">
+                        <span className="font-medium">
+                          {language === 'en' ? 'Course Progress' : 'Maendeleo ya Kozi'}
+                        </span>
+                        <span className="text-muted-foreground">{progress}% {language === 'en' ? 'Complete' : 'Imekamilika'}</span>
+                      </div>
+                      <Progress value={progress} className="h-2" />
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {completedLessonsCount} {language === 'en' ? 'of' : 'kati ya'} {course.total_lessons || lessons?.length || 0} {language === 'en' ? 'lessons completed' : 'masomo yamekamilika'}
+                      </p>
                     </div>
-                    <Progress value={course.progress} className="h-2" />
-                    <p className="text-sm text-muted-foreground mt-2">
-                      {course.completedLessons} of {course.lessons} lessons completed
-                    </p>
-                  </div>
+                  )}
 
                   <div className="flex flex-wrap gap-4">
                     <div className="flex items-center gap-2">
                       <BookOpen className="h-5 w-5 text-muted-foreground" />
-                      <span>{course.lessons} lessons</span>
+                      <span>{course.total_lessons || lessons?.length || 0} {language === 'en' ? 'lessons' : 'masomo'}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Clock className="h-5 w-5 text-muted-foreground" />
-                      <span>{course.duration}</span>
+                      <span>{course.duration_hours || 0} {language === 'en' ? 'hours' : 'masaa'}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <GraduationCap className="h-5 w-5 text-muted-foreground" />
-                      <Badge>{course.level}</Badge>
-                    </div>
+                    {course.level && (
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-5 w-5 text-muted-foreground" />
+                        <Badge>{course.level}</Badge>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-3">
-                    <h3 className="text-lg font-semibold">Course Lessons</h3>
-                    {lessons.map((lesson) => (
-                      <Card key={lesson.id} className={lesson.locked ? "opacity-60" : ""}>
-                        <CardContent className="flex items-center justify-between p-4">
-                          <div className="flex items-center gap-3">
-                            {lesson.completed ? (
-                              <CheckCircle2 className="h-5 w-5 text-success" />
-                            ) : lesson.locked ? (
-                              <Lock className="h-5 w-5 text-muted-foreground" />
-                            ) : (
-                              <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
-                            )}
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium">{lesson.title}</p>
-                                {lesson.hasVideo && (
-                                  <Video className="h-4 w-4 text-primary" />
+                    <h3 className="text-lg font-semibold">
+                      {language === 'en' ? 'Course Lessons' : 'Masomo ya Kozi'}
+                    </h3>
+                    {lessons && lessons.length > 0 ? (
+                      lessons.map((lesson) => {
+                        const locked = isLessonLocked(lesson);
+                        const completed = isLessonCompleted(lesson.name);
+                        const lessonTitle = language === 'en' ? lesson.lesson_title_en : (lesson.lesson_title_sw || lesson.lesson_title_en);
+                        
+                        return (
+                          <Card key={lesson.name} className={locked ? "opacity-60" : ""}>
+                            <CardContent className="flex items-center justify-between p-4">
+                              <div className="flex items-center gap-3">
+                                {completed ? (
+                                  <CheckCircle2 className="h-5 w-5 text-success" />
+                                ) : locked ? (
+                                  <Lock className="h-5 w-5 text-muted-foreground" />
+                                ) : (
+                                  <div className="h-5 w-5 rounded-full border-2 border-muted-foreground" />
                                 )}
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2">
+                                    <p className="font-medium">{lessonTitle}</p>
+                                    {getContentTypeIcon(lesson.content_type)}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {lesson.duration_minutes || 0} {language === 'en' ? 'min' : 'dak'}
+                                  </p>
+                                </div>
                               </div>
-                              <p className="text-sm text-muted-foreground">{lesson.duration}</p>
-                            </div>
-                          </div>
-                          <Button
-                            variant={lesson.completed ? "outline" : "default"}
-                            size="sm"
-                            disabled={lesson.locked}
-                            onClick={() => navigate(`/elimika/lesson/${lesson.id}`)}
-                          >
-                            {lesson.completed ? "Review" : "Start"}
-                          </Button>
-                        </CardContent>
-                      </Card>
-                    ))}
+                              <Button
+                                variant={completed ? "outline" : "default"}
+                                size="sm"
+                                disabled={locked || !enrollment}
+                                onClick={() => navigate(`/elimika/lesson/${lesson.name}`)}
+                              >
+                                {completed ? (language === 'en' ? 'Review' : 'Pitia') : (language === 'en' ? 'Start' : 'Anza')}
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        );
+                      })
+                    ) : (
+                      <p className="text-muted-foreground text-center py-4">
+                        {language === 'en' ? 'No lessons available' : 'Hakuna masomo yaliyopatikana'}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -139,14 +372,51 @@ const CourseDetail = () => {
           </div>
 
           <div className="space-y-6">
-            {!isCompleted ? (
+            {!enrollment ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Continue Learning</CardTitle>
+                  <CardTitle>
+                    {language === 'en' ? 'Enroll in Course' : 'Jisajili kwenye Kozi'}
+                  </CardTitle>
+                  <CardDescription>
+                    {language === 'en' 
+                      ? 'Start your learning journey' 
+                      : 'Anza safari yako ya kujifunza'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={() => navigate(`/elimika/lesson/5`)}>
-                    Resume Course
+                  <Button 
+                    className="w-full" 
+                    onClick={handleEnroll}
+                    disabled={enrolling || !currentUser}
+                  >
+                    {enrolling 
+                      ? (language === 'en' ? 'Enrolling...' : 'Inasajili...') 
+                      : (language === 'en' ? 'Enroll Now' : 'Jisajili Sasa')}
+                  </Button>
+                  {!currentUser && (
+                    <p className="text-sm text-muted-foreground mt-2 text-center">
+                      {language === 'en' 
+                        ? 'Please log in to enroll' 
+                        : 'Tafadhali ingia ili kujisajili'}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            ) : !isCompleted ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {language === 'en' ? 'Continue Learning' : 'Endelea Kujifunza'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => nextLesson && navigate(`/elimika/lesson/${nextLesson.name}`)}
+                    disabled={!nextLesson}
+                  >
+                    {language === 'en' ? 'Resume Course' : 'Endelea na Kozi'}
                   </Button>
                 </CardContent>
               </Card>
@@ -156,30 +426,44 @@ const CourseDetail = () => {
                   <div className="flex justify-center mb-4">
                     <Award className="h-16 w-16 text-success" />
                   </div>
-                  <CardTitle className="text-center">Course Completed!</CardTitle>
+                  <CardTitle className="text-center">
+                    {language === 'en' ? 'Course Completed!' : 'Kozi Imekamilika!'}
+                  </CardTitle>
                   <CardDescription className="text-center">
-                    Congratulations on finishing this course
+                    {language === 'en' 
+                      ? 'Congratulations on finishing this course' 
+                      : 'Hongera kwa kukamilisha kozi hii'}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Button className="w-full" onClick={() => navigate(`/elimika/completion/${courseId}`)}>
-                    Get Certificate
+                    {language === 'en' ? 'Get Certificate' : 'Pata Cheti'}
                   </Button>
                 </CardContent>
               </Card>
             )}
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Practice Quiz</CardTitle>
-                <CardDescription>Test your knowledge</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full" onClick={() => navigate(`/elimika/quiz/${courseId}`)}>
-                  Take Practice Quiz
-                </Button>
-              </CardContent>
-            </Card>
+            {enrollment && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>
+                    {language === 'en' ? 'Practice Quiz' : 'Zoezi la Maswali'}
+                  </CardTitle>
+                  <CardDescription>
+                    {language === 'en' ? 'Test your knowledge' : 'Jaribu ujuzi wako'}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => navigate(`/elimika/quiz/${courseId}`)}
+                  >
+                    {language === 'en' ? 'Take Practice Quiz' : 'Fanya Zoezi'}
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </main>

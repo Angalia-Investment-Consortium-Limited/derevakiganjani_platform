@@ -3,12 +3,52 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { FileText, RefreshCw, GraduationCap, Search, ArrowRight, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { FileText, RefreshCw, GraduationCap, Search, ArrowRight, CheckCircle, Clock, AlertCircle, TrendingUp } from 'lucide-react';
+import { useFrappeGetDocCount, useFrappeGetDocList } from 'frappe-react-sdk';
+import type { LicenseApplication } from '@/types/license';
+import { STATUS_COLORS } from '@/types/license';
 
 const LicenseRequest = () => {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  // Get current user email
+  const currentUser = user?.email || '';
+
+  // Fetch user's application counts using frappe-react-sdk
+  const { data: totalCount } = useFrappeGetDocCount(
+    'License Application',
+    currentUser ? [['user', '=', currentUser]] : undefined
+  );
+
+  const { data: pendingCount } = useFrappeGetDocCount(
+    'License Application',
+    currentUser ? [['user', '=', currentUser], ['status', '=', 'Pending']] : undefined
+  );
+
+  const { data: approvedCount } = useFrappeGetDocCount(
+    'License Application',
+    currentUser ? [['user', '=', currentUser], ['status', '=', 'Approved']] : undefined
+  );
+
+  // Fetch recent applications
+  const { data: recentApplications, isLoading: loadingRecent } = useFrappeGetDocList<LicenseApplication>(
+    'License Application',
+    {
+      fields: ['name', 'application_type', 'status', 'creation', 'license_category'],
+      filters: currentUser ? [['user', '=', currentUser]] : [],
+      limit: 3,
+      orderBy: {
+        field: 'creation',
+        order: 'desc'
+      }
+    },
+    currentUser ? 'license-recent-applications' : null
+  );
 
   const services = [
     {
@@ -114,6 +154,107 @@ const LicenseRequest = () => {
               {language === 'sw' ? 'Chagua huduma unayohitaji' : 'Choose the service you need'}
             </p>
           </div>
+
+          {/* User Statistics - Only show if logged in */}
+          {user && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <Card className="border-2 border-blue-200 bg-blue-50/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {language === 'sw' ? 'Jumla ya Maombi' : 'Total Applications'}
+                      </p>
+                      <p className="text-3xl font-bold text-blue-600">{totalCount || 0}</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center">
+                      <FileText className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-yellow-200 bg-yellow-50/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {language === 'sw' ? 'Inasubiri' : 'Pending'}
+                      </p>
+                      <p className="text-3xl font-bold text-yellow-600">{pendingCount || 0}</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-yellow-500 flex items-center justify-center">
+                      <Clock className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-2 border-green-200 bg-green-50/50">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1">
+                        {language === 'sw' ? 'Imeidhinishwa' : 'Approved'}
+                      </p>
+                      <p className="text-3xl font-bold text-green-600">{approvedCount || 0}</p>
+                    </div>
+                    <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center">
+                      <CheckCircle className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Recent Applications - Only show if logged in and has applications */}
+          {user && recentApplications && recentApplications.length > 0 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5" />
+                    {language === 'sw' ? 'Maombi ya Hivi Karibuni' : 'Recent Applications'}
+                  </CardTitle>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => navigate('/license/my-applications')}
+                  >
+                    {language === 'sw' ? 'Tazama Yote' : 'View All'}
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {recentApplications.map((app) => (
+                    <div
+                      key={app.name}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
+                      onClick={() => navigate(`/license/application/${app.name}`)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <FileText className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{app.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {app.application_type} - {language === 'sw' ? 'Aina' : 'Category'} {app.license_category}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className={STATUS_COLORS[app.status]}>
+                        {app.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Service Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">

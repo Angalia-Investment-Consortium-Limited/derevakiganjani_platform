@@ -7,7 +7,7 @@ export interface User {
   user_image?: string;
   mobile_no?: string;
   roles: UserRole[];
-  user_type?: UserRole;
+  user_type?: UserRole; // Changed from UserRole | null to UserRole | undefined for consistency
   enabled: boolean;
 }
 

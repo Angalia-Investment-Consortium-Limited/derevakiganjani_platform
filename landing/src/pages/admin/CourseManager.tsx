@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -7,66 +7,71 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Eye, Loader2, AlertCircle } from "lucide-react";
+import { useFrappeGetDocList, useFrappeDocTypeEventListener } from "frappe-react-sdk";
+import type { Course } from "@/types/management";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const CourseManager = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const courses = [
-    {
-      id: 1,
-      title: "Road Safety Fundamentals",
-      lessons: 12,
-      enrollments: 245,
-      status: "published",
-      price: "Free",
-      lastUpdated: "2024-01-15"
-    },
-    {
-      id: 2,
-      title: "Traffic Signs & Signals",
-      lessons: 15,
-      enrollments: 189,
-      status: "published",
-      price: "Free",
-      lastUpdated: "2024-01-14"
-    },
-    {
-      id: 3,
-      title: "Defensive Driving",
-      lessons: 18,
-      enrollments: 156,
-      status: "published",
-      price: "KES 500",
-      lastUpdated: "2024-01-12"
-    },
-    {
-      id: 4,
-      title: "Vehicle Maintenance Basics",
-      lessons: 10,
-      enrollments: 198,
-      status: "published",
-      price: "Free",
-      lastUpdated: "2024-01-10"
-    },
-    {
-      id: 5,
-      title: "Advanced Highway Driving",
-      lessons: 8,
-      enrollments: 0,
-      status: "draft",
-      price: "KES 800",
-      lastUpdated: "2024-01-20"
+  // Fetch courses from Frappe
+  const filters = useMemo(() => {
+    const f: any[] = [];
+    if (statusFilter !== "all") {
+      f.push(['status', '=', statusFilter === 'published' ? 'Published' : 'Draft']);
     }
-  ];
+    return f;
+  }, [statusFilter]);
 
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || course.status === statusFilter;
-    return matchesSearch && matchesStatus;
+  const { data: courses, isLoading, error, mutate } = useFrappeGetDocList<Course>('Course', {
+    fields: [
+      'name',
+      'course_name_en',
+      'course_name_sw',
+      'status',
+      'total_lessons',
+      'price',
+      'is_free',
+      'modified'
+    ],
+    filters,
+    orderBy: {
+      field: 'modified',
+      order: 'desc'
+    }
   });
+
+  // Real-time updates
+  useFrappeDocTypeEventListener('Course', () => {
+    mutate();
+  });
+
+  // Filter courses by search query
+  const filteredCourses = useMemo(() => {
+    if (!courses) return [];
+    
+    return courses.filter(course => {
+      const matchesSearch = 
+        course.course_name_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        course.course_name_sw.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesSearch;
+    });
+  }, [courses, searchQuery]);
+
+  // Format price display
+  const formatPrice = (course: Course) => {
+    if (course.is_free === 1) return "Free";
+    return course.price ? `KES ${course.price.toLocaleString()}` : "Free";
+  };
+
+  // Format date
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <AdminLayout>
@@ -88,30 +93,56 @@ const CourseManager = () => {
                     className="pl-10"
                   />
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full md:w-[180px]">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-[180px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={() => navigate("/admin/course/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add New Course
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <span className="ml-2">Loading courses...</span>
+            </div>
+          )}
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Failed to load courses. Please try again later.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {!isLoading && !error && filteredCourses.length === 0 && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground mb-4">No courses found.</p>
               <Button onClick={() => navigate("/admin/course/new")}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add New Course
+                Create your first course
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
+          )}
+
+          {!isLoading && !error && filteredCourses.length > 0 && (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Course Title</TableHead>
                   <TableHead>Lessons</TableHead>
-                  <TableHead>Enrollments</TableHead>
                   <TableHead>Price</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Last Updated</TableHead>
@@ -120,23 +151,27 @@ const CourseManager = () => {
               </TableHeader>
               <TableBody>
                 {filteredCourses.map((course) => (
-                  <TableRow key={course.id}>
-                    <TableCell className="font-medium">{course.title}</TableCell>
-                    <TableCell>{course.lessons}</TableCell>
-                    <TableCell>{course.enrollments}</TableCell>
-                    <TableCell>{course.price}</TableCell>
+                  <TableRow key={course.name}>
+                    <TableCell className="font-medium">
+                      <div>
+                        <div>{course.course_name_en}</div>
+                        <div className="text-sm text-muted-foreground">{course.course_name_sw}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>{course.total_lessons || 0}</TableCell>
+                    <TableCell>{formatPrice(course)}</TableCell>
                     <TableCell>
-                      <Badge variant={course.status === "published" ? "default" : "secondary"}>
+                      <Badge variant={course.status === "Published" ? "default" : "secondary"}>
                         {course.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{course.lastUpdated}</TableCell>
+                    <TableCell>{formatDate(course.modified)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button size="sm" variant="ghost" onClick={() => navigate(`/elimika/course/${course.id}`)}>
+                        <Button size="sm" variant="ghost" onClick={() => navigate(`/elimika/course/${course.name}`)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/course/${course.id}`)}>
+                        <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/course/${course.name}`)}>
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button size="sm" variant="ghost">
@@ -148,7 +183,8 @@ const CourseManager = () => {
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
+          )}
+        </CardContent>
       </Card>
     </AdminLayout>
   );

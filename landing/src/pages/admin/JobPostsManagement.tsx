@@ -1,20 +1,49 @@
+import { useMemo } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, XCircle, Plus } from 'lucide-react';
+import { Eye, Edit, XCircle, Plus, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useFrappeGetDocList, useFrappeDocTypeEventListener } from 'frappe-react-sdk';
+import type { JobPost } from '@/types/management';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const JobPostsManagement = () => {
   const navigate = useNavigate();
   
-  const jobPosts = [
-    { id: 1, employer: 'ABC Transport', title: 'Truck Driver', vehicleType: 'Truck', licenseCategory: 'D', jobType: 'Full-time', region: 'Dar es Salaam', district: 'Kinondoni', status: 'Published', applications: 12, postedOn: '2025-01-20' },
-    { id: 2, employer: 'TechCorp', title: 'Car Driver', vehicleType: 'Car', licenseCategory: 'B', jobType: 'Contract', region: 'Arusha', district: 'Arusha City', status: 'Published', applications: 8, postedOn: '2025-01-18' },
-    { id: 3, employer: 'Safari Adventures', title: 'Bus Driver', vehicleType: 'Bus', licenseCategory: 'D', jobType: 'Full-time', region: 'Mwanza', district: 'Ilemela', status: 'Draft', applications: 0, postedOn: '2025-01-22' },
-    { id: 4, employer: 'Logistics Ltd', title: 'Motorcycle Courier', vehicleType: 'Motorcycle', licenseCategory: 'A', jobType: 'Temporary', region: 'Dodoma', district: 'Dodoma Urban', status: 'Closed', applications: 5, postedOn: '2025-01-15' },
-  ];
+  // Fetch job posts from Frappe
+  const { data: jobPosts, isLoading, error, mutate } = useFrappeGetDocList<JobPost>('Job Post', {
+    fields: [
+      'name',
+      'title',
+      'employer',
+      'vehicle_type',
+      'license_category',
+      'job_type',
+      'region',
+      'district',
+      'status',
+      'total_applications',
+      'posted_date'
+    ],
+    orderBy: {
+      field: 'posted_date',
+      order: 'desc'
+    }
+  });
+
+  // Real-time updates
+  useFrappeDocTypeEventListener('Job Post', () => {
+    mutate();
+  });
+
+  // Format date
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString();
+  };
 
   return (
     <AdminLayout>
@@ -34,14 +63,33 @@ const JobPostsManagement = () => {
             <CardTitle>All Job Posts</CardTitle>
           </CardHeader>
           <CardContent>
-            {jobPosts.length === 0 ? (
+            {isLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <span className="ml-2">Loading job posts...</span>
+              </div>
+            )}
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Failed to load job posts. Please try again later.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {!isLoading && !error && (!jobPosts || jobPosts.length === 0) && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">No job posts yet.</p>
                 <Button onClick={() => navigate('/admin/jobs/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
                   Create your first Job Post
                 </Button>
               </div>
-            ) : (
+            )}
+
+            {!isLoading && !error && jobPosts && jobPosts.length > 0 && (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -59,14 +107,16 @@ const JobPostsManagement = () => {
                 </TableHeader>
                 <TableBody>
                   {jobPosts.map((job) => (
-                    <TableRow key={job.id}>
+                    <TableRow key={job.name}>
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell>{job.employer}</TableCell>
-                      <TableCell>{job.vehicleType}</TableCell>
+                      <TableCell>{job.vehicle_type || 'N/A'}</TableCell>
                       <TableCell>
-                        <Badge variant="outline">{job.licenseCategory}</Badge>
+                        {job.license_category && (
+                          <Badge variant="outline">{job.license_category}</Badge>
+                        )}
                       </TableCell>
-                      <TableCell>{job.jobType}</TableCell>
+                      <TableCell>{job.job_type}</TableCell>
                       <TableCell>{job.district}, {job.region}</TableCell>
                       <TableCell>
                         <Badge variant={
@@ -77,21 +127,21 @@ const JobPostsManagement = () => {
                           {job.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>{job.applications}</TableCell>
-                      <TableCell>{job.postedOn}</TableCell>
+                      <TableCell>{job.total_applications || 0}</TableCell>
+                      <TableCell>{formatDate(job.posted_date)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Button 
                             size="sm" 
                             variant="ghost"
-                            onClick={() => navigate(`/admin/jobs/${job.id}`)}
+                            onClick={() => navigate(`/admin/jobs/${job.name}`)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button 
                             size="sm" 
                             variant="ghost"
-                            onClick={() => navigate(`/admin/jobs/${job.id}/edit`)}
+                            onClick={() => navigate(`/admin/jobs/${job.name}/edit`)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>

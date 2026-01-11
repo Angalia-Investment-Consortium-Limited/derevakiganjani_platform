@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useFrappeAuth } from 'frappe-react-sdk';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,8 +23,8 @@ const AdminLogin = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   
-  // Use frappe-react-sdk directly
-  const { login: frappeLogin, logout: frappeLogout } = useFrappeAuth();
+  // Use AuthContext which wraps frappe-react-sdk and manages state
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,18 +43,23 @@ const AdminLogin = () => {
     try {
       console.log('[AdminLogin] Attempting login for:', email);
       
-      // Use frappe-react-sdk login directly
-      await frappeLogin({ username: email, password });
+      // Use AuthContext's login method which:
+      // 1. Calls frappe-react-sdk login
+      // 2. Updates currentUser state
+      // 3. Triggers profile fetch automatically
+      // 4. Updates roles in context
+      await login(email, password);
       
-      console.log('[AdminLogin] Login successful');
+      console.log('[AdminLogin] Login successful, navigating to admin...');
 
       toast({
         title: t('success'),
         description: t('Welcome to Admin Portal!'),
       });
 
-      // Reload to fetch boot info and profile
-      window.location.replace('/admin');
+      // Use React Router navigation instead of window.location
+      // This preserves React state and allows AuthContext to work properly
+      navigate('/admin');
     } catch (error: any) {
       console.error('[AdminLogin] Login error:', error);
       
@@ -104,7 +108,7 @@ const AdminLogin = () => {
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
-                <BreadcrumbLink href="/login" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
+                <BreadcrumbLink href="/ingia" className="text-white/80 hover:text-white">Login</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="text-white/60" />
               <BreadcrumbItem>
@@ -157,7 +161,7 @@ const AdminLogin = () => {
                 </form>
                 
                 <div className="mt-6 text-center">
-                  <Link to="/login" className="text-sm text-muted-foreground hover:text-primary flex items-center justify-center gap-2">
+                  <Link to="/ingia" className="text-sm text-muted-foreground hover:text-primary flex items-center justify-center gap-2">
                     <ArrowLeft className="h-4 w-4" />
                     Back to main login
                   </Link>
