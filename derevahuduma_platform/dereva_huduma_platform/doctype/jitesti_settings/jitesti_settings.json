@@ -1,0 +1,127 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "selcom_api_key",
+  "selcom_api_secret",
+  "selcom_vendor_id",
+  "selcom_base_url",
+  "column_break_5",
+  "enable_payment_verification",
+  "auto_verify_mobile_payments",
+  "payment_timeout_minutes",
+  "max_retry_attempts",
+  "section_break_10",
+  "email_notifications",
+  "sms_notifications",
+  "notification_sender_email"
+ ],
+ "fields": [
+  {
+   "fieldname": "selcom_api_key",
+   "fieldtype": "Password",
+   "label": "Selcom API Key",
+   "reqd": 1
+  },
+  {
+   "fieldname": "selcom_api_secret",
+   "fieldtype": "Password",
+   "label": "Selcom API Secret",
+   "reqd": 1
+  },
+  {
+   "fieldname": "selcom_vendor_id",
+   "fieldtype": "Data",
+   "label": "Selcom Vendor ID",
+   "reqd": 1
+  },
+  {
+   "fieldname": "selcom_base_url",
+   "fieldtype": "Data",
+   "default": "https://apigw.selcommobile.com/v1",
+   "label": "Selcom Base URL",
+   "reqd": 1,
+   "description": "Selcom API Gateway URL (default: https://apigw.selcommobile.com/v1)"
+  },
+  {
+   "fieldname": "column_break_5",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "enable_payment_verification",
+   "fieldtype": "Check",
+   "default": "1",
+   "label": "Enable Payment Verification"
+  },
+  {
+   "fieldname": "auto_verify_mobile_payments",
+   "fieldtype": "Check",
+   "default": "1",
+   "label": "Auto Verify Mobile Payments"
+  },
+  {
+   "fieldname": "payment_timeout_minutes",
+   "fieldtype": "Int",
+   "default": "30",
+   "label": "Payment Timeout (Minutes)"
+  },
+  {
+   "fieldname": "max_retry_attempts",
+   "fieldtype": "Int",
+   "default": "3",
+   "label": "Max Retry Attempts"
+  },
+  {
+   "fieldname": "section_break_10",
+   "fieldtype": "Section Break",
+   "label": "Notifications"
+  },
+  {
+   "fieldname": "email_notifications",
+   "fieldtype": "Check",
+   "default": "1",
+   "label": "Enable Email Notifications"
+  },
+  {
+   "fieldname": "sms_notifications",
+   "fieldtype": "Check",
+   "default": "1",
+   "label": "Enable SMS Notifications"
+  },
+  {
+   "fieldname": "notification_sender_email",
+   "fieldtype": "Data",
+   "label": "Notification Sender Email"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Dereva Huduma Platform",
+ "name": "JiTesti Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "name",
+ "track_changes": 1
+}

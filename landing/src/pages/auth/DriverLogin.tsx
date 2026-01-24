@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useFrappeAuth } from 'frappe-react-sdk';
+import { useAuth } from '@/contexts/AuthContext';
 import { useOTP } from '@/hooks/useOTP';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,8 +28,8 @@ const DriverLogin = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   
-  // Use frappe-react-sdk directly
-  const { login: frappeLogin, updateCurrentUser } = useFrappeAuth();
+  // Use AuthContext which wraps frappe-react-sdk and manages state
+  const { login } = useAuth();
   const { sendOTP, verifyOTP, isLoading: otpLoading } = useOTP();
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -49,18 +49,23 @@ const DriverLogin = () => {
     try {
       console.log('[DriverLogin] Attempting login for:', email);
       
-      // Use frappe-react-sdk login directly
-      await frappeLogin({ username: email, password });
+      // Use AuthContext's login method which:
+      // 1. Calls frappe-react-sdk login
+      // 2. Updates currentUser state
+      // 3. Triggers profile fetch automatically
+      // 4. Updates roles in context
+      await login(email, password);
       
-      console.log('[DriverLogin] Login successful');
+      console.log('[DriverLogin] Login successful, navigating to dashboard...');
 
       toast({
         title: t('success'),
         description: t('Welcome back!'),
       });
 
-      // Reload to fetch boot info
-      window.location.replace('/dashboard');
+      // Use React Router navigation instead of window.location
+      // This preserves React state and allows AuthContext to work properly
+      navigate('/dashboard');
     } catch (error: any) {
       console.error('[DriverLogin] Login error:', error);
       
@@ -140,19 +145,17 @@ const DriverLogin = () => {
     try {
       console.log('[DriverLogin] Verifying OTP:', otp);
       
-      // Verify OTP (backend creates session)
+      // Verify OTP (backend creates session and updates auth state)
       await verifyOTP(phoneNumber, otp, 'login');
-      
-      // Update auth state
-      await updateCurrentUser();
       
       toast({
         title: t('success'),
         description: 'Login successful!',
       });
 
-      // Reload to fetch boot info
-      window.location.replace('/landing/dashboard');
+      // Use React Router navigation instead of window.location
+      // This preserves React state and allows AuthContext to work properly
+      navigate('/dashboard');
     } catch (error: any) {
       console.error('[DriverLogin] OTP verification error:', error);
       toast({

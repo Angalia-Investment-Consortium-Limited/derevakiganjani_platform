@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Bell, Globe, User, HelpCircle, LogOut, Clock } from 'lucide-react';
+import { Search, Plus, Bell, Globe, User, LogOut, Clock, Settings } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -20,13 +20,32 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CommandPalette } from './CommandPalette';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function AdminTopBar() {
-  const [language, setLanguage] = useState<'en' | 'sw'>('en');
   const [commandOpen, setCommandOpen] = useState(false);
   const navigate = useNavigate();
+  const { language, setLanguage, t } = useLanguage();
+  const { user, logout } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
+
+  const getUserInitials = () => {
+    if (!user?.full_name) return 'U';
+    const names = user.full_name.split(' ');
+    return names.map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
   const recentItems = [
     { title: 'Driver Profile: John Doe', href: '/admin/learners', time: '2 min ago' },
@@ -162,30 +181,35 @@ export function AdminTopBar() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <User className="w-5 h-5" />
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={user?.user_image} alt={user?.full_name} />
+                  <AvatarFallback>{getUserInitials()}</AvatarFallback>
+                </Avatar>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>
-                <div>
-                  <div className="font-semibold">Admin User</div>
-                  <div className="text-xs text-muted-foreground">admin@derevahaduma.go.tz</div>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user?.full_name}</p>
+                  <p className="text-xs leading-none text-muted-foreground">
+                    {user?.email}
+                  </p>
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="w-4 h-4 mr-2" />
-                Profile
+              <DropdownMenuItem onClick={() => navigate('/profile')}>
+                <User className="mr-2 h-4 w-4" />
+                {t('myProfile')}
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <HelpCircle className="w-4 h-4 mr-2" />
-                Help & Docs
+              <DropdownMenuItem onClick={() => navigate('/settings')}>
+                <Settings className="mr-2 h-4 w-4" />
+                Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                <LogOut className="mr-2 h-4 w-4" />
+                {t('logout')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

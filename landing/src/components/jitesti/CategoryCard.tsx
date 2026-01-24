@@ -18,7 +18,7 @@ export const CategoryCard = ({ category }: CategoryCardProps) => {
   const categoryDescription = language === 'sw' ? category.description_sw : category.description_en;
 
   const handleStartTest = () => {
-    navigate(`/jitesti/${category.category_code}`);
+    navigate(`/jitesti/payment/${category.category_code}`);
   };
 
   return (

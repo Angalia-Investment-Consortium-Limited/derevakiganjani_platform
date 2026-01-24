@@ -22,7 +22,7 @@ export const useOTP = (options?: UseOTPOptions) => {
     verified: false,
   });
 
-  // Use Beem OTP API endpoints
+  // Use Beem OTP API endpoints with proper frappe-react-sdk hooks
   const { call: sendOTPCall } = useFrappePostCall('derevahuduma_platform.api.beem_otp.request_otp');
   const { call: verifyOTPCall } = useFrappePostCall('derevahuduma_platform.api.beem_otp.verify_otp');
   const { call: resendOTPCall } = useFrappePostCall('derevahuduma_platform.api.beem_otp.resend_otp');
@@ -36,6 +36,11 @@ export const useOTP = (options?: UseOTPOptions) => {
         purpose,
       });
 
+      // Check if the API call was successful
+      if (result?.success === false) {
+        throw new Error(result.message || 'Failed to send OTP');
+      }
+
       // Store pin_id from Beem response
       setState((prev) => ({
         ...prev,
@@ -47,15 +52,47 @@ export const useOTP = (options?: UseOTPOptions) => {
 
       options?.onSuccess?.();
     } catch (error: any) {
-      const errorMessage = error?.message || 'Failed to send OTP';
+      // Extract the actual error message from Frappe error response
+      let errorMessage = 'Failed to send OTP';
+      
+      // Try to get message from _server_messages (Frappe format)
+      if (error?._server_messages) {
+        try {
+          const messages = JSON.parse(error._server_messages);
+          if (Array.isArray(messages) && messages.length > 0) {
+            const firstMessage = JSON.parse(messages[0]);
+            errorMessage = firstMessage.message || errorMessage;
+          }
+        } catch (e) {
+          // If parsing fails, fall back to other methods
+        }
+      }
+      
+      // Fallback to exception message
+      if (errorMessage === 'Failed to send OTP' && error?.exception) {
+        const match = error.exception.match(/ValidationError: (.+?)\\n/);
+        if (match && match[1]) {
+          errorMessage = match[1];
+        }
+      }
+      
+      // Final fallback to error.message
+      if (errorMessage === 'Failed to send OTP' && error?.message && error.message !== 'There was an error.') {
+        errorMessage = error.message;
+      }
+      
       setState((prev) => ({
         ...prev,
         isLoading: false,
         error: errorMessage,
       }));
 
-      options?.onError?.(error);
-      throw error;
+      // Create a new error with the extracted message
+      const enhancedError = new Error(errorMessage);
+      Object.assign(enhancedError, error);
+      
+      options?.onError?.(enhancedError);
+      throw enhancedError;
     }
   };
 
@@ -83,15 +120,47 @@ export const useOTP = (options?: UseOTPOptions) => {
       options?.onSuccess?.();
       return result;
     } catch (error: any) {
-      const errorMessage = error?.message || 'Invalid OTP';
+      // Extract the actual error message from Frappe error response
+      let errorMessage = 'Invalid OTP';
+      
+      // Try to get message from _server_messages (Frappe format)
+      if (error?._server_messages) {
+        try {
+          const messages = JSON.parse(error._server_messages);
+          if (Array.isArray(messages) && messages.length > 0) {
+            const firstMessage = JSON.parse(messages[0]);
+            errorMessage = firstMessage.message || errorMessage;
+          }
+        } catch (e) {
+          // If parsing fails, fall back to other methods
+        }
+      }
+      
+      // Fallback to exception message
+      if (errorMessage === 'Invalid OTP' && error?.exception) {
+        const match = error.exception.match(/ValidationError: (.+?)\\n/);
+        if (match && match[1]) {
+          errorMessage = match[1];
+        }
+      }
+      
+      // Final fallback to error.message
+      if (errorMessage === 'Invalid OTP' && error?.message && error.message !== 'There was an error.') {
+        errorMessage = error.message;
+      }
+      
       setState((prev) => ({
         ...prev,
         isLoading: false,
         error: errorMessage,
       }));
 
-      options?.onError?.(error);
-      throw error;
+      // Create a new error with the extracted message
+      const enhancedError = new Error(errorMessage);
+      Object.assign(enhancedError, error);
+      
+      options?.onError?.(enhancedError);
+      throw enhancedError;
     }
   };
 
@@ -112,15 +181,47 @@ export const useOTP = (options?: UseOTPOptions) => {
 
       options?.onSuccess?.();
     } catch (error: any) {
-      const errorMessage = error?.message || 'Failed to resend OTP';
+      // Extract the actual error message from Frappe error response
+      let errorMessage = 'Failed to resend OTP';
+      
+      // Try to get message from _server_messages (Frappe format)
+      if (error?._server_messages) {
+        try {
+          const messages = JSON.parse(error._server_messages);
+          if (Array.isArray(messages) && messages.length > 0) {
+            const firstMessage = JSON.parse(messages[0]);
+            errorMessage = firstMessage.message || errorMessage;
+          }
+        } catch (e) {
+          // If parsing fails, fall back to other methods
+        }
+      }
+      
+      // Fallback to exception message
+      if (errorMessage === 'Failed to resend OTP' && error?.exception) {
+        const match = error.exception.match(/ValidationError: (.+?)\\n/);
+        if (match && match[1]) {
+          errorMessage = match[1];
+        }
+      }
+      
+      // Final fallback to error.message
+      if (errorMessage === 'Failed to resend OTP' && error?.message && error.message !== 'There was an error.') {
+        errorMessage = error.message;
+      }
+      
       setState((prev) => ({
         ...prev,
         isLoading: false,
         error: errorMessage,
       }));
 
-      options?.onError?.(error);
-      throw error;
+      // Create a new error with the extracted message
+      const enhancedError = new Error(errorMessage);
+      Object.assign(enhancedError, error);
+      
+      options?.onError?.(enhancedError);
+      throw enhancedError;
     }
   };
 

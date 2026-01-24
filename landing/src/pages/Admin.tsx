@@ -75,6 +75,13 @@ const Admin = () => {
       iconColor: 'text-teal-500'
     },
     {
+      icon: Users,
+      title: 'Employer Verification',
+      description: 'Review and verify employer registrations',
+      href: '/admin/employer-verification',
+      iconColor: 'text-emerald-500'
+    },
+    {
       icon: Wallet,
       title: 'Payments & Finance',
       description: 'Confirm payments and view revenue',

@@ -320,13 +320,13 @@ def create_payment(category_code, payment_method, reference_number, payment_proo
         category = frappe.get_doc('Test Category', {'category_code': category_code})
         
         # Check for duplicate reference number
-        existing = frappe.db.exists('Test Payment', {'reference_number': reference_number})
+        existing = frappe.db.exists('JiTesti Payment', {'reference_number': reference_number})
         if existing:
             frappe.throw(_('Payment reference number already exists'))
         
         # Create payment record
         payment = frappe.get_doc({
-            'doctype': 'Test Payment',
+            'doctype': 'JiTesti Payment',
             'driver': driver_profile,
             'category': category.name,
             'amount': category.price,
@@ -368,11 +368,11 @@ def get_payment_status(payment_id):
         Payment status details
     """
     try:
-        payment = frappe.get_doc('Test Payment', payment_id)
+        payment = frappe.get_doc('JiTesti Payment', payment_id)
         
         # Check if user owns this payment
         driver_profile = frappe.get_value('Driver Profile', {'user': frappe.session.user}, 'name')
-        if payment.driver != driver_profile and not frappe.has_permission('Test Payment', 'read'):
+        if payment.driver != driver_profile and not frappe.has_permission('JiTesti Payment', 'read'):
             frappe.throw(_('You do not have permission to view this payment'))
         
         return {
@@ -406,7 +406,7 @@ def verify_payment(payment_id, status, notes=None):
     
     Args:
         payment_id: Payment document name
-        status: Verified or Rejected
+        status: Completed or Rejected
         notes: Optional verification notes
         
     Returns:
@@ -414,10 +414,10 @@ def verify_payment(payment_id, status, notes=None):
     """
     try:
         # Check permission
-        if not frappe.has_permission('Test Payment', 'write'):
+        if not frappe.has_permission('JiTesti Payment', 'write'):
             frappe.throw(_('You do not have permission to verify payments'))
         
-        payment = frappe.get_doc('Test Payment', payment_id)
+        payment = frappe.get_doc('JiTesti Payment', payment_id)
         payment.status = status
         payment.verified_by = frappe.session.user
         payment.verified_on = now_datetime()
@@ -452,11 +452,11 @@ def get_pending_payments():
     """
     try:
         # Check permission
-        if not frappe.has_permission('Test Payment', 'read'):
+        if not frappe.has_permission('JiTesti Payment', 'read'):
             frappe.throw(_('You do not have permission to view payments'))
         
         payments = frappe.get_all(
-            'Test Payment',
+            'JiTesti Payment',
             filters={'status': 'Pending'},
             fields=[
                 'name', 'driver', 'category', 'amount',
@@ -505,12 +505,12 @@ def start_test(category_code, payment_ref):
             frappe.throw(_('Driver profile not found'))
         
         # Verify payment
-        payment = frappe.get_doc('Test Payment', {
+        payment = frappe.get_doc('JiTesti Payment', {
             'reference_number': payment_ref,
             'driver': driver_profile
         })
         
-        if payment.status != 'Verified':
+        if payment.status != 'Completed':
             frappe.throw(_('Payment not verified. Please wait for admin approval.'))
         
         # Get category

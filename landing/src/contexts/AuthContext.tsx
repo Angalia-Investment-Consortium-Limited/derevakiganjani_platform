@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
-import { useFrappeAuth, useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk';
+import { useFrappeAuth, useFrappeGetCall, useFrappePostCall, useFrappeGetDocList } from 'frappe-react-sdk';
 import type { 
   User, 
   UserRole,
@@ -86,6 +86,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return profileResponse.message || profileResponse;
   }, [profileResponse]);
 
+  // Fetch specific profile based on user type
+  const { data: employerProfileData, error: employerProfileError, isLoading: employerProfileLoading } = useFrappeGetDocList<any>('Employer Profile', {
+    fields: ['name', 'user', 'company_name', 'contact_person', 'verified', 'verification_status', 'full_name', 'phone_number', 'email'],
+    filters: [['user', '=', currentUser || '']],
+    limit: 1
+  }, currentUser ? `employer_profile_${currentUser}` : null);
+
   // API calls for registration and profile updates
   const { call: registerCall } = useFrappePostCall('derevahuduma_platform.api.auth.register');
   const { call: updateProfileCall } = useFrappePostCall('derevahuduma_platform.api.auth.update_profile');
@@ -150,10 +157,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const profile = useMemo<DriverProfile | EmployerProfile | AdminProfile | null>(() => {
     if (!profileData) return null;
-    
-    // The profile data comes from the User doctype
-    // We need to fetch the actual profile based on user type
-    // For now, return basic profile info from User doc
+
+    // Check user roles to determine profile type
+    const roles = profileData.roles || [];
+    const isEmployer = roles.includes('Employer');
+
+    if (isEmployer && employerProfileData && employerProfileData.length > 0) {
+      // Return EmployerProfile data
+      const empProfile = employerProfileData[0];
+      return {
+        name: empProfile.name,
+        user: empProfile.user,
+        company_name: empProfile.company_name,
+        contact_person: empProfile.contact_person,
+        verified: empProfile.verified,
+        verification_status: empProfile.verification_status,
+        full_name: empProfile.full_name || profileData.full_name || profileData.name || '',
+        phone_number: empProfile.phone_number || profileData.mobile_no || '',
+        email: empProfile.email || profileData.email,
+      } as EmployerProfile;
+    }
+
+    // For other user types or fallback, return basic profile info from User doc
     return {
       name: profileData.name,
       user: currentUser || '',
@@ -161,7 +186,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       phone_number: profileData.mobile_no || '',
       email: profileData.email,
     } as any; // Type assertion since we're returning partial data
-  }, [profileData, currentUser]);
+  }, [profileData, currentUser, employerProfileData]);
 
   // Enhanced login function
   const login = async (username: string, password: string) => {

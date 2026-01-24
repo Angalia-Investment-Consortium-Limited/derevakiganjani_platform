@@ -8,7 +8,7 @@
  "engine": "InnoDB",
  "field_order": [
   "user",
-  "application_type",
+  "type",
   "full_name",
   "phone_number",
   "email",
@@ -22,10 +22,13 @@
   "documents",
   "section_break_14",
   "status",
+  "payment_status",
+  "ref_no",
   "submission_date",
   "column_break_17",
   "review_date",
   "reviewer",
+  "admin_comment",
   "section_break_20",
   "reviewer_notes"
  ],
@@ -39,12 +42,12 @@
    "reqd": 1
   },
   {
-   "fieldname": "application_type",
+   "fieldname": "type",
    "fieldtype": "Select",
    "in_list_view": 1,
    "in_standard_filter": 1,
-   "label": "Application Type",
-   "options": "New License\nLicense Renewal\nLATRA Exam",
+   "label": "Type",
+   "options": "new\nrenew\nlatra",
    "reqd": 1
   },
   {
@@ -90,14 +93,14 @@
    "reqd": 1
   },
   {
-   "depends_on": "eval:doc.application_type=='LATRA Exam'",
+   "depends_on": "eval:doc.type=='latra'",
    "fieldname": "latra_type",
    "fieldtype": "Select",
    "label": "LATRA Type",
    "options": "\nPSV\nHGV"
   },
   {
-   "depends_on": "eval:doc.application_type=='License Renewal'",
+   "depends_on": "eval:doc.type=='renew'",
    "fieldname": "current_license_number",
    "fieldtype": "Data",
    "label": "Current License Number"
@@ -129,6 +132,21 @@
    "reqd": 1
   },
   {
+   "default": "Unpaid",
+   "fieldname": "payment_status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Payment Status",
+   "options": "Unpaid\nPaid\nFailed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "ref_no",
+   "fieldtype": "Data",
+   "label": "Reference Number",
+   "read_only": 1
+  },
+  {
    "default": "Now",
    "fieldname": "submission_date",
    "fieldtype": "Datetime",
@@ -151,6 +169,11 @@
    "label": "Reviewer",
    "options": "User",
    "read_only": 1
+  },
+  {
+   "fieldname": "admin_comment",
+   "fieldtype": "Text Editor",
+   "label": "Admin Comment"
   },
   {
    "fieldname": "section_break_20",

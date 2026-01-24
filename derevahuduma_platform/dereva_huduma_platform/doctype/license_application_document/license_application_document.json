@@ -5,12 +5,19 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "parent",
   "document_type",
   "file_url",
   "file_name",
   "upload_date"
  ],
  "fields": [
+  {
+   "fieldname": "parent",
+   "fieldtype": "Data",
+   "label": "Parent",
+   "read_only": 1
+  },
   {
    "fieldname": "document_type",
    "fieldtype": "Select",

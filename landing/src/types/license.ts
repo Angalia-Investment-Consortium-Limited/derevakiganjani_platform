@@ -14,12 +14,19 @@ export type LicenseCategory = 'A' | 'B' | 'C' | 'D' | 'E';
 export type LatraType = 'PSV' | 'HGV';
 
 // Application Status
-export type ApplicationStatus = 
-  | 'Pending' 
-  | 'Under Review' 
-  | 'Approved' 
-  | 'Rejected' 
+export type ApplicationStatus =
+  | 'Pending Payment'
+  | 'Pending'
+  | 'Under Review'
+  | 'Approved'
+  | 'Rejected'
   | 'Completed';
+
+// Payment Status
+export type PaymentStatus =
+  | 'Unpaid'
+  | 'Paid'
+  | 'Failed';
 
 // Document Types
 export type DocumentType = 
@@ -60,6 +67,9 @@ export interface LicenseApplication {
   latra_type?: LatraType;
   current_license_number?: string;
   status: ApplicationStatus;
+  payment_status?: PaymentStatus;
+  ref_no?: string;
+  admin_comment?: string;
   submission_date: string;
   review_date?: string;
   reviewer?: string;
@@ -245,6 +255,7 @@ export const APPLICATION_TYPES = {
 
 // Status Colors
 export const STATUS_COLORS: Record<ApplicationStatus, string> = {
+  'Pending Payment': 'bg-orange-100 text-orange-800 border-orange-200',
   'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   'Under Review': 'bg-blue-100 text-blue-800 border-blue-200',
   'Approved': 'bg-green-100 text-green-800 border-green-200',
@@ -254,6 +265,7 @@ export const STATUS_COLORS: Record<ApplicationStatus, string> = {
 
 // Status Translations
 export const STATUS_TRANSLATIONS: Record<ApplicationStatus, string> = {
+  'Pending Payment': 'Inasubiri Malipo',
   'Pending': 'Inasubiri',
   'Under Review': 'Inakaguliwa',
   'Approved': 'Imeidhinishwa',

@@ -378,11 +378,11 @@ const LicenseRequest = () => {
                 <div className="flex flex-wrap justify-center gap-4 text-sm">
                   <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg">
                     <span className="text-2xl">📞</span>
-                    <span className="font-medium">+255 XXX XXX XXX</span>
+                    <span className="font-medium">+255 748 467 348</span>
                   </div>
                   <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg">
                     <span className="text-2xl">✉️</span>
-                    <span className="font-medium">support@example.com</span>
+                    <span className="font-medium">support@mdvfleet.co.tz</span>
                   </div>
                   <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg">
                     <span className="text-2xl">🕐</span>

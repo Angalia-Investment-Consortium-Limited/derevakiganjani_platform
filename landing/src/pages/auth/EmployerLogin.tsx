@@ -25,9 +25,8 @@ const EmployerLogin = () => {
   const { toast } = useToast();
   const { t } = useLanguage();
   
-  // Use frappe-react-sdk directly
-  const { login: frappeLogin } = useFrappeAuth();
-  const { profile } = useAuth();
+  // Use AuthContext which wraps frappe-react-sdk and manages state
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,19 +44,24 @@ const EmployerLogin = () => {
 
     try {
       console.log('[EmployerLogin] Attempting login for:', email);
-      
-      // Use frappe-react-sdk login directly
-      await frappeLogin({ username: email, password });
-      
-      console.log('[EmployerLogin] Login successful');
+
+      // Use AuthContext's login method which:
+      // 1. Calls frappe-react-sdk login
+      // 2. Updates currentUser state
+      // 3. Triggers profile fetch automatically
+      // 4. Updates roles in context
+      await login(email, password);
+
+      console.log('[EmployerLogin] Login successful, navigating to employer dashboard...');
 
       toast({
         title: t('success'),
         description: t('Welcome back!'),
       });
 
-      // Reload to fetch boot info and profile
-      window.location.replace('/employer/dashboard');
+      // Use React Router navigation instead of window.location
+      // This preserves React state and allows AuthContext to work properly
+      navigate('/employer/dashboard');
     } catch (error: any) {
       console.error('[EmployerLogin] Login error:', error);
       
@@ -161,7 +165,7 @@ const EmployerLogin = () => {
                 <div className="mt-6 space-y-3">
                   <div className="text-center text-sm">
                     <span className="text-muted-foreground">Don't have an account? </span>
-                    <Link to="/ajiri-dereva/register" className="text-primary hover:underline font-medium">
+                    <Link to="/register" className="text-primary hover:underline font-medium">
                       Register as Employer
                     </Link>
                   </div>

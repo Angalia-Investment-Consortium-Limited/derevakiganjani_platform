@@ -1,170 +1,127 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useToast } from '@/hooks/use-toast';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { ArrowLeft } from 'lucide-react';
-import { useFrappePostCall } from 'frappe-react-sdk';
-import  derevaLogo from '../../assets/logo.png';
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import type { FrappeError } from "frappe-react-sdk";
+import { useFrappePostCall } from "frappe-react-sdk";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/contexts/LanguageContext";
+import derevaLogo from "../../assets/logo.png";
+
+interface ForgotPasswordInput {
+    user: string;
+}
 
 const ForgotPassword = () => {
-  const [phoneOrEmail, setPhoneOrEmail] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const { t } = useLanguage();
-  const navigate = useNavigate();
-  
-  const { call: requestReset } = useFrappePostCall('derevahuduma_platform.api.auth.request_password_reset');
+    const { t } = useLanguage();
+    const {
+        register,
+        handleSubmit,
+        formState: { errors, isSubmitting },
+    } = useForm<ForgotPasswordInput>();
+    const [callout, setCallout] = useState<{ state: boolean; message: string } | null>(null);
+    const { toast } = useToast();
 
-  const handleSendOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
+    // POST Call to send reset password instructions on email
+    const { call, error } = useFrappePostCall('frappe.core.doctype.user.user.reset_password');
 
-    if (!phoneOrEmail) {
-      toast({
-        title: t('error'),
-        description: 'Please enter your phone number or email',
-        variant: 'destructive',
-      });
-      return;
+    async function resetPassword(values: ForgotPasswordInput) {
+        return call({
+            user: values.user,
+        })
+            .then((res) => {
+                setCallout({
+                    state: true,
+                    message: "Password reset instructions have been sent to your email.",
+                });
+                toast({
+                    title: t('success'),
+                    description: "Password reset instructions have been sent to your email.",
+                });
+            }).catch((err) => {
+                setCallout(null);
+                toast({
+                    title: t('error'),
+                    description: "Failed to send reset instructions. Please try again.",
+                    variant: 'destructive',
+                });
+            });
     }
 
-    setIsLoading(true);
+    // TO-DO: To be removed once ErrorBanner/ ErrorCallout is fixed.
+    const generateErrorMessage = (error: FrappeError) => {
+        if (error.exc_type === "ValidationError") return 'Too many requests. Please try after some time.';
+        return 'User does not exist. Please Sign Up.';
+    };
 
-    try {
-      const result = await requestReset({ user: phoneOrEmail });
-      
-      setOtpSent(true);
-      toast({
-        title: t('success'),
-        description: 'Password reset OTP has been sent to your phone. Please check your messages.',
-      });
-      
-      // Redirect to reset password page after 2 seconds
-      setTimeout(() => {
-        navigate('/auth/reset', { 
-          state: { 
-            mobile_no: result?.mobile_no || phoneOrEmail 
-          } 
-        });
-      }, 2000);
-    } catch (error: any) {
-      // Parse error message
-      let errorMessage = 'Failed to send reset OTP. Please try again.';
-      
-      if (error.message) {
-        const msg = error.message.toLowerCase();
-        
-        if (msg.includes('user not found') || msg.includes('does not exist')) {
-          errorMessage = 'No account found with this phone number or email. Please check and try again.';
-        } else if (msg.includes('no mobile number')) {
-          errorMessage = 'No mobile number associated with this account. Please contact support.';
-        } else if (msg.includes('network') || msg.includes('connection')) {
-          errorMessage = 'Network error. Please check your internet connection and try again.';
-        } else {
-          errorMessage = error.message;
-        }
-      }
-      
-      toast({
-        title: t('error'),
-        description: errorMessage,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
+            <Card className="w-full max-w-md">
+                <CardHeader className="space-y-4">
+                    <div className="flex justify-center">
+                        <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
+                    </div>
+                    <CardTitle className="text-2xl text-center">{t('forgotPassword')}</CardTitle>
+                    <CardDescription className="text-center">
+                        Enter your email address to receive password reset instructions
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {error && (
+                        <div className="p-4 mb-4 bg-destructive/10 border border-destructive/20 rounded-lg text-sm text-destructive">
+                            {generateErrorMessage(error)}
+                        </div>
+                    )}
+                    {callout && callout.state && (
+                        <div className="p-4 mb-4 bg-green-50 border border-green-200 rounded-lg text-sm text-green-800">
+                            {callout.message}
+                        </div>
+                    )}
 
-  const handleResend = () => {
-    setOtpSent(false);
-    setPhoneOrEmail('');
-  };
+                    <form onSubmit={handleSubmit(resetPassword)} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="user">
+                                Email <span className="text-destructive">*</span>
+                            </Label>
+                            <Input
+                                {...register("user", {
+                                    required: "Email is required.",
+                                    pattern: {
+                                        value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                                        message: "Please enter a valid email address.",
+                                    },
+                                })}
+                                name="user"
+                                type="email"
+                                placeholder="jane@example.com"
+                                disabled={isSubmitting}
+                                autoFocus
+                            />
+                            {errors?.user && (
+                                <p className="text-sm text-destructive">{errors.user.message}</p>
+                            )}
+                        </div>
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/20 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4">
-          <div className="flex justify-center">
-            <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
-          </div>
-          <CardTitle className="text-2xl text-center">{t('forgotPassword')}</CardTitle>
-          <CardDescription className="text-center">
-            {otpSent 
-              ? 'OTP sent! Redirecting to reset password page...' 
-              : 'Enter your phone number or email to receive a password reset OTP'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!otpSent ? (
-            <form onSubmit={handleSendOtp} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="contact">Phone Number or Email</Label>
-                <Input
-                  id="contact"
-                  value={phoneOrEmail}
-                  onChange={(e) => setPhoneOrEmail(e.target.value)}
-                  placeholder="+255 712 345 678 or email@example.com"
-                  required
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Enter the phone number or email associated with your account
-                </p>
-              </div>
+                        <Button type="submit" className="w-full" disabled={isSubmitting}>
+                            {isSubmitting ? 'Sending...' : 'Reset Password'}
+                        </Button>
 
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Sending OTP...' : 'Send Reset OTP'}
-              </Button>
-
-              <div className="text-center text-sm space-y-2">
-                <Link
-                  to="/ingia"
-                  className="text-muted-foreground hover:text-primary inline-flex items-center gap-1"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  {t('backToLogin')}
-                </Link>
-              </div>
-            </form>
-          ) : (
-            <div className="space-y-4">
-              <div className="p-4 bg-muted rounded-lg text-sm text-center space-y-2">
-                <p className="text-muted-foreground">
-                  A password reset OTP has been sent to your phone number via SMS.
-                </p>
-                <p className="text-muted-foreground">
-                  You will be redirected to the reset password page shortly.
-                </p>
-              </div>
-
-              <Button 
-                variant="outline" 
-                className="w-full" 
-                onClick={handleResend}
-                disabled={isLoading}
-              >
-                Try Different Number
-              </Button>
-
-              <div className="text-center text-sm">
-                <Link
-                  to="/ingia"
-                  className="text-muted-foreground hover:text-primary inline-flex items-center gap-1"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  {t('backToLogin')}
-                </Link>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+                        <div className="text-center text-sm">
+                            <Link
+                                to="/ingia"
+                                className="text-muted-foreground hover:text-primary"
+                            >
+                                {t('backToLogin')}
+                            </Link>
+                        </div>
+                    </form>
+                </CardContent>
+            </Card>
+        </div>
+    );
 };
 
 export default ForgotPassword;

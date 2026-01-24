@@ -85,7 +85,10 @@ import ApplicationDetails from "./pages/license/ApplicationDetails";
 import LicenseApplicationsManagement from "./pages/admin/LicenseApplicationsManagement";
 import LicenseApplicationReview from "./pages/admin/LicenseApplicationReview";
 import LicenseStatistics from "./pages/admin/LicenseStatistics";
+import EmployerVerificationManagement from "./pages/admin/EmployerVerificationManagement";
 import TestCategories from "./pages/jitesti/TestCategories";
+import PaymentPage from "./pages/jitesti/PaymentPage";
+import TestTaking from "./pages/jitesti/TestTaking";
 import WhatsAppPrivacyPolicy from "./pages/WhatsAppPrivacyPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 
@@ -442,6 +445,16 @@ const App = () => (
                 <TestCategories />
               </ProtectedRoute>
             } />
+            <Route path="/jitesti/payment/:categoryCode" element={
+              <ProtectedRoute>
+                <PaymentPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/jitesti/test/:categoryCode" element={
+              <ProtectedRoute>
+                <TestTaking />
+              </ProtectedRoute>
+            } />
             
             {/* License Management Routes */}
             <Route path="/license" element={<LicenseDashboard />} />
@@ -481,7 +494,12 @@ const App = () => (
                 <LicenseStatistics />
               </RoleBasedRoute>
             } />
-            
+            <Route path="/admin/employer-verification" element={
+              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+                <EmployerVerificationManagement />
+              </RoleBasedRoute>
+            } />
+
             {/* Privacy Policy Routes */}
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/privacy-policy/whatsapp" element={<WhatsAppPrivacyPolicy />} />

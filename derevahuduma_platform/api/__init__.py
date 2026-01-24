@@ -10,4 +10,5 @@ from . import sms
 from . import jitesti
 from . import admin
 
-__all__ = ['auth', 'otp', 'sms', 'jitesti', 'admin']
+__all__ = ['auth', 'otp', 'sms', 'jitesti', 'admin', 'selcom']
+from . import selcom

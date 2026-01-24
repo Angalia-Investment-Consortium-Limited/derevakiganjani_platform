@@ -1,67 +1,68 @@
 {
-  "_chart-vendor-DcZu8PHa.js": {
-    "file": "assets/chart-vendor-DcZu8PHa.js",
+  "_chart-vendor-Eax0Zf7T.js": {
+    "file": "assets/chart-vendor-Eax0Zf7T.js",
     "name": "chart-vendor",
     "imports": [
-      "_react-vendor-ChyfegPF.js"
+      "_react-vendor-E3G7MFe5.js"
     ]
   },
-  "_form-vendor-DUiEGwMO.js": {
-    "file": "assets/form-vendor-DUiEGwMO.js",
+  "_form-vendor-B3d7gFvB.js": {
+    "file": "assets/form-vendor-B3d7gFvB.js",
     "name": "form-vendor",
     "imports": [
-      "_react-vendor-ChyfegPF.js"
+      "_react-vendor-E3G7MFe5.js"
     ]
   },
-  "_frappe-vendor-DaGeQbGI.js": {
-    "file": "assets/frappe-vendor-DaGeQbGI.js",
+  "_frappe-vendor-0rafjdlS.js": {
+    "file": "assets/frappe-vendor-0rafjdlS.js",
     "name": "frappe-vendor",
     "imports": [
-      "_ui-vendor-CrCWfpD2.js",
-      "_react-vendor-ChyfegPF.js"
+      "_ui-vendor-Db9g0Uoe.js",
+      "_react-vendor-E3G7MFe5.js"
     ]
   },
-  "_icons-vendor-BSGvuiF2.js": {
-    "file": "assets/icons-vendor-BSGvuiF2.js",
+  "_icons-vendor-CKF0gJGJ.js": {
+    "file": "assets/icons-vendor-CKF0gJGJ.js",
     "name": "icons-vendor",
     "imports": [
-      "_react-vendor-ChyfegPF.js"
+      "_react-vendor-E3G7MFe5.js"
     ]
   },
-  "_query-vendor-CxaHdPpK.js": {
-    "file": "assets/query-vendor-CxaHdPpK.js",
+  "_query-vendor-BxKxMCxY.js": {
+    "file": "assets/query-vendor-BxKxMCxY.js",
     "name": "query-vendor",
     "imports": [
-      "_react-vendor-ChyfegPF.js",
-      "_ui-vendor-CrCWfpD2.js"
+      "_react-vendor-E3G7MFe5.js",
+      "_ui-vendor-Db9g0Uoe.js"
     ]
   },
-  "_react-vendor-ChyfegPF.js": {
-    "file": "assets/react-vendor-ChyfegPF.js",
+  "_react-vendor-E3G7MFe5.js": {
+    "file": "assets/react-vendor-E3G7MFe5.js",
     "name": "react-vendor"
   },
-  "_ui-vendor-CrCWfpD2.js": {
-    "file": "assets/ui-vendor-CrCWfpD2.js",
+  "_ui-vendor-Db9g0Uoe.js": {
+    "file": "assets/ui-vendor-Db9g0Uoe.js",
     "name": "ui-vendor",
     "imports": [
-      "_react-vendor-ChyfegPF.js"
+      "_react-vendor-E3G7MFe5.js"
     ]
   },
   "index.html": {
-    "file": "assets/main-D1kDhTKi.js",
+    "file": "assets/main-C5Zw31oM.js",
     "name": "main",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_ui-vendor-CrCWfpD2.js",
-      "_react-vendor-ChyfegPF.js",
-      "_chart-vendor-DcZu8PHa.js",
-      "_icons-vendor-BSGvuiF2.js",
-      "_query-vendor-CxaHdPpK.js",
-      "_frappe-vendor-DaGeQbGI.js"
+      "_ui-vendor-Db9g0Uoe.js",
+      "_react-vendor-E3G7MFe5.js",
+      "_chart-vendor-Eax0Zf7T.js",
+      "_icons-vendor-CKF0gJGJ.js",
+      "_query-vendor-BxKxMCxY.js",
+      "_frappe-vendor-0rafjdlS.js",
+      "_form-vendor-B3d7gFvB.js"
     ],
     "css": [
-      "assets/main-BsMzcIgz.css"
+      "assets/main-Cj1gpxlv.css"
     ],
     "assets": [
       "assets/logo-DQrYtaup.png",

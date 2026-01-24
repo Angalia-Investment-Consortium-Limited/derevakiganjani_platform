@@ -141,7 +141,13 @@ export function useApplicationStatus(refNo: string | null) {
 export function useAllApplications(filter?: ApplicationFilter) {
   const { data, error, isLoading, mutate } = useFrappeGetCall<GetApplicationsResponse>(
     'derevahuduma_platform.api.license.get_all_applications',
-    filter,
+    filter ? {
+      status: filter.status,
+      application_type: filter.application_type,
+      search: filter.search,
+      limit: filter.limit || 20,
+      offset: filter.offset || 0
+    } : undefined,
     'all-applications',
     {
       revalidateOnFocus: true
@@ -436,4 +442,91 @@ export function useCopyToClipboard() {
   }, []);
 
   return { copy, copied };
+}
+
+/**
+ * Hook to initiate license payment
+ */
+export function useInitiateLicensePayment() {
+  const { call, loading, error, reset } = useFrappePostCall(
+    'derevahuduma_platform.api.license.initiate_license_payment'
+  );
+
+  const initiatePayment = useCallback(
+    async (applicationName: string) => {
+      try {
+        const result = await call({ application_name: applicationName });
+        return result;
+      } catch (err) {
+        console.error('Error initiating payment:', err);
+        throw err;
+      }
+    },
+    [call]
+  );
+
+  return {
+    initiatePayment,
+    isInitiating: loading,
+    error,
+    reset
+  };
+}
+
+/**
+ * Hook to verify license payment
+ */
+export function useVerifyLicensePayment() {
+  const { call, loading, error, reset } = useFrappePostCall(
+    'derevahuduma_platform.api.license.verify_license_payment'
+  );
+
+  const verifyPayment = useCallback(
+    async (transactionId: string) => {
+      try {
+        const result = await call({ transaction_id: transactionId });
+        return result;
+      } catch (err) {
+        console.error('Error verifying payment:', err);
+        throw err;
+      }
+    },
+    [call]
+  );
+
+  return {
+    verifyPayment,
+    isVerifying: loading,
+    error,
+    reset
+  };
+}
+
+/**
+ * Hook to handle license payment webhook
+ */
+export function useLicensePaymentWebhook() {
+  const { call, loading, error, reset } = useFrappePostCall(
+    'derevahuduma_platform.api.license.license_payment_webhook'
+  );
+
+  const handleWebhook = useCallback(
+    async (webhookData: any) => {
+      try {
+        const result = await call(webhookData);
+        return result;
+      } catch (err) {
+        console.error('Error handling webhook:', err);
+        throw err;
+      }
+    },
+    [call]
+  );
+
+  return {
+    handleWebhook,
+    isProcessing: loading,
+    error,
+    reset
+  };
 }

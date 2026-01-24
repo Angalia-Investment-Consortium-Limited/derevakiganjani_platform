@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  FileText, 
-  Search, 
-  Filter, 
-  Eye, 
+import {
+  FileText,
+  Search,
+  Filter,
+  Eye,
   Download,
   RefreshCw,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,8 +32,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAllApplications, useApplicationStatistics } from '@/hooks/useLicense';
+import { useAllApplications, useApplicationStatistics, useUpdateApplicationStatus } from '@/hooks/useLicense';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useToast } from '@/hooks/use-toast';
 import { STATUS_TRANSLATIONS, APPLICATION_TYPES, STATUS_COLORS } from '@/types/license';
 import type { ApplicationStatus, ApplicationType, ApplicationFilter } from '@/types/license';
 
@@ -40,9 +43,14 @@ export default function LicenseApplicationsManagement() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<ApplicationFilter>({});
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<string>('');
+  const [showBulkActions, setShowBulkActions] = useState(false);
   
   const { applications, total, isLoading, error, refetch } = useAllApplications(filter);
   const { statistics, isLoading: statsLoading } = useApplicationStatistics();
+  const { updateStatus } = useUpdateApplicationStatus();
+  const { toast } = useToast();
 
   const handleStatusFilter = (status: string) => {
     if (status === 'all') {
@@ -108,6 +116,62 @@ export default function LicenseApplicationsManagement() {
     a.download = `license-applications-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedApplications(applications?.map(app => app.name) || []);
+    } else {
+      setSelectedApplications([]);
+    }
+  };
+
+  const handleSelectApplication = (applicationId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedApplications(prev => [...prev, applicationId]);
+    } else {
+      setSelectedApplications(prev => prev.filter(id => id !== applicationId));
+    }
+  };
+
+  const handleBulkStatusUpdate = async () => {
+    if (!bulkStatus || selectedApplications.length === 0) return;
+
+    try {
+      const promises = selectedApplications.map(id =>
+        updateStatus(id, bulkStatus, 'Bulk status update')
+      );
+
+      await Promise.all(promises);
+
+      toast({
+        title: language === 'sw' ? 'Imefanikiwa' : 'Success',
+        description: language === 'sw'
+          ? `Hali ya maombi ${selectedApplications.length} imesasishwa`
+          : `Status updated for ${selectedApplications.length} applications`,
+      });
+
+      setSelectedApplications([]);
+      setBulkStatus('');
+      setShowBulkActions(false);
+      refetch();
+    } catch (err) {
+      toast({
+        title: language === 'sw' ? 'Hitilafu' : 'Error',
+        description: language === 'sw'
+          ? 'Imeshindwa kusasisha hali ya maombi'
+          : 'Failed to update application statuses',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const toggleBulkActions = () => {
+    setShowBulkActions(!showBulkActions);
+    if (!showBulkActions) {
+      setSelectedApplications([]);
+      setBulkStatus('');
+    }
   };
 
   return (
@@ -278,6 +342,50 @@ export default function LicenseApplicationsManagement() {
         </CardContent>
       </Card>
 
+      {/* Bulk Actions */}
+      {selectedApplications.length > 0 && (
+        <Card className="mb-6 border-primary">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CheckSquare className="h-5 w-5" />
+              {language === 'sw' ? 'Vitendo vya Wingi' : 'Bulk Actions'} ({selectedApplications.length} selected)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <Select value={bulkStatus} onValueChange={setBulkStatus}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder={language === 'sw' ? 'Chagua hali' : 'Select status'} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pending">
+                    {language === 'sw' ? STATUS_TRANSLATIONS['Pending'] : 'Pending'}
+                  </SelectItem>
+                  <SelectItem value="Under Review">
+                    {language === 'sw' ? STATUS_TRANSLATIONS['Under Review'] : 'Under Review'}
+                  </SelectItem>
+                  <SelectItem value="Approved">
+                    {language === 'sw' ? STATUS_TRANSLATIONS['Approved'] : 'Approved'}
+                  </SelectItem>
+                  <SelectItem value="Rejected">
+                    {language === 'sw' ? STATUS_TRANSLATIONS['Rejected'] : 'Rejected'}
+                  </SelectItem>
+                  <SelectItem value="Completed">
+                    {language === 'sw' ? STATUS_TRANSLATIONS['Completed'] : 'Completed'}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              <Button onClick={handleBulkStatusUpdate} disabled={!bulkStatus}>
+                {language === 'sw' ? 'Sasisha' : 'Update'}
+              </Button>
+              <Button variant="outline" onClick={() => setSelectedApplications([])}>
+                {language === 'sw' ? 'Futa uteuzi' : 'Clear Selection'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Applications Table */}
       <Card>
         <CardHeader>
@@ -316,6 +424,14 @@ export default function LicenseApplicationsManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <input
+                        type="checkbox"
+                        checked={selectedApplications.length === applications?.length && applications?.length > 0}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="rounded"
+                      />
+                    </TableHead>
                     <TableHead>{language === 'sw' ? 'Rejea' : 'Reference'}</TableHead>
                     <TableHead>{language === 'sw' ? 'Aina' : 'Type'}</TableHead>
                     <TableHead>{language === 'sw' ? 'Jina' : 'Name'}</TableHead>
@@ -329,6 +445,14 @@ export default function LicenseApplicationsManagement() {
                 <TableBody>
                   {applications.map((application) => (
                     <TableRow key={application.name}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedApplications.includes(application.name)}
+                          onChange={(e) => handleSelectApplication(application.name, e.target.checked)}
+                          className="rounded"
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-sm">{application.name}</TableCell>
                       <TableCell>
                         <span className="text-sm">

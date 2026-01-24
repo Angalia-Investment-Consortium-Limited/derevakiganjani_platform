@@ -47,7 +47,8 @@ const navigationGroups = [
     items: [
       { title: 'All Users', icon: Users, href: '/admin/users', badge: null },
       { title: 'Drivers', icon: Users, href: '/admin/learners', badge: null },
-      { title: 'Employers', icon: Building2, href: '/admin/users/employers', badge: null }
+      { title: 'Employers', icon: Building2, href: '/admin/users/employers', badge: null },
+      { title: 'Employer Verification', icon: Shield, href: '/admin/employer-verification', badge: null }
     ]
   },
   {

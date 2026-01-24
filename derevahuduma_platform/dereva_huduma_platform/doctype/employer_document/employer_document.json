@@ -1,0 +1,76 @@
+{
+  "doctype": "DocType",
+  "name": "Employer Document",
+  "module": "Dereva Huduma Platform",
+  "custom": 0,
+  "fields": [
+    {
+      "fieldname": "employer",
+      "fieldtype": "Link",
+      "options": "Employer Profile",
+      "reqd": 1,
+      "label": "Employer"
+    },
+    {
+      "fieldname": "document_type",
+      "fieldtype": "Select",
+      "options": "Business Registration\nTax Certificate\nCompany License\nBRELA Certificate",
+      "reqd": 1,
+      "label": "Document Type"
+    },
+    {
+      "fieldname": "document_file",
+      "fieldtype": "Attach",
+      "reqd": 1,
+      "label": "Document File"
+    },
+    {
+      "fieldname": "verification_status",
+      "fieldtype": "Select",
+      "options": "Pending\nApproved\nRejected",
+      "default": "Pending",
+      "label": "Verification Status"
+    },
+    {
+      "fieldname": "reviewer_comments",
+      "fieldtype": "Text",
+      "label": "Reviewer Comments"
+    },
+    {
+      "fieldname": "uploaded_at",
+      "fieldtype": "Datetime",
+      "default": "Now",
+      "label": "Uploaded At"
+    },
+    {
+      "fieldname": "reviewed_at",
+      "fieldtype": "Datetime",
+      "label": "Reviewed At"
+    },
+    {
+      "fieldname": "reviewed_by",
+      "fieldtype": "Link",
+      "options": "User",
+      "label": "Reviewed By"
+    }
+  ],
+  "permissions": [
+    {
+      "role": "Employer",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 0
+    },
+    {
+      "role": "Admin",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1
+    }
+  ],
+  "sort_field": "uploaded_at",
+  "sort_order": "DESC",
+  "track_changes": 1
+}

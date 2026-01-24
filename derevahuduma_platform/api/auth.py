@@ -8,6 +8,7 @@ import frappe
 from frappe import _
 from frappe.utils import cint, now_datetime
 from frappe.utils.password import update_password
+from frappe.rate_limiter import rate_limit
 from typing import Dict, Any, Optional
 import re
 
@@ -523,6 +524,7 @@ def update_profile(**kwargs):
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=3, seconds=300)  # 3 requests per 5 minutes
 def request_password_reset(user: str):
     """
     Request password reset via OTP
@@ -653,6 +655,7 @@ def check_availability(field: str, value: str):
 
 
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=3, seconds=300)  # 5 requests per 5 minutes
 def login_with_otp(mobile_no: str, otp: str):
     """
     Login using OTP

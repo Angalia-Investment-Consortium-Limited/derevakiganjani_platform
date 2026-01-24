@@ -73,6 +73,7 @@ class BeemOTPService:
             frappe.logger().info(f"Payload: {payload}")
             frappe.logger().info(f"App ID: {self.app_id}")
             
+            
             response = requests.post(
                 url,
                 headers=headers,
@@ -155,6 +156,7 @@ class BeemOTPService:
             }
             
             frappe.logger().info(f"Verifying OTP for pinId: {pin_id}")
+            
             
             response = requests.post(
                 url,
@@ -249,57 +251,81 @@ def request_otp(mobile_no: str, purpose: str):
     Returns:
         Response with pin_id
     """
+    # Validate inputs
+    if not mobile_no or not purpose:
+        frappe.throw(_('Mobile number and purpose are required'))
+    
+    if purpose not in ['registration', 'login', 'password_reset']:
+        frappe.throw(_('Invalid OTP purpose'))
+    
+    # Normalize phone number
+    mobile_no = mobile_no.strip()
+    
+    # Normalize phone number for database lookup (with + prefix)
+    check_no = mobile_no
+    if not check_no.startswith('+'):
+        if check_no.startswith('0'):
+            check_no = '+255' + check_no[1:]
+        elif check_no.startswith('255'):
+            check_no = '+' + check_no
+        else:
+            check_no = '+255' + check_no
+    
+    # For registration, check if user already exists
+    if purpose == 'registration':
+        # Check both with and without + prefix
+        existing_user = frappe.db.exists('User', {'mobile_no': check_no}) or \
+                       frappe.db.exists('User', {'mobile_no': check_no[1:]})
+        if existing_user:
+            frappe.throw(_('A user with this mobile number already exists'))
+    
+    # For login and password reset, check if user exists
+    if purpose in ['login', 'password_reset']:
+        # Check both with and without + prefix
+        user_exists = frappe.db.exists('User', {'mobile_no': check_no}) or \
+                     frappe.db.exists('User', {'mobile_no': check_no[1:]})
+        if not user_exists:
+            frappe.throw(_('No user found with this mobile number'))
+    
+    # Request OTP from Beem
+    beem_service = get_beem_otp_service()
+    result = beem_service.request_otp(mobile_no)
+    
+    if not result['success']:
+        # Parse and provide user-friendly error message
+        error_msg = result.get('message', 'Failed to send OTP')
+        
+        # Extract more specific error information if available
+        if 'Status: 400' in error_msg:
+            error_msg = 'Unable to send OTP. Please check your phone number and try again.'
+        elif 'Status: 401' in error_msg:
+            error_msg = 'OTP service authentication failed. Please contact support.'
+        elif 'Status: 403' in error_msg:
+            error_msg = 'OTP service access denied. Please contact support.'
+        elif 'timeout' in error_msg.lower():
+            error_msg = 'OTP service is taking too long to respond. Please try again.'
+        
+        # Log detailed error for debugging
+        frappe.log_error(
+            title="Beem OTP Request Failed",
+            message=f"Failed to send OTP to {mobile_no}\nPurpose: {purpose}\nError: {result.get('message')}\nDetails: {result.get('data', {})}"
+        )
+
+        # Return error response instead of throwing exception to avoid 417
+        return {
+            'success': False,
+            'message': error_msg,
+            'data': result.get('data', {})
+        }
+    
+    # Store pin_id in database for later verification (always use + prefix for storage)
+    storage_mobile = check_no  # Already normalized with + prefix
+    
+    # Calculate expiry time (default 5 minutes from now)
+    from frappe.utils import now_datetime, add_to_date
+    expires_at = add_to_date(now_datetime(), minutes=5)
+    
     try:
-        # Validate inputs
-        if not mobile_no or not purpose:
-            frappe.throw(_('Mobile number and purpose are required'))
-        
-        if purpose not in ['registration', 'login', 'password_reset']:
-            frappe.throw(_('Invalid OTP purpose'))
-        
-        # Normalize phone number
-        mobile_no = mobile_no.strip()
-        
-        # Normalize phone number for database lookup (with + prefix)
-        check_no = mobile_no
-        if not check_no.startswith('+'):
-            if check_no.startswith('0'):
-                check_no = '+255' + check_no[1:]
-            elif check_no.startswith('255'):
-                check_no = '+' + check_no
-            else:
-                check_no = '+255' + check_no
-        
-        # For registration, check if user already exists
-        if purpose == 'registration':
-            # Check both with and without + prefix
-            existing_user = frappe.db.exists('User', {'mobile_no': check_no}) or \
-                           frappe.db.exists('User', {'mobile_no': check_no[1:]})
-            if existing_user:
-                frappe.throw(_('A user with this mobile number already exists'))
-        
-        # For login and password reset, check if user exists
-        if purpose in ['login', 'password_reset']:
-            # Check both with and without + prefix
-            user_exists = frappe.db.exists('User', {'mobile_no': check_no}) or \
-                         frappe.db.exists('User', {'mobile_no': check_no[1:]})
-            if not user_exists:
-                frappe.throw(_('No user found with this mobile number'))
-        
-        # Request OTP from Beem
-        beem_service = get_beem_otp_service()
-        result = beem_service.request_otp(mobile_no)
-        
-        if not result['success']:
-            frappe.throw(_(result['message']))
-        
-        # Store pin_id in database for later verification (always use + prefix for storage)
-        storage_mobile = check_no  # Already normalized with + prefix
-        
-        # Calculate expiry time (default 5 minutes from now)
-        from frappe.utils import now_datetime, add_to_date
-        expires_at = add_to_date(now_datetime(), minutes=5)
-        
         otp_doc = frappe.get_doc({
             'doctype': 'OTP Verification',
             'mobile_no': storage_mobile,
@@ -312,19 +338,18 @@ def request_otp(mobile_no: str, purpose: str):
         })
         otp_doc.insert(ignore_permissions=True)
         frappe.db.commit()
-        
-        return {
-            'message': result['message'],
-            'pin_id': result['pin_id'],
-            'mobile_no': storage_mobile
-        }
-        
     except Exception as e:
         frappe.log_error(
-            title="Request OTP API Error",
-            message=f"Error requesting OTP for {mobile_no}: {str(e)}"
+            title="OTP Verification Doc Creation Error",
+            message=f"Error creating OTP verification doc for {storage_mobile}: {str(e)}"
         )
-        frappe.throw(_(str(e)))
+        frappe.throw(_('Failed to store OTP verification data. Please try again.'))
+    
+    return {
+        'message': result['message'],
+        'pin_id': result['pin_id'],
+        'mobile_no': storage_mobile
+    }
 
 
 @frappe.whitelist(allow_guest=True)
@@ -340,92 +365,90 @@ def verify_otp(mobile_no: str, otp_code: str, purpose: str):
     Returns:
         Verification result
     """
-    try:
-        # Validate inputs
-        if not mobile_no or not otp_code or not purpose:
-            frappe.throw(_('Mobile number, OTP code, and purpose are required'))
-        
-        # Normalize phone number
-        mobile_no = mobile_no.strip()
-        if not mobile_no.startswith('+'):
-            if mobile_no.startswith('0'):
-                mobile_no = '+255' + mobile_no[1:]
-            elif mobile_no.startswith('255'):
-                mobile_no = '+' + mobile_no
-            else:
-                mobile_no = '+255' + mobile_no
-        
-        # Get the latest OTP record to retrieve pin_id
-        otp_doc = frappe.db.get_value(
-            'OTP Verification',
-            {
-                'mobile_no': mobile_no,
-                'purpose': purpose,
-                'verified': 0
-            },
-            ['name', 'otp_code', 'attempts', 'max_attempts'],
-            as_dict=True,
-            order_by='creation desc'
-        )
-        
-        if not otp_doc:
-            frappe.throw(_('No OTP request found. Please request a new OTP.'))
-        
-        # Check max attempts
-        if otp_doc.attempts >= otp_doc.max_attempts:
-            frappe.throw(_('Maximum verification attempts exceeded. Please request a new OTP.'))
-        
-        # Increment attempts
-        frappe.db.set_value('OTP Verification', otp_doc.name, 'attempts', otp_doc.attempts + 1)
+    # Validate inputs
+    if not mobile_no or not otp_code or not purpose:
+        frappe.throw(_('Mobile number, OTP code, and purpose are required'))
+    
+    # Normalize phone number
+    mobile_no = mobile_no.strip()
+    if not mobile_no.startswith('+'):
+        if mobile_no.startswith('0'):
+            mobile_no = '+255' + mobile_no[1:]
+        elif mobile_no.startswith('255'):
+            mobile_no = '+' + mobile_no
+        else:
+            mobile_no = '+255' + mobile_no
+    
+    # Get the latest OTP record to retrieve pin_id
+    otp_doc = frappe.db.get_value(
+        'OTP Verification',
+        {
+            'mobile_no': mobile_no,
+            'purpose': purpose,
+            'verified': 0
+        },
+        ['name', 'otp_code', 'attempts', 'max_attempts'],
+        as_dict=True,
+        order_by='creation desc'
+    )
+    
+    if not otp_doc:
+        frappe.throw(_('No OTP request found. Please request a new OTP.'))
+    
+    # Check max attempts
+    if otp_doc.attempts >= otp_doc.max_attempts:
+        frappe.throw(_('Maximum verification attempts exceeded. Please request a new OTP.'))
+    
+    # Increment attempts
+    frappe.db.set_value('OTP Verification', otp_doc.name, 'attempts', otp_doc.attempts + 1)
+    frappe.db.commit()
+    
+    # Verify with Beem
+    pin_id = otp_doc.otp_code  # pin_id was stored in otp_code field
+    beem_service = get_beem_otp_service()
+    result = beem_service.verify_otp(pin_id, otp_code.strip())
+    
+    if result.get('verified'):
+        # Mark as verified
+        frappe.db.set_value('OTP Verification', otp_doc.name, 'verified', 1)
         frappe.db.commit()
         
-        # Verify with Beem
-        pin_id = otp_doc.otp_code  # pin_id was stored in otp_code field
-        beem_service = get_beem_otp_service()
-        result = beem_service.verify_otp(pin_id, otp_code.strip())
-        
-        if result.get('verified'):
-            # Mark as verified
-            frappe.db.set_value('OTP Verification', otp_doc.name, 'verified', 1)
-            frappe.db.commit()
+        # For login purpose, create a session for the user
+        if purpose == 'login':
+            # Find user by mobile number (check both formats)
+            user = frappe.db.get_value('User', {'mobile_no': mobile_no}, 'name')
+            if not user:
+                # Try without + prefix
+                user = frappe.db.get_value('User', {'mobile_no': mobile_no[1:]}, 'name')
             
-            # For login purpose, create a session for the user
-            if purpose == 'login':
-                # Find user by mobile number (check both formats)
-                user = frappe.db.get_value('User', {'mobile_no': mobile_no}, 'name')
-                if not user:
-                    # Try without + prefix
-                    user = frappe.db.get_value('User', {'mobile_no': mobile_no[1:]}, 'name')
+            if user:
+                # Create Frappe session
+                frappe.local.login_manager.login_as(user)
+                frappe.local.login_manager.post_login()
+                frappe.db.commit()
                 
-                if user:
-                    # Create Frappe session
-                    frappe.local.login_manager.login_as(user)
-                    frappe.local.login_manager.post_login()
-                    frappe.db.commit()
-                    
-                    frappe.logger().info(f"User {user} logged in successfully via OTP")
-                else:
-                    frappe.throw(_('User not found'))
-            
-            return {
-                'message': result['message'],
-                'verified': True
-            }
-        else:
-            remaining_attempts = otp_doc.max_attempts - (otp_doc.attempts)
-            error_msg = result.get('message', 'Invalid OTP')
-            
-            if remaining_attempts > 0:
-                error_msg += f'. {remaining_attempts} attempts remaining.'
-            
-            frappe.throw(_(error_msg))
-            
-    except Exception as e:
+                frappe.logger().info(f"User {user} logged in successfully via OTP")
+            else:
+                frappe.throw(_('User not found'))
+        
+        return {
+            'message': result['message'],
+            'verified': True
+        }
+    else:
+        remaining_attempts = otp_doc.max_attempts - (otp_doc.attempts)
+        error_msg = result.get('message', 'Invalid OTP')
+        
+        if remaining_attempts > 0:
+            error_msg += f'. {remaining_attempts} attempts remaining.'
+        
+        # Log verification failure for debugging
         frappe.log_error(
-            title="Verify OTP API Error",
-            message=f"Error verifying OTP for {mobile_no}: {str(e)}"
+            title="OTP Verification Failed",
+            message=f"Failed to verify OTP for {mobile_no}\nPurpose: {purpose}\nRemaining attempts: {remaining_attempts}\nBeem response: {result}"
         )
-        frappe.throw(_(str(e)))
+        
+        frappe.throw(_(error_msg))
 
 
 @frappe.whitelist(allow_guest=True)
@@ -440,38 +463,30 @@ def resend_otp(mobile_no: str, purpose: str):
     Returns:
         Response with new pin_id
     """
-    try:
-        # Invalidate previous OTPs
-        mobile_no = mobile_no.strip()
-        if not mobile_no.startswith('+'):
-            if mobile_no.startswith('0'):
-                mobile_no = '+255' + mobile_no[1:]
-            elif mobile_no.startswith('255'):
-                mobile_no = '+' + mobile_no
-            else:
-                mobile_no = '+255' + mobile_no
-        
-        previous_otps = frappe.get_all(
-            'OTP Verification',
-            filters={
-                'mobile_no': mobile_no,
-                'purpose': purpose,
-                'verified': 0
-            },
-            pluck='name'
-        )
-        
-        for otp_name in previous_otps:
-            frappe.db.set_value('OTP Verification', otp_name, 'verified', 1)
-        
-        frappe.db.commit()
-        
-        # Request new OTP
-        return request_otp(mobile_no, purpose)
-        
-    except Exception as e:
-        frappe.log_error(
-            title="Resend OTP API Error",
-            message=f"Error resending OTP to {mobile_no}: {str(e)}"
-        )
-        frappe.throw(_(str(e)))
+    # Invalidate previous OTPs
+    mobile_no = mobile_no.strip()
+    if not mobile_no.startswith('+'):
+        if mobile_no.startswith('0'):
+            mobile_no = '+255' + mobile_no[1:]
+        elif mobile_no.startswith('255'):
+            mobile_no = '+' + mobile_no
+        else:
+            mobile_no = '+255' + mobile_no
+    
+    previous_otps = frappe.get_all(
+        'OTP Verification',
+        filters={
+            'mobile_no': mobile_no,
+            'purpose': purpose,
+            'verified': 0
+        },
+        pluck='name'
+    )
+    
+    for otp_name in previous_otps:
+        frappe.db.set_value('OTP Verification', otp_name, 'verified', 1)
+    
+    frappe.db.commit()
+    
+    # Request new OTP
+    return request_otp(mobile_no, purpose)
