@@ -15,6 +15,7 @@ export type LatraType = 'PSV' | 'HGV';
 
 // Application Status
 export type ApplicationStatus =
+  | 'Submitted'
   | 'Pending Payment'
   | 'Pending'
   | 'Under Review'
@@ -255,6 +256,7 @@ export const APPLICATION_TYPES = {
 
 // Status Colors
 export const STATUS_COLORS: Record<ApplicationStatus, string> = {
+  'Submitted': 'bg-gray-100 text-gray-800 border-gray-200',
   'Pending Payment': 'bg-orange-100 text-orange-800 border-orange-200',
   'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
   'Under Review': 'bg-blue-100 text-blue-800 border-blue-200',
@@ -265,6 +267,7 @@ export const STATUS_COLORS: Record<ApplicationStatus, string> = {
 
 // Status Translations
 export const STATUS_TRANSLATIONS: Record<ApplicationStatus, string> = {
+  'Submitted': 'Imewasilishwa',
   'Pending Payment': 'Inasubiri Malipo',
   'Pending': 'Inasubiri',
   'Under Review': 'Inakaguliwa',

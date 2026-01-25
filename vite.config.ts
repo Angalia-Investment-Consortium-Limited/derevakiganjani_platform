@@ -15,20 +15,12 @@ export default defineConfig(({ mode }) => ({
     },
   },
   publicDir: 'public',
-  base: mode === 'production' ? '/landing' : '/',
+  base: '/',
   build: {
     outDir: 'dist',
     emptyOutDir: true,
     target: 'es2015',
     manifest: true,
     chunkSizeWarningLimit: 1000, // Increase limit to 1000kb to reduce warnings
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          react: ['react', 'react-dom', 'react-router-dom'],
-          vendor: ['@tanstack/react-query', 'lucide-react'],
-        }
-      }
-    },
   },
 }))

@@ -5,12 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build --base=/assets/derevahuduma_platform/landing/ && yarn copy-html-entry",
-    "copy-html-entry": "cp ../derevahuduma_platform/public/landing/index.html ../derevahuduma_platform/www/landing.html",
+    "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "build:prod": "yarn build && cd ../../../ && bench --site derevakiganjani.mdvfleet.co.tz clear-cache && bench restart",
-    "type-check": "tsc --noEmit"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -47,6 +44,7 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.1.0",
     "embla-carousel-react": "^8.6.0",
+    "firebase": "^12.8.0",
     "frappe-react-sdk": "^1.13.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.553.0",
