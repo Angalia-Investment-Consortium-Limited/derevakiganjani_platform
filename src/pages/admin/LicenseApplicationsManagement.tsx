@@ -1,17 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   FileText,
   Search,
   Filter,
   Eye,
-  Download,
   RefreshCw,
   CheckCircle,
   XCircle,
   Clock,
-  CheckSquare,
-  Square
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,458 +29,179 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAllApplications, useApplicationStatistics, useUpdateApplicationStatus } from '@/hooks/useLicense';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLicenseApplications } from '@/hooks/useLicenseApplications';
 import { useToast } from '@/hooks/use-toast';
-import { STATUS_TRANSLATIONS, APPLICATION_TYPES, STATUS_COLORS } from '@/types/license';
-import type { ApplicationStatus, ApplicationType, ApplicationFilter } from '@/types/license';
+import { AdminLayout } from '@/components/admin/AdminLayout';
+import { useLanguage } from '@/contexts/LanguageContext';
+
+const STATUS_COLORS: Record<string, string> = {
+  Pending: 'bg-yellow-100 text-yellow-800',
+  'Under Review': 'bg-blue-100 text-blue-800',
+  Approved: 'bg-green-100 text-green-800',
+  Rejected: 'bg-red-100 text-red-800',
+  Completed: 'bg-gray-100 text-gray-800',
+};
+
+const STATUS_TRANSLATIONS: Record<string, any> = {
+    Pending: { en: 'Pending', sw: 'Inasubiri' },
+    'Under Review': { en: 'Under Review', sw: 'Inakaguliwa' },
+    Approved: { en: 'Approved', sw: 'Imeidhinishwa' },
+    Rejected: { en: 'Rejected', sw: 'Imekataliwa' },
+    Completed: { en: 'Completed', sw: 'Imekamilika' },
+};
 
 export default function LicenseApplicationsManagement() {
-  const { language } = useLanguage();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<ApplicationFilter>({});
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedApplications, setSelectedApplications] = useState<string[]>([]);
-  const [bulkStatus, setBulkStatus] = useState<string>('');
-  const [showBulkActions, setShowBulkActions] = useState(false);
-  
-  const { applications, total, isLoading, error, refetch } = useAllApplications(filter);
-  const { statistics, isLoading: statsLoading } = useApplicationStatistics();
-  const { updateStatus } = useUpdateApplicationStatus();
   const { toast } = useToast();
+  const { language, translations } = useLanguage();
+  const {
+    applications,
+    total,
+    isLoading,
+    error,
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    setStatusFilter,
+    typeFilter,
+    setTypeFilter,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    refresh,
+  } = useLicenseApplications();
 
-  const handleStatusFilter = (status: string) => {
-    if (status === 'all') {
-      setFilter({ ...filter, status: undefined });
-    } else {
-      setFilter({ ...filter, status: status as ApplicationStatus });
-    }
+  useEffect(() => {
+    refresh();
+  }, [searchTerm, statusFilter, typeFilter, currentPage, refresh]);
+
+  const formatDate = (date: any) => {
+    if (!date) return '-';
+    return new Date(date.seconds * 1000).toLocaleDateString(language === 'sw' ? 'sw-TZ' : 'en-US');
+  };
+  
+  const stats = {
+    total: total,
+    pending: applications.filter(e => e.status === 'Pending').length,
+    underReview: applications.filter(e => e.status === 'Under Review').length,
+    approved: applications.filter(e => e.status === 'Approved').length,
+    rejected: applications.filter(e => e.status === 'Rejected').length,
   };
 
-  const handleTypeFilter = (type: string) => {
-    if (type === 'all') {
-      setFilter({ ...filter, application_type: undefined });
-    } else {
-      setFilter({ ...filter, application_type: type as ApplicationType });
-    }
-  };
-
-  const handleSearch = () => {
-    setFilter({ ...filter, search: searchTerm });
-  };
-
-  const formatDate = (dateString: string) => {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    return date.toLocaleDateString(language === 'sw' ? 'sw-TZ' : 'en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const getStatusBadge = (status: ApplicationStatus) => {
+  if (error && !isLoading) {
     return (
-      <Badge className={STATUS_COLORS[status]}>
-        {language === 'sw' ? STATUS_TRANSLATIONS[status] : status}
-      </Badge>
-    );
-  };
-
-  const exportToCSV = () => {
-    if (!applications || applications.length === 0) return;
-
-    const headers = ['Reference', 'Type', 'Name', 'Phone', 'Region', 'Status', 'Date'];
-    const rows = applications.map(app => [
-      app.name,
-      app.application_type,
-      app.full_name,
-      app.phone_number,
-      app.region,
-      app.status,
-      formatDate(app.submission_date)
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `license-applications-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedApplications(applications?.map(app => app.name) || []);
-    } else {
-      setSelectedApplications([]);
-    }
-  };
-
-  const handleSelectApplication = (applicationId: string, checked: boolean) => {
-    if (checked) {
-      setSelectedApplications(prev => [...prev, applicationId]);
-    } else {
-      setSelectedApplications(prev => prev.filter(id => id !== applicationId));
-    }
-  };
-
-  const handleBulkStatusUpdate = async () => {
-    if (!bulkStatus || selectedApplications.length === 0) return;
-
-    try {
-      const promises = selectedApplications.map(id =>
-        updateStatus(id, bulkStatus, 'Bulk status update')
-      );
-
-      await Promise.all(promises);
-
-      toast({
-        title: language === 'sw' ? 'Imefanikiwa' : 'Success',
-        description: language === 'sw'
-          ? `Hali ya maombi ${selectedApplications.length} imesasishwa`
-          : `Status updated for ${selectedApplications.length} applications`,
-      });
-
-      setSelectedApplications([]);
-      setBulkStatus('');
-      setShowBulkActions(false);
-      refetch();
-    } catch (err) {
-      toast({
-        title: language === 'sw' ? 'Hitilafu' : 'Error',
-        description: language === 'sw'
-          ? 'Imeshindwa kusasisha hali ya maombi'
-          : 'Failed to update application statuses',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const toggleBulkActions = () => {
-    setShowBulkActions(!showBulkActions);
-    if (!showBulkActions) {
-      setSelectedApplications([]);
-      setBulkStatus('');
-    }
-  };
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
-          {language === 'sw' ? 'Usimamizi wa Maombi ya Leseni' : 'License Applications Management'}
-        </h1>
-        <p className="text-muted-foreground">
-          {language === 'sw'
-            ? 'Simamia na kagua maombi yote ya leseni'
-            : 'Manage and review all license applications'}
-        </p>
-      </div>
-
-      {/* Statistics Cards */}
-      {!statsLoading && statistics && (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <AdminLayout>
+        <div className="space-y-6">
+          <h1 className="text-3xl font-bold">{translations.licenseApplicationsManagement}</h1>
           <Card>
             <CardContent className="pt-6">
-              <div className="text-center">
-                <p className="text-3xl font-bold">{statistics.total}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'sw' ? 'Jumla' : 'Total'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <Clock className="h-6 w-6 text-yellow-500" />
-                </div>
-                <p className="text-3xl font-bold text-yellow-600">{statistics.pending}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'sw' ? 'Inasubiri' : 'Pending'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <RefreshCw className="h-6 w-6 text-blue-500" />
-                </div>
-                <p className="text-3xl font-bold text-blue-600">{statistics.under_review}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'sw' ? 'Inakaguliwa' : 'In Review'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <CheckCircle className="h-6 w-6 text-green-500" />
-                </div>
-                <p className="text-3xl font-bold text-green-600">{statistics.approved}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'sw' ? 'Imeidhinishwa' : 'Approved'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center">
-                <div className="flex items-center justify-center mb-2">
-                  <XCircle className="h-6 w-6 text-red-500" />
-                </div>
-                <p className="text-3xl font-bold text-red-600">{statistics.rejected}</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {language === 'sw' ? 'Imekataliwa' : 'Rejected'}
-                </p>
+              <div className="text-center py-8 text-destructive">
+                <p>{translations.error}: {error}</p>
+                <Button onClick={() => refresh()} className="mt-4">{translations.retry}</Button>
               </div>
             </CardContent>
           </Card>
         </div>
-      )}
+      </AdminLayout>
+    );
+  }
 
-      {/* Filters and Actions */}
-      <Card className="mb-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              {language === 'sw' ? 'Chuja na Tafuta' : 'Filter and Search'}
-            </CardTitle>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
-                <RefreshCw className="h-4 w-4 mr-2" />
-                {language === 'sw' ? 'Onyesha Upya' : 'Refresh'}
-              </Button>
-              <Button variant="outline" size="sm" onClick={exportToCSV}>
-                <Download className="h-4 w-4 mr-2" />
-                {language === 'sw' ? 'Pakua CSV' : 'Export CSV'}
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Search */}
-            <div className="flex gap-2">
-              <Input
-                placeholder={language === 'sw' ? 'Tafuta kwa rejea, jina, simu...' : 'Search by ref, name, phone...'}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              />
-              <Button onClick={handleSearch} size="icon">
-                <Search className="h-4 w-4" />
-              </Button>
-            </div>
+  return (
+    <AdminLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">{translations.licenseApplicationsManagement}</h1>
+          <Button onClick={() => refresh()}><RefreshCw className="h-4 w-4 mr-2" />{translations.refresh}</Button>
+        </div>
 
-            {/* Status Filter */}
-            <Select onValueChange={handleStatusFilter} defaultValue="all">
-              <SelectTrigger>
-                <SelectValue placeholder={language === 'sw' ? 'Hali' : 'Status'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {language === 'sw' ? 'Hali Zote' : 'All Statuses'}
-                </SelectItem>
-                <SelectItem value="Pending">
-                  {language === 'sw' ? STATUS_TRANSLATIONS['Pending'] : 'Pending'}
-                </SelectItem>
-                <SelectItem value="Under Review">
-                  {language === 'sw' ? STATUS_TRANSLATIONS['Under Review'] : 'Under Review'}
-                </SelectItem>
-                <SelectItem value="Approved">
-                  {language === 'sw' ? STATUS_TRANSLATIONS['Approved'] : 'Approved'}
-                </SelectItem>
-                <SelectItem value="Rejected">
-                  {language === 'sw' ? STATUS_TRANSLATIONS['Rejected'] : 'Rejected'}
-                </SelectItem>
-                <SelectItem value="Completed">
-                  {language === 'sw' ? STATUS_TRANSLATIONS['Completed'] : 'Completed'}
-                </SelectItem>
-              </SelectContent>
-            </Select>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <Card><CardContent className="pt-6 text-center"><p className="text-3xl font-bold">{stats.total}</p><p className="text-sm text-muted-foreground">{translations.total}</p></CardContent></Card>
+        <Card><CardContent className="pt-6 text-center"><div className="flex items-center justify-center mb-2"><Clock className="h-6 w-6 text-yellow-500" /></div><p className="text-3xl font-bold text-yellow-600">{stats.pending}</p><p className="text-sm text-muted-foreground">{translations.pending}</p></CardContent></Card>
+        <Card><CardContent className="pt-6 text-center"><div className="flex items-center justify-center mb-2"><RefreshCw className="h-6 w-6 text-blue-500" /></div><p className="text-3xl font-bold text-blue-600">{stats.underReview}</p><p className="text-sm text-muted-foreground">{translations.inReview}</p></CardContent></Card>
+        <Card><CardContent className="pt-6 text-center"><div className="flex items-center justify-center mb-2"><CheckCircle className="h-6 w-6 text-green-500" /></div><p className="text-3xl font-bold text-green-600">{stats.approved}</p><p className="text-sm text-muted-foreground">{translations.approved}</p></CardContent></Card>
+        <Card><CardContent className="pt-6 text-center"><div className="flex items-center justify-center mb-2"><XCircle className="h-6 w-6 text-red-500" /></div><p className="text-3xl font-bold text-red-600">{stats.rejected}</p><p className="text-sm text-muted-foreground">{translations.rejected}</p></CardContent></Card>
+        </div>
 
-            {/* Type Filter */}
-            <Select onValueChange={handleTypeFilter} defaultValue="all">
-              <SelectTrigger>
-                <SelectValue placeholder={language === 'sw' ? 'Aina' : 'Type'} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">
-                  {language === 'sw' ? 'Aina Zote' : 'All Types'}
-                </SelectItem>
-                <SelectItem value="New License">
-                  {language === 'sw' ? APPLICATION_TYPES['New License'].nameSwahili : 'New License'}
-                </SelectItem>
-                <SelectItem value="License Renewal">
-                  {language === 'sw' ? APPLICATION_TYPES['License Renewal'].nameSwahili : 'License Renewal'}
-                </SelectItem>
-                <SelectItem value="LATRA Exam">
-                  {language === 'sw' ? APPLICATION_TYPES['LATRA Exam'].nameSwahili : 'LATRA Exam'}
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Bulk Actions */}
-      {selectedApplications.length > 0 && (
-        <Card className="mb-6 border-primary">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckSquare className="h-5 w-5" />
-              {language === 'sw' ? 'Vitendo vya Wingi' : 'Bulk Actions'} ({selectedApplications.length} selected)
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>{translations.applications}</CardTitle>
+              <div className="flex gap-2">
+                <Input placeholder={translations.searchByName} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-64" />
+                <Select onValueChange={setStatusFilter} defaultValue="all">
+                  <SelectTrigger className="w-48"><SelectValue placeholder={translations.status} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{translations.allStatuses}</SelectItem>
+                    {Object.keys(STATUS_TRANSLATIONS).map(status => (
+                        <SelectItem key={status} value={status}>{STATUS_TRANSLATIONS[status][language]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select onValueChange={setTypeFilter} defaultValue="all">
+                  <SelectTrigger className="w-48"><SelectValue placeholder={translations.type} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{translations.allTypes}</SelectItem>
+                    <SelectItem value="New License">{translations.newLicense}</SelectItem>
+                    <SelectItem value="License Renewal">{translations.licenseRenewal}</SelectItem>
+                    <SelectItem value="LATRA Exam">{translations.latraExam}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-4">
-              <Select value={bulkStatus} onValueChange={setBulkStatus}>
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder={language === 'sw' ? 'Chagua hali' : 'Select status'} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pending">
-                    {language === 'sw' ? STATUS_TRANSLATIONS['Pending'] : 'Pending'}
-                  </SelectItem>
-                  <SelectItem value="Under Review">
-                    {language === 'sw' ? STATUS_TRANSLATIONS['Under Review'] : 'Under Review'}
-                  </SelectItem>
-                  <SelectItem value="Approved">
-                    {language === 'sw' ? STATUS_TRANSLATIONS['Approved'] : 'Approved'}
-                  </SelectItem>
-                  <SelectItem value="Rejected">
-                    {language === 'sw' ? STATUS_TRANSLATIONS['Rejected'] : 'Rejected'}
-                  </SelectItem>
-                  <SelectItem value="Completed">
-                    {language === 'sw' ? STATUS_TRANSLATIONS['Completed'] : 'Completed'}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <Button onClick={handleBulkStatusUpdate} disabled={!bulkStatus}>
-                {language === 'sw' ? 'Sasisha' : 'Update'}
-              </Button>
-              <Button variant="outline" onClick={() => setSelectedApplications([])}>
-                {language === 'sw' ? 'Futa uteuzi' : 'Clear Selection'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Applications Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            {language === 'sw' ? 'Maombi' : 'Applications'} ({total})
-          </CardTitle>
-          <CardDescription>
-            {language === 'sw'
-              ? 'Orodha ya maombi yote ya leseni'
-              : 'List of all license applications'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-12">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              <p className="mt-4 text-muted-foreground">
-                {language === 'sw' ? 'Inapakia...' : 'Loading...'}
-              </p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12 text-destructive">
-              {language === 'sw'
-                ? 'Kuna tatizo la kupakia maombi'
-                : 'Error loading applications'}
-            </div>
-          ) : !applications || applications.length === 0 ? (
-            <div className="text-center py-12">
-              <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
-                {language === 'sw' ? 'Hakuna maombi' : 'No applications found'}
-              </p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-12">
-                      <input
-                        type="checkbox"
-                        checked={selectedApplications.length === applications?.length && applications?.length > 0}
-                        onChange={(e) => handleSelectAll(e.target.checked)}
-                        className="rounded"
-                      />
-                    </TableHead>
-                    <TableHead>{language === 'sw' ? 'Rejea' : 'Reference'}</TableHead>
-                    <TableHead>{language === 'sw' ? 'Aina' : 'Type'}</TableHead>
-                    <TableHead>{language === 'sw' ? 'Jina' : 'Name'}</TableHead>
-                    <TableHead>{language === 'sw' ? 'Simu' : 'Phone'}</TableHead>
-                    <TableHead>{language === 'sw' ? 'Mkoa' : 'Region'}</TableHead>
-                    <TableHead>{language === 'sw' ? 'Hali' : 'Status'}</TableHead>
-                    <TableHead>{language === 'sw' ? 'Tarehe' : 'Date'}</TableHead>
-                    <TableHead className="text-right">{language === 'sw' ? 'Vitendo' : 'Actions'}</TableHead>
+                    <TableHead>{translations.reference}</TableHead>
+                    <TableHead>{translations.type}</TableHead>
+                    <TableHead>{translations.name}</TableHead>
+                    <TableHead>{translations.phone}</TableHead>
+                    <TableHead>{translations.region}</TableHead>
+                    <TableHead>{translations.status}</TableHead>
+                    <TableHead>{translations.submittedOn}</TableHead>
+                    <TableHead className="text-right">{translations.actions}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applications.map((application) => (
-                    <TableRow key={application.name}>
-                      <TableCell>
-                        <input
-                          type="checkbox"
-                          checked={selectedApplications.includes(application.name)}
-                          onChange={(e) => handleSelectApplication(application.name, e.target.checked)}
-                          className="rounded"
-                        />
-                      </TableCell>
-                      <TableCell className="font-mono text-sm">{application.name}</TableCell>
-                      <TableCell>
-                        <span className="text-sm">
-                          {language === 'sw'
-                            ? APPLICATION_TYPES[application.application_type as ApplicationType]?.nameSwahili
-                            : APPLICATION_TYPES[application.application_type as ApplicationType]?.name}
-                        </span>
-                      </TableCell>
-                      <TableCell>{application.full_name}</TableCell>
-                      <TableCell>{application.phone_number}</TableCell>
-                      <TableCell>{application.region}</TableCell>
-                      <TableCell>{getStatusBadge(application.status as ApplicationStatus)}</TableCell>
-                      <TableCell>{formatDate(application.submission_date)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/admin/license-application/${application.name}`)}
-                        >
-                          <Eye className="h-4 w-4 mr-2" />
-                          {language === 'sw' ? 'Angalia' : 'View'}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {isLoading ? (
+                    <TableRow><TableCell colSpan={8} className="text-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto my-16" /></TableCell></TableRow>
+                  ) : applications.length === 0 ? (
+                    <TableRow><TableCell colSpan={8} className="text-center py-12"><FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" /><p className="text-muted-foreground">{translations.noApplicationsFound}</p></TableCell></TableRow>
+                  ) : (
+                    applications.map((application) => (
+                      <TableRow key={application.id}>
+                        <TableCell className="font-mono text-sm">{application.id}</TableCell>
+                        <TableCell>{application.applicationType}</TableCell>
+                        <TableCell>{application.fullName}</TableCell>
+                        <TableCell>{application.phone}</TableCell>
+                        <TableCell>{application.region}</TableCell>
+                        <TableCell><Badge className={STATUS_COLORS[application.status]}>{STATUS_TRANSLATIONS[application.status][language]}</Badge></TableCell>
+                        <TableCell>{formatDate(application.submissionDate)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/license-application/${application.id}`)}><Eye className="h-4 w-4 mr-2" />{translations.view}</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-4">
+                <p className="text-sm text-muted-foreground">{translations.showing.replace('{count}', applications.length.toString()).replace('{total}', total.toString())}</p>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 0 || isLoading}>{translations.previous}</Button>
+                  <span className="text-sm flex items-center">{translations.page} {currentPage + 1} {translations.of} {totalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages - 1 || isLoading}>{translations.next}</Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </AdminLayout>
   );
 }

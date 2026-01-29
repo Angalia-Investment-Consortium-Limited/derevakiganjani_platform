@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RoleBasedRoute } from "./components/RoleBasedRoute";
 import { EmployerVerificationGuard } from "./components/EmployerVerificationGuard";
+import AuthRedirect from "./components/AuthRedirect";
 import Home from "./pages/Home";
 import About from "./pages/About";
 import Services from "./pages/Services";
@@ -51,7 +52,7 @@ import JobDetail from "./pages/ajiri-dereva/JobDetail";
 import Shortlist from "./pages/ajiri-dereva/Shortlist";
 import DriverJobProfile from "./pages/ajira/DriverJobProfile";
 import FindJobs from "./pages/ajira/FindJobs";
-import JobDetailDriver from "./pages/ajira/JobDetailDriver";
+import JobDetails from "./pages/ajira/JobDetails";
 import MyApplications from "./pages/ajira/MyApplications";
 import DriverPublicProfile from "./pages/shared/DriverPublicProfile";
 import EmployerProfile from "./pages/shared/EmployerProfile";
@@ -90,6 +91,7 @@ import PaymentPage from "./pages/jitesti/PaymentPage";
 import TestTaking from "./pages/jitesti/TestTaking";
 import WhatsAppPrivacyPolicy from "./pages/WhatsAppPrivacyPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
+import JobDetailDriver from "./pages/ajira/JobDetailDriver";
 
 const queryClient = new QueryClient();
 
@@ -115,6 +117,7 @@ const App = () => (
             <Route path="/auth/employer-login" element={<EmployerLogin />} />
             <Route path="/auth/forgot" element={<ForgotPassword />} />
             <Route path="/auth/reset" element={<ResetPassword />} />
+            <Route path="/auth/redirect" element={<AuthRedirect />} />
             <Route path="/profile-setup" element={
               <ProtectedRoute>
                 <ProfileSetup />
@@ -424,7 +427,9 @@ const App = () => (
             } />
             
             {/* JiTesti Routes */}
-            <Route path="/jitesti" element={
+
+            
+             <Route path="/jitesti" element={
               <ProtectedRoute>
                 <TestCategories />
               </ProtectedRoute>
@@ -438,10 +443,10 @@ const App = () => (
               <ProtectedRoute>
                 <TestTaking />
               </ProtectedRoute>
-            } />
+            } /> 
             
             {/* License Management Routes */}
-            <Route path="/license" element={<LicenseDashboard />} />
+             <Route path="/license" element={<LicenseDashboard />} />
             <Route path="/license/apply/:type" element={
               <ProtectedRoute>
                 <LicenseApplicationWizard />
@@ -482,7 +487,7 @@ const App = () => (
               <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
                 <EmployerVerificationManagement />
               </RoleBasedRoute>
-            } />
+            } /> 
 
             {/* Privacy Policy Routes */}
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -500,3 +505,4 @@ const App = () => (
   );
 
   export default App;
+

@@ -4,73 +4,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Eye, MessageCircle } from 'lucide-react';
+import { Eye, MessageCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useState } from 'react';
+import { useApplications } from '@/hooks/useApplications';
 
 const MyApplications = () => {
   const navigate = useNavigate();
   const [selectedApplication, setSelectedApplication] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-
-  const applications = [
-    {
-      id: 1,
-      jobTitle: 'Experienced Truck Driver',
-      employer: 'ABC Transport Ltd',
-      appliedOn: '2025-01-22',
-      status: 'Viewed',
-      lastUpdate: '2025-01-23',
-      timeline: [
-        { date: '2025-01-22', event: 'Application Submitted', status: 'completed' },
-        { date: '2025-01-23', event: 'Application Viewed by Employer', status: 'completed' },
-        { date: '-', event: 'Interview Scheduled', status: 'pending' },
-        { date: '-', event: 'Decision', status: 'pending' },
-      ],
-    },
-    {
-      id: 2,
-      jobTitle: 'Company Car Driver',
-      employer: 'TechCorp Tanzania',
-      appliedOn: '2025-01-20',
-      status: 'Interview',
-      lastUpdate: '2025-01-24',
-      timeline: [
-        { date: '2025-01-20', event: 'Application Submitted', status: 'completed' },
-        { date: '2025-01-21', event: 'Application Viewed by Employer', status: 'completed' },
-        { date: '2025-01-24', event: 'Interview Scheduled - Jan 30, 2025', status: 'completed' },
-        { date: '-', event: 'Decision', status: 'pending' },
-      ],
-      message: 'Interview scheduled for January 30, 2025 at 10:00 AM. Please bring your license and certificates.',
-    },
-    {
-      id: 3,
-      jobTitle: 'Bus Driver - Tourist Routes',
-      employer: 'Safari Adventures',
-      appliedOn: '2025-01-18',
-      status: 'Submitted',
-      lastUpdate: '2025-01-18',
-      timeline: [
-        { date: '2025-01-18', event: 'Application Submitted', status: 'completed' },
-        { date: '-', event: 'Application Under Review', status: 'pending' },
-      ],
-    },
-    {
-      id: 4,
-      jobTitle: 'Delivery Driver',
-      employer: 'QuickDeliver',
-      appliedOn: '2025-01-15',
-      status: 'Rejected',
-      lastUpdate: '2025-01-19',
-      timeline: [
-        { date: '2025-01-15', event: 'Application Submitted', status: 'completed' },
-        { date: '2025-01-16', event: 'Application Viewed by Employer', status: 'completed' },
-        { date: '2025-01-19', event: 'Application Not Successful', status: 'rejected' },
-      ],
-      message: 'Thank you for your application. Unfortunately, we have selected other candidates.',
-    },
-  ];
+  const { applications, loading: applicationsLoading } = useApplications();
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -126,27 +70,35 @@ const MyApplications = () => {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {applications.map((app) => (
-                        <TableRow key={app.id}>
-                          <TableCell className="font-medium">{app.jobTitle}</TableCell>
-                          <TableCell>{app.employer}</TableCell>
-                          <TableCell>
-                            <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
-                          </TableCell>
-                          <TableCell>{app.appliedOn}</TableCell>
-                          <TableCell>{app.lastUpdate}</TableCell>
-                          <TableCell className="text-right">
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={() => handleViewDetails(app)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
+                      {applicationsLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto my-16" />
                           </TableCell>
                         </TableRow>
-                      ))}
+                      ) : (
+                        applications.map((app) => (
+                          <TableRow key={app.id}>
+                            <TableCell className="font-medium">{app.jobTitle}</TableCell>
+                            <TableCell>{app.employerName}</TableCell>
+                            <TableCell>
+                              <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
+                            </TableCell>
+                            <TableCell>{new Date(app.appliedOn.seconds * 1000).toLocaleDateString()}</TableCell>
+                            <TableCell>{new Date(app.lastUpdate.seconds * 1000).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-right">
+                              <Button 
+                                size="sm" 
+                                variant="ghost"
+                                onClick={() => handleViewDetails(app)}
+                              >
+                                <Eye className="h-4 w-4 mr-1" />
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        )))
+                      }
                     </TableBody>
                   </Table>
                 </div>
@@ -218,7 +170,7 @@ const MyApplications = () => {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selectedApplication?.jobTitle}</DialogTitle>
-            <DialogDescription>{selectedApplication?.employer}</DialogDescription>
+            <DialogDescription>{selectedApplication?.employerName}</DialogDescription>
           </DialogHeader>
           
           {selectedApplication && (
@@ -261,7 +213,7 @@ const MyApplications = () => {
                 <Button variant="outline" className="flex-1" onClick={() => setShowDetailModal(false)}>
                   Close
                 </Button>
-                <Button className="flex-1" onClick={() => navigate(`/ajira/job/${selectedApplication.id}`)}>
+                <Button className="flex-1" onClick={() => navigate(`/ajira/job/${selectedApplication.jobId}`)}>
                   View Job Details
                 </Button>
               </div>

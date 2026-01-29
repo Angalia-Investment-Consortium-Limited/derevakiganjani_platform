@@ -6,61 +6,48 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Eye, Edit, XCircle } from 'lucide-react';
+import { Plus, Search, Eye, Edit, XCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useEmployerJobs } from '@/hooks/useEmployerJobs';
+import { useState } from 'react';
+import { useRegions } from '@/hooks/useLicense';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 const MyJobPosts = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [filters, setFilters] = useState({ searchTerm: '', status: '', vehicleType: '', region: '' });
+  const { jobs, loading } = useEmployerJobs(filters);
+  const { regions } = useRegions();
+  const [closingJobId, setClosingJobId] = useState<string | null>(null);
 
-  const jobPosts = [
-    {
-      id: 1,
-      title: 'Experienced Truck Driver',
-      vehicleType: 'Truck',
-      licenseCategory: 'D',
-      status: 'Published',
-      applications: 8,
-      postedOn: '2025-01-20',
-    },
-    {
-      id: 2,
-      title: 'Company Car Driver',
-      vehicleType: 'Car',
-      licenseCategory: 'B',
-      status: 'Published',
-      applications: 15,
-      postedOn: '2025-01-18',
-    },
-    {
-      id: 3,
-      title: 'Bus Driver - Tourist Routes',
-      vehicleType: 'Bus',
-      licenseCategory: 'C',
-      status: 'Draft',
-      applications: 0,
-      postedOn: '2025-01-22',
-    },
-    {
-      id: 4,
-      title: 'Delivery Motorcycle Rider',
-      vehicleType: 'Motorcycle',
-      licenseCategory: 'A',
-      status: 'Closed',
-      applications: 23,
-      postedOn: '2025-01-10',
-    },
-  ];
+  const handleFilterChange = (filterName: string, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
+  };
+
+  const handleCloseJob = async (jobId: string) => {
+    setClosingJobId(jobId);
+    try {
+      const jobRef = doc(db, 'jobs', jobId);
+      await updateDoc(jobRef, { status: 'Closed' });
+      toast({ title: "Success", description: "Job post has been closed." });
+      // Refetch jobs by updating a filter
+      setFilters(prev => ({...prev}));
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to close job post.", variant: "destructive" });
+    } finally {
+      setClosingJobId(null);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Published':
-        return 'bg-success/10 text-success';
-      case 'Draft':
-        return 'bg-warning/10 text-warning';
-      case 'Closed':
-        return 'bg-muted text-muted-foreground';
-      default:
-        return '';
+      case 'Published': return 'bg-success/10 text-success';
+      case 'Draft': return 'bg-warning/10 text-warning';
+      case 'Closed': return 'bg-muted text-muted-foreground';
+      default: return '';
     }
   };
 
@@ -89,40 +76,40 @@ const MyJobPosts = () => {
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search jobs..." className="pl-10" />
+                <Input placeholder="Search jobs..." className="pl-10" onChange={(e) => handleFilterChange('searchTerm', e.target.value)} />
               </div>
-              <Select>
+              <Select onValueChange={(value) => handleFilterChange('status', value)}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
+                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="Published">Published</SelectItem>
+                  <SelectItem value="Draft">Draft</SelectItem>
+                  <SelectItem value="Closed">Closed</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
+              <Select onValueChange={(value) => handleFilterChange('vehicleType', value)}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Vehicle Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Vehicles</SelectItem>
-                  <SelectItem value="car">Car</SelectItem>
-                  <SelectItem value="motorcycle">Motorcycle</SelectItem>
-                  <SelectItem value="bus">Bus</SelectItem>
-                  <SelectItem value="truck">Truck</SelectItem>
+                  <SelectItem value="">All Vehicles</SelectItem>
+                  <SelectItem value="Car">Car</SelectItem>
+                  <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                  <SelectItem value="Bus">Bus</SelectItem>
+                  <SelectItem value="Truck">Truck</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
+              <Select onValueChange={(value) => handleFilterChange('region', value)}>
                 <SelectTrigger className="w-full md:w-[180px]">
                   <SelectValue placeholder="Region" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  <SelectItem value="dar">Dar es Salaam</SelectItem>
-                  <SelectItem value="arusha">Arusha</SelectItem>
-                  <SelectItem value="mwanza">Mwanza</SelectItem>
+                  <SelectItem value="">All Regions</SelectItem>
+                  {regions.map(region => (
+                    <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -141,43 +128,51 @@ const MyJobPosts = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {jobPosts.map((job) => (
-                    <TableRow key={job.id}>
-                      <TableCell className="font-medium">{job.title}</TableCell>
-                      <TableCell>{job.vehicleType}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">Category {job.licenseCategory}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <span className="font-semibold">{job.applications}</span>
-                      </TableCell>
-                      <TableCell>{job.postedOn}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => navigate(`/ajiri-dereva/job/${job.id}`)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => navigate(`/ajiri-dereva/post-job?edit=${job.id}`)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button size="sm" variant="ghost">
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto my-16" />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    jobs.map((job) => (
+                      <TableRow key={job.id}>
+                        <TableCell className="font-medium">{job.title}</TableCell>
+                        <TableCell>{job.vehicleType}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">Category {job.licenseRequired}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="font-semibold">{job.applicationCount || 0}</span>
+                        </TableCell>
+                        <TableCell>{new Date(job.postedOn.seconds * 1000).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => navigate(`/employer/jobs/${job.id}/applicants`)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => navigate(`/ajiri-dereva/post-job?edit=${job.id}`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleCloseJob(job.id)} disabled={closingJobId === job.id}>
+                              {closingJobId === job.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )))
+                  }
                 </TableBody>
               </Table>
             </div>

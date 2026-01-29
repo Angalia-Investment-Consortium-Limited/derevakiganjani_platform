@@ -1,302 +1,200 @@
-import { useState, useCallback } from 'react';
-import { useFrappeGetCall, useFrappePostCall, useFrappePutCall } from 'frappe-react-sdk';
 
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  user_type: 'Driver' | 'Employer' | 'Admin';
-  roles: string[];
-  status: 'Active' | 'Suspended';
-  enabled: boolean;
-  created_on: string;
-  user_image?: string;
-  profile?: any;
-}
+import { useState, useCallback, useEffect } from 'react';
+import { collection, getDocs, query, where, orderBy, limit, startAfter, getCountFromServer, doc, updateDoc, deleteDoc, getDoc, addDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { User } from '@/types/auth';
 
-export interface UsersResponse {
-  message: {
-    success: boolean;
-    data: User[];
-    total: number;
-    limit: number;
-    offset: number;
-    error?: string;
-  };
-}
+const PAGE_SIZE = 10;
 
-export interface UserResponse {
-  message: {
-    success: boolean;
-    data: User;
-    error?: string;
-  };
-}
-
-export interface CreateUserData {
-  full_name: string;
-  mobile_no: string;
-  user_type: 'Driver' | 'Employer' | 'Admin';
-  email?: string;
-  password?: string;
-  language?: 'en' | 'sw';
-  // Driver fields
-  license_number?: string;
-  license_category?: string;
-  experience_years?: number;
-  region?: string;
-  district?: string;
-  national_id?: string;
-  // Employer fields
-  company_name?: string;
-  company_type?: string;
-  company_registration?: string;
-  address?: string;
-  website?: string;
-  verification_status?: string;
-  // Admin fields
-  department?: string;
-  position?: string;
-  is_tutor?: boolean;
-  is_license_officer?: boolean;
-  is_test_officer?: boolean;
-  is_finance?: boolean;
-  is_super_admin?: boolean;
-}
-
-export interface UpdateUserData extends Partial<CreateUserData> {
-  user_id: string;
-}
-
-/**
- * Custom hook for user management operations
- */
-export const useUsers = (
-  searchQuery: string = '',
-  roleFilter: string = 'all',
-  statusFilter: string = 'all',
-  limit: number = 50,
-  offset: number = 0
-) => {
-  const { data, error, isLoading, mutate } = useFrappeGetCall<UsersResponse>(
-    'derevahuduma_platform.api.admin.get_users',
-    {
-      search_query: searchQuery,
-      role_filter: roleFilter,
-      status_filter: statusFilter,
-      limit: limit.toString(),
-      offset: offset.toString(),
-    },
-    undefined,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  );
-
-  return {
-    users: data?.message?.data || [],
-    total: data?.message?.total || 0,
-    isLoading,
-    error: error || data?.message?.error,
-    mutate,
-  };
-};
-
-/**
- * Hook to get a single user
- */
-export const useUser = (userId: string | null) => {
-  const { data, error, isLoading, mutate } = useFrappeGetCall<UserResponse>(
-    'derevahuduma_platform.api.admin.get_user',
-    userId ? { user_id: userId } : undefined,
-    userId ? `user-${userId}` : null,
-    {
-      revalidateOnFocus: false,
-    }
-  );
-
-  return {
-    user: data?.message?.data,
-    isLoading,
-    error: error || data?.message?.error,
-    mutate,
-  };
-};
-
-/**
- * Hook for creating a new user
- */
-export const useCreateUser = () => {
-  const { call, loading, error } = useFrappePostCall<UserResponse>(
-    'derevahuduma_platform.api.admin.create_user'
-  );
-
-  const createUser = useCallback(
-    async (userData: CreateUserData) => {
-      try {
-        const response = await call(userData);
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    },
-    [call]
-  );
-
-  return {
-    createUser,
-    loading,
-    error,
-  };
-};
-
-/**
- * Hook for updating a user
- */
-export const useUpdateUser = () => {
-  const { call, loading, error } = useFrappePostCall<UserResponse>(
-    'derevahuduma_platform.api.admin.update_user'
-  );
-
-  const updateUser = useCallback(
-    async (userData: UpdateUserData) => {
-      try {
-        const response = await call(userData);
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    },
-    [call]
-  );
-
-  return {
-    updateUser,
-    loading,
-    error,
-  };
-};
-
-/**
- * Hook for toggling user status (suspend/activate)
- */
-export const useToggleUserStatus = () => {
-  const { call, loading, error } = useFrappePostCall<{ success: boolean; message: string }>(
-    'derevahuduma_platform.api.admin.toggle_user_status'
-  );
-
-  const toggleUserStatus = useCallback(
-    async (userId: string, enabled: boolean) => {
-      try {
-        const response = await call({
-          user_id: userId,
-          enabled: enabled ? 1 : 0,
-        });
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    },
-    [call]
-  );
-
-  return {
-    toggleUserStatus,
-    loading,
-    error,
-  };
-};
-
-/**
- * Hook for deleting a user
- */
-export const useDeleteUser = () => {
-  const { call, loading, error } = useFrappePostCall<{ success: boolean; message: string }>(
-    'derevahuduma_platform.api.admin.delete_user'
-  );
-
-  const deleteUser = useCallback(
-    async (userId: string) => {
-      try {
-        const response = await call({
-          user_id: userId,
-        });
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    },
-    [call]
-  );
-
-  return {
-    deleteUser,
-    loading,
-    error,
-  };
-};
-
-/**
- * Combined hook with all user management operations
- */
 export const useUserManagement = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize] = useState(50);
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [toggling, setToggling] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
-  const { users, total, isLoading, error, mutate } = useUsers(
-    searchQuery,
-    roleFilter,
-    statusFilter,
-    pageSize,
-    currentPage * pageSize
-  );
+  const buildQuery = useCallback(() => {
+    let q = query(collection(db, 'users'));
 
-  const { createUser, loading: creating } = useCreateUser();
-  const { updateUser, loading: updating } = useUpdateUser();
-  const { toggleUserStatus, loading: toggling } = useToggleUserStatus();
-  const { deleteUser, loading: deleting } = useDeleteUser();
+    if (roleFilter !== 'all') {
+      q = query(q, where('user_type', '==', roleFilter));
+    }
+
+    if (statusFilter !== 'all') {
+      const enabled = statusFilter === 'active';
+      q = query(q, where('enabled', '==', enabled));
+    }
+    
+    // This is a simplified search. For a more robust search, you would need a search service like Algolia or Elasticsearch.
+    if (searchQuery) {
+        q = query(q, where('name', '>=', searchQuery), where('name', '<=', searchQuery + '\uf8ff'));
+    }
+
+    return q;
+  }, [roleFilter, statusFilter, searchQuery]);
+
+  const fetchUsers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const q = buildQuery();
+      
+      // Get total count for pagination
+      const countSnapshot = await getCountFromServer(q);
+      setTotal(countSnapshot.data().count);
+
+      // Fetch data for the current page
+      let pageQuery = query(q, orderBy('created_on', 'desc'), limit(PAGE_SIZE));
+      if (currentPage > 0 && lastDoc) {
+        pageQuery = query(pageQuery, startAfter(lastDoc));
+      }
+      
+      const querySnapshot = await getDocs(pageQuery);
+      const usersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), status: doc.data().enabled ? 'Active' : 'Suspended' } as User));
+      setUsers(usersData);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch users');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, lastDoc, buildQuery]);
 
   const refresh = useCallback(() => {
-    mutate();
-  }, [mutate]);
+    setCurrentPage(0);
+    setLastDoc(null);
+    fetchUsers();
+  }, [fetchUsers]);
+
+  const toggleUserStatus = async (userId: string, newStatus: boolean) => {
+    setToggling(true);
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, { enabled: newStatus });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to update user status');
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const deleteUser = async (userId: string) => {
+    setDeleting(true);
+    try {
+      const userRef = doc(db, 'users', userId);
+      await deleteDoc(userRef);
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to delete user');
+    } finally {
+      setDeleting(false);
+    }
+  };
+  
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return {
-    // Data
     users,
     total,
     isLoading,
     error,
-    
-    // Filters
     searchQuery,
     setSearchQuery,
     roleFilter,
     setRoleFilter,
     statusFilter,
     setStatusFilter,
-    
-    // Pagination
     currentPage,
     setCurrentPage,
-    pageSize,
-    totalPages: Math.ceil(total / pageSize),
-    
-    // Operations
-    createUser,
-    updateUser,
+    totalPages,
     toggleUserStatus,
     deleteUser,
-    refresh,
-    
-    // Loading states
-    creating,
-    updating,
     toggling,
     deleting,
+    refresh,
   };
+};
+
+export const useUser = (userId: string | null) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const userRef = doc(db, 'users', userId);
+        const docSnap = await getDoc(userRef);
+        if (docSnap.exists()) {
+          setUser({ id: docSnap.id, ...docSnap.data() } as User);
+        } else {
+          setError('User not found');
+        }
+      } catch (err) {
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, [userId]);
+
+  return { user, isLoading, error };
+};
+
+export const useCreateUser = () => {
+    const [loading, setLoading] = useState(false);
+
+    const createUser = async (userData: any) => {
+        setLoading(true);
+        try {
+            const usersCollection = collection(db, 'users');
+            await addDoc(usersCollection, {
+                ...userData,
+                created_on: new Date(),
+                enabled: true,
+            });
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to create user.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { createUser, loading };
+};
+
+export const useUpdateUser = () => {
+    const [loading, setLoading] = useState(false);
+
+    const updateUser = async (userData: any) => {
+        setLoading(true);
+        try {
+            const { user_id, ...dataToUpdate } = userData;
+            if (!user_id) throw new Error("User ID is required to update.");
+
+            const userRef = doc(db, 'users', user_id);
+            await updateDoc(userRef, dataToUpdate);
+
+        } catch (error: any) {
+            throw new Error(error.message || 'Failed to update user.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return { updateUser, loading };
 };

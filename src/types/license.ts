@@ -1,6 +1,6 @@
 /**
  * License Management Types
- * 
+ *
  * TypeScript interfaces for License Application feature
  */
 
@@ -30,11 +30,11 @@ export type PaymentStatus =
   | 'Failed';
 
 // Document Types
-export type DocumentType = 
-  | 'NIDA' 
-  | 'Driving License' 
-  | 'PSV Certificate' 
-  | 'HGV Certificate' 
+export type DocumentType =
+  | 'NIDA'
+  | 'Driving License'
+  | 'PSV Certificate'
+  | 'HGV Certificate'
   | 'Passport Photo';
 
 // License Category Details
@@ -122,8 +122,10 @@ export interface GetDistrictsResponse {
 }
 
 export interface SubmitApplicationResponse {
+  success: boolean;
   message: string;
-  application: {
+  error?: any;
+  application?: {
     name: string;
     reference_number: string;
     application_type: ApplicationType;

@@ -1,14 +1,18 @@
 export type UserRole = 'Driver' | 'Employer' | 'Admin' | 'Staff';
 
 export interface User {
+  id: string;
   name: string;
   email: string;
   full_name: string;
   user_image?: string;
   mobile_no?: string;
+  phone?: string;
   roles: UserRole[];
-  user_type?: UserRole; // Changed from UserRole | null to UserRole | undefined for consistency
+  user_type?: UserRole;
   enabled: boolean;
+  status?: string;
+  created_on?: string;
 }
 
 export interface DriverProfile {
@@ -23,9 +27,12 @@ export interface DriverProfile {
   profile_photo?: string;
   date_of_birth?: string;
   address?: string;
-  experience_years?: number;
+  years_of_experience?: number;
   bio?: string;
   preferred_language?: 'en' | 'sw';
+  preferred_vehicle_types?: string[];
+  preferred_region?: string;
+  languages?: string[];
 }
 
 export interface EmployerProfile {
@@ -68,16 +75,12 @@ export interface LoginCredentials {
 
 export interface RegisterData {
   email?: string;
-  mobile_no: string;
-  first_name: string;
-  last_name?: string;
+  phone_number: string;
   password: string;
-  user_type: UserRole;
-  // Additional fields based on user type
-  // For Driver
+  role: UserRole;
+  full_name?: string;
   national_id?: string;
-  language?: 'en' | 'sw'; // Preferred language for emails and communications
-  // For Employer
+  preferred_language?: 'en' | 'sw';
   company_name?: string;
   contact_person?: string;
   company_registration?: string;
@@ -97,4 +100,16 @@ export interface PasswordResetRequest {
 export interface PasswordReset {
   key: string;
   new_password: string;
+}
+
+export type ApplicationType = 'New' | 'Renewal';
+export type ApplicationStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export interface LicenseApplication {
+    id: string;
+    name: string;
+    reference_number: string;
+    application_type: ApplicationType;
+    status: ApplicationStatus;
+    submission_date: string;
 }

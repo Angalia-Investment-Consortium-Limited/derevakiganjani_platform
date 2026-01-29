@@ -42,10 +42,12 @@ import { useToast } from '@/hooks/use-toast';
 import { useUserManagement } from '@/hooks/useUsers';
 import useDebounce from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const UsersManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { language, translations } = useLanguage();
 
   const {
     users,
@@ -86,16 +88,16 @@ const UsersManagement = () => {
       await toggleUserStatus(userId, newStatus);
       
       toast({
-        title: newStatus ? 'User Activated' : 'User Suspended',
-        description: `${userName} has been ${newStatus ? 'activated' : 'suspended'}.`,
+        title: newStatus ? translations.userActivated : translations.userSuspended,
+        description: `${userName} ` + (newStatus ? translations.hasBeenActivated : translations.hasBeenSuspended),
       });
       
       // Refresh the list
       refresh();
     } catch (err: any) {
       toast({
-        title: 'Error',
-        description: err?.message || 'Failed to update user status',
+        title: translations.error,
+        description: err?.message || translations.failedToUpdateUserStatus,
         variant: 'destructive',
       });
     }
@@ -113,8 +115,8 @@ const UsersManagement = () => {
       await deleteUser(userToDelete.id);
       
       toast({
-        title: 'User Deleted',
-        description: `${userToDelete.name} has been permanently deleted.`,
+        title: translations.userDeleted,
+        description: `${userToDelete.name} ` + translations.hasBeenDeleted,
       });
       
       // Close dialog and reset state
@@ -125,8 +127,8 @@ const UsersManagement = () => {
       refresh();
     } catch (err: any) {
       toast({
-        title: 'Error',
-        description: err?.message || 'Failed to delete user',
+        title: translations.error,
+        description: err?.message || translations.failedToDeleteUser,
         variant: 'destructive',
       });
     }
@@ -134,8 +136,8 @@ const UsersManagement = () => {
 
   const handleExport = () => {
     toast({
-      title: 'Export Started',
-      description: 'User data is being exported to CSV...',
+      title: translations.exportStarted,
+      description: translations.exportingUserData,
     });
     // TODO: Implement actual export logic
   };
@@ -160,17 +162,17 @@ const UsersManagement = () => {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Users Management</h1>
-              <p className="text-muted-foreground mt-1">Manage user accounts and roles</p>
+              <h1 className="text-3xl font-bold">{translations.usersManagement}</h1>
+              <p className="text-muted-foreground mt-1">{translations.manageUsersDescription}</p>
             </div>
           </div>
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <p className="text-destructive mb-4">
-                  Failed to load users: {typeof error === 'string' ? error : error?.message || 'Unknown error'}
+                  {translations.failedToLoadUsers}: {typeof error === 'string' ? error : error?.message || 'Unknown error'}
                 </p>
-                <Button onClick={refresh}>Retry</Button>
+                <Button onClick={refresh}>{translations.retry}</Button>
               </div>
             </CardContent>
           </Card>
@@ -184,26 +186,26 @@ const UsersManagement = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Users Management</h1>
-            <p className="text-muted-foreground mt-1">Manage user accounts and roles</p>
+            <h1 className="text-3xl font-bold">{translations.usersManagement}</h1>
+            <p className="text-muted-foreground mt-1">{translations.manageUsersDescription}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
-              Export
+              {translations.export}
             </Button>
             <Button onClick={() => navigate('/admin/users/new')}>
               <Plus className="h-4 w-4 mr-2" />
-              Add User
+              {translations.addUser}
             </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>All Users</CardTitle>
+            <CardTitle>{translations.allUsers}</CardTitle>
             <CardDescription>
-              View and manage all registered users ({total} total)
+              {translations.viewAndManageAllUsers.replace('{total}', total.toString())}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -212,7 +214,7 @@ const UsersManagement = () => {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by name, phone, or email..."
+                  placeholder={translations.searchByNamePhoneEmail}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -220,23 +222,23 @@ const UsersManagement = () => {
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Filter by Role" />
+                  <SelectValue placeholder={translations.filterByRole} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Roles</SelectItem>
-                  <SelectItem value="driver">Driver</SelectItem>
-                  <SelectItem value="employer">Employer</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="all">{translations.allRoles}</SelectItem>
+                  <SelectItem value="driver">{translations.driver}</SelectItem>
+                  <SelectItem value="employer">{translations.employer}</SelectItem>
+                  <SelectItem value="admin">{translations.admin}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Filter by Status" />
+                  <SelectValue placeholder={translations.filterByStatus} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="suspended">Suspended</SelectItem>
+                  <SelectItem value="all">{translations.allStatuses}</SelectItem>
+                  <SelectItem value="active">{translations.active}</SelectItem>
+                  <SelectItem value="suspended">{translations.suspended}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -246,12 +248,12 @@ const UsersManagement = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created On</TableHead>
+                    <TableHead>{translations.name}</TableHead>
+                    <TableHead>{translations.phone}</TableHead>
+                    <TableHead>{translations.email}</TableHead>
+                    <TableHead>{translations.role}</TableHead>
+                    <TableHead>{translations.status}</TableHead>
+                    <TableHead>{translations.createdOn}</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -272,7 +274,7 @@ const UsersManagement = () => {
                   ) : users.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        No users found. Try adjusting your filters.
+                        {translations.noUsersFound}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -307,12 +309,12 @@ const UsersManagement = () => {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
-                                Edit
+                                {translations.edit}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
                                 onClick={() => handleSuspendUser(user.id, user.name, user.enabled)}
                               >
-                                {user.status === 'Active' ? 'Suspend' : 'Activate'}
+                                {user.status === 'Active' ? translations.suspend : translations.activate}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
@@ -320,7 +322,7 @@ const UsersManagement = () => {
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Delete
+                                {translations.delete}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -336,7 +338,7 @@ const UsersManagement = () => {
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Showing {users.length} of {total} users
+                  {translations.showing.replace('{count}', users.length.toString()).replace('{total}', total.toString())}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -345,11 +347,11 @@ const UsersManagement = () => {
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 0 || isLoading}
                   >
-                    Previous
+                    {translations.previous}
                   </Button>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">
-                      Page {currentPage + 1} of {totalPages}
+                      {translations.page} {currentPage + 1} {translations.of} {totalPages}
                     </span>
                   </div>
                   <Button
@@ -358,7 +360,7 @@ const UsersManagement = () => {
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage >= totalPages - 1 || isLoading}
                   >
-                    Next
+                    {translations.next}
                   </Button>
                 </div>
               </div>
@@ -371,14 +373,13 @@ const UsersManagement = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle>{translations.areYouSure}</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the user{' '}
-              <span className="font-semibold">{userToDelete?.name}</span> and remove all their data from the system.
+              {translations.deleteUserConfirmation.replace('{name}', userToDelete?.name || '')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{translations.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={deleting}
@@ -387,10 +388,10 @@ const UsersManagement = () => {
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
+                  {translations.deleting}...
                 </>
               ) : (
-                'Delete'
+                translations.delete
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

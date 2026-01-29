@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,25 +7,72 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { User, Award, Briefcase, MapPin, Upload, Eye, CheckCircle2 } from 'lucide-react';
+import { User, Award, Briefcase, MapPin, Upload, Eye, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRegions } from '@/hooks/useLicense';
+import type { DriverProfile } from '@/types/auth';
 
 const DriverJobProfile = () => {
   const { toast } = useToast();
+  const { user, profile, updateProfile, isLoading: authLoading } = useAuth();
+  const { regions, isLoading: regionsLoading } = useRegions();
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<Partial<DriverProfile>>({
+    full_name: '',
+    license_number: '',
+    license_category: '',
+    years_of_experience: 0,
+    preferred_vehicle_types: [],
+    preferred_region: '',
+    languages: [],
+  });
 
-  const handleSave = () => {
-    toast({
-      title: "Profile Updated",
-      description: "Your driver profile has been saved successfully.",
-    });
+  useEffect(() => {
+    if (user && user.roles.includes('Driver') && profile) {
+      setFormData(profile as DriverProfile);
+    }
+  }, [user, profile]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { id, value } = e.target;
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSelectChange = (id: string, value: string | string[]) => {
+    setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await updateProfile(formData);
+      toast({
+        title: "Profile Updated",
+        description: "Your driver profile has been saved successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleUploadCV = () => {
+    // This will be implemented later
     toast({
       title: "CV Uploaded",
       description: "Your CV has been uploaded successfully.",
     });
   };
+
+  if (authLoading || regionsLoading) {
+    return <div>Loading...</div>
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -46,31 +94,31 @@ const DriverJobProfile = () => {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name *</Label>
+                    <Label htmlFor="full_name">Full Name *</Label>
                     <div className="relative">
                       <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="fullName" placeholder="John Mwamba" className="pl-10" />
+                      <Input id="full_name" placeholder="John Mwamba" className="pl-10" value={formData.full_name} onChange={handleInputChange} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number *</Label>
-                    <Input id="phone" placeholder="+255 XXX XXX XXX" disabled value="+255 700 000 000" />
+                    <Input id="phone_number" placeholder="+255 XXX XXX XXX" disabled value={formData.phone_number} />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="licenseNumber">License Number *</Label>
+                    <Label htmlFor="license_number">License Number *</Label>
                     <div className="relative">
                       <Award className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="licenseNumber" placeholder="TZ123456789" className="pl-10" />
+                      <Input id="license_number" placeholder="TZ123456789" className="pl-10" value={formData.license_number} onChange={handleInputChange} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="licenseCategory">License Category *</Label>
-                    <Select>
+                    <Label htmlFor="license_category">License Category *</Label>
+                    <Select onValueChange={(value) => handleSelectChange('license_category', value)} value={formData.license_category}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
@@ -87,16 +135,16 @@ const DriverJobProfile = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="experience">Years of Experience *</Label>
+                    <Label htmlFor="years_of_experience">Years of Experience *</Label>
                     <div className="relative">
                       <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="experience" type="number" placeholder="e.g., 5" className="pl-10" min="0" />
+                      <Input id="years_of_experience" type="number" placeholder="e.g., 5" className="pl-10" min="0" value={formData.years_of_experience} onChange={handleInputChange} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="vehicleTypes">Preferred Vehicle Type(s) *</Label>
-                    <Select>
+                    <Label htmlFor="preferred_vehicle_types">Preferred Vehicle Type(s) *</Label>
+                    <Select onValueChange={(value) => handleSelectChange('preferred_vehicle_types', value.split(','))} value={formData.preferred_vehicle_types?.join(',')}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select vehicle types" />
                       </SelectTrigger>
@@ -113,19 +161,17 @@ const DriverJobProfile = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="region">Preferred Location - Region *</Label>
+                    <Label htmlFor="preferred_region">Preferred Location - Region *</Label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Select>
+                      <Select onValueChange={(value) => handleSelectChange('preferred_region', value)} value={formData.preferred_region}>
                         <SelectTrigger className="pl-10">
                           <SelectValue placeholder="Select region" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="dar">Dar es Salaam</SelectItem>
-                          <SelectItem value="arusha">Arusha</SelectItem>
-                          <SelectItem value="mwanza">Mwanza</SelectItem>
-                          <SelectItem value="dodoma">Dodoma</SelectItem>
-                          <SelectItem value="mbeya">Mbeya</SelectItem>
+                          {regions.map(region => (
+                            <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
@@ -133,7 +179,7 @@ const DriverJobProfile = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="languages">Languages Spoken *</Label>
-                    <Input id="languages" placeholder="e.g., English, Swahili" />
+                    <Input id="languages" placeholder="e.g., English, Swahili" value={formData.languages?.join(', ')} onChange={(e) => handleSelectChange('languages', e.target.value.split(', ').map(s => s.trim()))} />
                   </div>
                 </div>
 
@@ -150,8 +196,9 @@ const DriverJobProfile = () => {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button onClick={handleSave} className="flex-1">
-                    Save Profile
+                  <Button onClick={handleSave} className="flex-1" disabled={isSaving}>
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    {isSaving ? 'Saving...' : 'Save Profile'}
                   </Button>
                   <Button variant="outline">
                     <Eye className="h-4 w-4 mr-2" />

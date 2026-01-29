@@ -17,9 +17,9 @@ const MOCK_COURSES: Course[] = [
         course_name_sw: 'Uendeshaji wa Kujihami',
         description_en: 'Learn to drive defensively and anticipate hazards.',
         description_sw: 'Jifunze kuendesha gari kwa kujihami na kutarajia hatari.',
-        course_track: 'Advanced',
-        course_category: 'Safety',
-        level: 'Intermediate',
+        course_track: 'professional',
+        course_category: 'basic',
+        level: 'Advanced',
         duration_hours: 10,
         total_lessons: 5,
         thumbnail: '/images/courses/defensive_driving.png',
@@ -39,11 +39,12 @@ const MOCK_LESSONS: Lesson[] = [
         lesson_title_sw: 'Utangulizi wa Uendeshaji wa Kujihami',
         course: 'COURSE-001',
         lesson_order: 1,
-        content_type: 'Video',
+        content_type: 'video',
         duration_minutes: 20,
         summary_en: 'Understanding the core principles.',
         summary_sw: 'Kuelewa kanuni za msingi.',
         is_locked: 0,
+        is_active: 1
       },
 ];
 
@@ -58,6 +59,7 @@ const MOCK_ENROLLMENTS: CourseEnrollment[] = [
         completed_lessons: 1,
         total_lessons: 5,
         last_accessed: '2024-07-20',
+        certificate_issued: 0
       }
 ];
 

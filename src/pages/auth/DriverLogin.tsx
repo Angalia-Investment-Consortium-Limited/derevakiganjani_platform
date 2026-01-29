@@ -6,10 +6,12 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import PhoneLogin from '@/components/PhoneLogin';
 
 const DriverLogin = () => {
   const [email, setEmail] = useState('');
@@ -31,7 +33,7 @@ const DriverLogin = () => {
     try {
       await login(email, password);
       toast({ title: t('success'), description: t('Welcome back!') });
-      navigate('/dashboard');
+      navigate('/auth/redirect');
     } catch (error: any) {
       toast({ title: t('error'), description: error.message || 'Login failed', variant: 'destructive' });
     } finally {
@@ -49,21 +51,35 @@ const DriverLogin = () => {
             <CardDescription>Sign in to your driver account</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handlePasswordLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-              </div>
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Logging in...' : 'Login'}
-              </Button>
-            </form>
+            <Tabs defaultValue="email" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="email">Email</TabsTrigger>
+                <TabsTrigger value="phone">Phone</TabsTrigger>
+              </TabsList>
+              <TabsContent value="email">
+                <form onSubmit={handlePasswordLogin} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? 'Logging in...' : 'Login'}
+                  </Button>
+                </form>
+              </TabsContent>
+              <TabsContent value="phone">
+                <PhoneLogin />
+              </TabsContent>
+            </Tabs>
             <div className="mt-4 text-center text-sm">
               Don't have an account? <Link to="/register" className="underline">Register</Link>
+            </div>
+             <div className="mt-2 text-center text-sm">
+                <Link to="/forgot-password" className="underline">Forgot Password?</Link>
             </div>
           </CardContent>
         </Card>

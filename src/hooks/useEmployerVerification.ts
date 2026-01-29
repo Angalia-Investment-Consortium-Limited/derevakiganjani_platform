@@ -1,129 +1,96 @@
 import { useState, useCallback } from 'react';
-import { useFrappeGetCall, useFrappePostCall } from 'frappe-react-sdk';
+import { collection, getDocs, query, where, orderBy, limit, startAfter, getCountFromServer, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import type { EmployerVerification } from '@/types/jobs';
 
-export interface Employer {
-  name: string;
-  company_name: string;
-  contact_person: string;
-  phone_number: string;
-  email: string;
-  verification_status: string;
-  creation: string;
-  risk_level?: string;
-}
+const PAGE_SIZE = 10;
 
-export interface EmployersResponse {
-  message: {
-    success: boolean;
-    employers: Employer[];
-    error?: string;
-  };
-}
-
-export interface ReviewEmployerData {
-  employer_name: string;
-  action: 'approve' | 'reject';
-  comments?: string;
-}
-
-/**
- * Custom hook for employer verification management operations
- */
-export const useEmployerVerification = () => {
-  const { data, error, isLoading, mutate } = useFrappeGetCall<EmployersResponse>(
-    'derevahuduma_platform.api.admin_employer.get_employer_verification_queue',
-    undefined,
-    undefined,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-    }
-  );
-
-  return {
-    employers: data?.message?.employers || [],
-    total: (data?.message?.employers || []).length,
-    isLoading,
-    error: error || data?.message?.error,
-    mutate,
-  };
-};
-
-/**
- * Hook for reviewing employer verification
- */
-export const useReviewEmployer = () => {
-  const { call, loading, error } = useFrappePostCall<{ success: boolean; message: string }>(
-    'derevahuduma_platform.api.admin_employer.review_employer_verification'
-  );
-
-  const reviewEmployer = useCallback(
-    async (reviewData: ReviewEmployerData) => {
-      try {
-        const response = await call(reviewData);
-        return response;
-      } catch (err) {
-        throw err;
-      }
-    },
-    [call]
-  );
-
-  return {
-    reviewEmployer,
-    loading,
-    error,
-  };
-};
-
-/**
- * Combined hook with all employer verification operations
- */
 export const useEmployerVerificationManagement = () => {
+  const [employers, setEmployers] = useState<EmployerVerification[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(0);
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [reviewing, setReviewing] = useState(false);
 
-  const { employers: allEmployers, isLoading, error, mutate } = useEmployerVerification();
+  const buildQuery = useCallback(() => {
+    let q = query(collection(db, 'employerVerifications'));
 
-  const { reviewEmployer, loading: reviewing } = useReviewEmployer();
+    if (statusFilter !== 'all') {
+      q = query(q, where('status', '==', statusFilter));
+    }
 
-  // Filter employers on frontend
-  const employers = allEmployers.filter((employer) => {
-    const matchesSearch =
-      !searchTerm ||
-      employer.company_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employer.contact_person.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      employer.email.toLowerCase().includes(searchTerm.toLowerCase());
+    if (searchTerm) {
+      q = query(q, where('companyName', '>=', searchTerm), where('companyName', '<=', searchTerm + '\uf8ff'));
+    }
 
-    const matchesStatus = statusFilter === 'all' || employer.verification_status === statusFilter;
+    return q;
+  }, [statusFilter, searchTerm]);
 
-    return matchesSearch && matchesStatus;
-  });
+  const fetchEmployers = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
 
-  const total = employers.length;
+    try {
+      const q = buildQuery();
+
+      const countSnapshot = await getCountFromServer(q);
+      setTotal(countSnapshot.data().count);
+
+      let pageQuery = query(q, orderBy('creation', 'desc'), limit(PAGE_SIZE));
+      if (currentPage > 0 && lastDoc) {
+        pageQuery = query(pageQuery, startAfter(lastDoc));
+      }
+
+      const querySnapshot = await getDocs(pageQuery);
+      const employersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmployerVerification));
+      setEmployers(employersData);
+      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch employer verifications');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [currentPage, lastDoc, buildQuery]);
 
   const refresh = useCallback(() => {
-    mutate();
-  }, [mutate]);
+    setCurrentPage(0);
+    setLastDoc(null);
+    fetchEmployers();
+  }, [fetchEmployers]);
+
+  const reviewEmployer = async (employerId: string, newStatus: string) => {
+    setReviewing(true);
+    try {
+      const employerRef = doc(db, 'employerVerifications', employerId);
+      await updateDoc(employerRef, { status: newStatus });
+    } catch (err: any) {
+      throw new Error(err.message || 'Failed to update employer status');
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return {
-    // Data
     employers,
     total,
     isLoading,
     error,
-
-    // Filters
     searchTerm,
     setSearchTerm,
     statusFilter,
     setStatusFilter,
-
-    // Operations
+    currentPage,
+    setCurrentPage,
+    totalPages,
     reviewEmployer,
-    refresh,
-
-    // Loading states
     reviewing,
+    refresh,
   };
 };

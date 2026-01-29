@@ -1,18 +1,13 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import path from 'path'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+export default defineConfig({
+  plugins: [react(), tsconfigPaths()],
   server: {
     port: 8080,
     host: '0.0.0.0',
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, 'src'),
-    },
   },
   publicDir: 'public',
   base: '/',
@@ -23,4 +18,4 @@ export default defineConfig(({ mode }) => ({
     manifest: true,
     chunkSizeWarningLimit: 1000, // Increase limit to 1000kb to reduce warnings
   },
-}))
+});

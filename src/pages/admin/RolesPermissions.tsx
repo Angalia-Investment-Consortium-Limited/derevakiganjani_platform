@@ -10,98 +10,101 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Shield, User, Building2, GraduationCap, FileCheck, ClipboardCheck, Wallet } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const RolesPermissions = () => {
+  const { translations } = useLanguage();
+
   const roles = [
     {
-      name: 'Super Admin',
+      name: translations.superAdmin,
       icon: Shield,
       color: 'text-red-500',
-      description: 'Full system access with all administrative capabilities',
+      description: translations.superAdminDescription,
       capabilities: [
-        'Manage all users and roles',
-        'System configuration',
-        'View all reports',
-        'Manage integrations',
-        'Database access',
+        translations.manageAllUsersAndRoles,
+        translations.systemConfiguration,
+        translations.viewAllReports,
+        translations.manageIntegrations,
+        translations.databaseAccess,
       ],
     },
     {
-      name: 'Driver',
+      name: translations.driver,
       icon: User,
       color: 'text-blue-500',
-      description: 'End-user account for drivers using the platform',
+      description: translations.driverDescription,
       capabilities: [
-        'Take tests and quizzes',
-        'Access learning materials',
-        'Apply for licenses',
-        'Search and apply for jobs',
-        'View own profile and certificates',
+        translations.takeTestsAndQuizzes,
+        translations.accessLearningMaterials,
+        translations.applyForLicenses,
+        translations.searchAndApplyForJobs,
+        translations.viewOwnProfileAndCertificates,
       ],
     },
     {
-      name: 'Employer',
+      name: translations.employer,
       icon: Building2,
       color: 'text-green-500',
-      description: 'Account for companies hiring drivers',
+      description: translations.employerDescription,
       capabilities: [
-        'Post job openings',
-        'View applicants',
-        'Schedule interviews',
-        'Manage shortlist',
-        'Message candidates',
+        translations.postJobOpenings,
+        translations.viewApplicants,
+        translations.scheduleInterviews,
+        translations.manageShortlist,
+        translations.messageCandidates,
       ],
     },
     {
-      name: 'Tutor / Instructor',
+      name: translations.tutor,
       icon: GraduationCap,
       color: 'text-purple-500',
-      description: 'Content creators and course instructors',
+      description: translations.tutorDescription,
       capabilities: [
-        'Create and manage courses',
-        'Upload learning materials',
-        'Track learner progress',
-        'Grade assignments',
-        'View course analytics',
+        translations.createAndManageCourses,
+        translations.uploadLearningMaterials,
+        translations.trackLearnerProgress,
+        translations.gradeAssignments,
+        translations.viewCourseAnalytics,
       ],
     },
     {
-      name: 'License Officer',
+      name: translations.licenseOfficer,
       icon: FileCheck,
       color: 'text-orange-500',
-      description: 'Manages license applications and renewals',
+      description: translations.licenseOfficerDescription,
       capabilities: [
-        'Review license applications',
-        'Approve/reject applications',
-        'Verify documents',
-        'Issue certificates',
-        'View license reports',
+        translations.reviewLicenseApplications,
+        translations.approveRejectApplications,
+        translations.verifyDocuments,
+        translations.issueCertificates,
+        translations.viewLicenseReports,
       ],
     },
     {
-      name: 'Test / Exam Officer',
+      name: translations.testOfficer,
       icon: ClipboardCheck,
       color: 'text-cyan-500',
-      description: 'Manages testing and examinations',
+      description: translations.testOfficerDescription,
       capabilities: [
-        'Configure test settings',
-        'Manage question bank',
-        'Review test results',
-        'Issue test certificates',
-        'Monitor test sessions',
+        translations.configureTestSettings,
+        translations.manageQuestionBank,
+        translations.reviewTestResults,
+        translations.issueTestCertificates,
+        translations.monitorTestSessions,
       ],
     },
     {
-      name: 'Finance',
+      name: translations.finance,
       icon: Wallet,
       color: 'text-yellow-500',
-      description: 'Manages payments and financial transactions',
+      description: translations.financeDescription,
       capabilities: [
-        'View all payments',
-        'Process refunds',
-        'Generate financial reports',
-        'Manage pricing',
-        'Export transactions',
+        translations.viewAllPayments,
+        translations.processRefunds,
+        translations.generateFinancialReports,
+        translations.managePricing,
+        translations.exportTransactions,
       ],
     },
   ];
@@ -110,16 +113,14 @@ const RolesPermissions = () => {
     <AdminLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-3xl font-bold">Roles & Permissions</h1>
-          <p className="text-muted-foreground mt-1">Overview of system roles and their capabilities</p>
+          <h1 className="text-3xl font-bold">{translations.rolesAndPermissions}</h1>
+          <p className="text-muted-foreground mt-1">{translations.rolesAndPermissionsDescription}</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>System Roles</CardTitle>
-            <CardDescription>
-              Roles define what users can do in the system. Detailed permission mapping is handled in the backend.
-            </CardDescription>
+            <CardTitle>{translations.systemRoles}</CardTitle>
+            <CardDescription>{translations.systemRolesDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid gap-6">
@@ -142,7 +143,7 @@ const RolesPermissions = () => {
                     </CardHeader>
                     <CardContent>
                       <div>
-                        <h4 className="font-semibold text-sm mb-2">Key Capabilities:</h4>
+                        <h4 className="font-semibold text-sm mb-2">{translations.keyCapabilities}:</h4>
                         <ul className="space-y-1">
                           {role.capabilities.map((capability, idx) => (
                             <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
@@ -162,30 +163,28 @@ const RolesPermissions = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Permission Matrix</CardTitle>
-            <CardDescription>High-level view of role capabilities</CardDescription>
+            <CardTitle>{translations.permissionMatrix}</CardTitle>
+            <CardDescription>{translations.permissionMatrixDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[200px]">Feature</TableHead>
-                    <TableHead className="text-center">Super Admin</TableHead>
-                    <TableHead className="text-center">Driver</TableHead>
-                    <TableHead className="text-center">Employer</TableHead>
-                    <TableHead className="text-center">Tutor</TableHead>
-                    <TableHead className="text-center">License Officer</TableHead>
-                    <TableHead className="text-center">Test Officer</TableHead>
-                    <TableHead className="text-center">Finance</TableHead>
+                    <TableHead className="w-[200px]">{translations.feature}</TableHead>
+                    <TableHead className="text-center">{translations.superAdmin}</TableHead>
+                    <TableHead className="text-center">{translations.driver}</TableHead>
+                    <TableHead className="text-center">{translations.employer}</TableHead>
+                    <TableHead className="text-center">{translations.tutor}</TableHead>
+                    <TableHead className="text-center">{translations.licenseOfficer}</TableHead>
+                    <TableHead className="text-center">{translations.testOfficer}</TableHead>
+                    <TableHead className="text-center">{translations.finance}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   <TableRow>
-                    <TableCell className="font-medium">User Management</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Full</Badge>
-                    </TableCell>
+                    <TableCell className="font-medium">{translations.userManagement}</TableCell>
+                    <TableCell className="text-center"><Badge>{translations.full}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
@@ -194,93 +193,59 @@ const RolesPermissions = () => {
                     <TableCell className="text-center">-</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Take Tests</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">View</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Full</Badge>
-                    </TableCell>
+                    <TableCell className="font-medium">{translations.takeTests}</TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{translations.view}</Badge></TableCell>
+                    <TableCell className="text-center"><Badge>{translations.full}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">Manage</Badge>
-                    </TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{translations.manage}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Job Posts</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Full</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">View</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Manage</Badge>
-                    </TableCell>
+                    <TableCell className="font-medium">{translations.jobPosts}</TableCell>
+                    <TableCell className="text-center"><Badge>{translations.full}</Badge></TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{translations.view}</Badge></TableCell>
+                    <TableCell className="text-center"><Badge>{translations.manage}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Courses</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Full</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">Enroll</Badge>
-                    </TableCell>
+                    <TableCell className="font-medium">{translations.courses}</TableCell>
+                    <TableCell className="text-center"><Badge>{translations.full}</Badge></TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{translations.enroll}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Create</Badge>
-                    </TableCell>
+                    <TableCell className="text-center"><Badge>{translations.create}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Licenses</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Full</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">Apply</Badge>
-                    </TableCell>
+                    <TableCell className="font-medium">{translations.licenses}</TableCell>
+                    <TableCell className="text-center"><Badge>{translations.full}</Badge></TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{translations.apply}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Approve</Badge>
-                    </TableCell>
+                    <TableCell className="text-center"><Badge>{translations.approve}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                   </TableRow>
                   <TableRow>
-                    <TableCell className="font-medium">Payments</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Full</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">Make</Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="secondary">Make</Badge>
-                    </TableCell>
+                    <TableCell className="font-medium">{translations.payments}</TableCell>
+                    <TableCell className="text-center"><Badge>{translations.full}</Badge></TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{translations.make}</Badge></TableCell>
+                    <TableCell className="text-center"><Badge variant="secondary">{translations.make}</Badge></TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
                     <TableCell className="text-center">-</TableCell>
-                    <TableCell className="text-center">
-                      <Badge>Manage</Badge>
-                    </TableCell>
+                    <TableCell className="text-center"><Badge>{translations.manage}</Badge></TableCell>
                   </TableRow>
                 </TableBody>
               </Table>
             </div>
-            <p className="text-sm text-muted-foreground mt-4">
-              <strong>Note:</strong> This is a simplified view. Backend RLS policies and API middleware enforce detailed permissions.
-            </p>
+            <p className="text-sm text-muted-foreground mt-4"><strong>{translations.note}:</strong> {translations.permissionMatrixNote}</p>
           </CardContent>
         </Card>
       </div>

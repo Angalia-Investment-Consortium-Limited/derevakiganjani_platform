@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Download, Eye, CheckCircle, XCircle, Filter } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Payment {
   id: string;
@@ -26,6 +27,8 @@ interface Payment {
 
 const PaymentsManagement = () => {
   const { toast } = useToast();
+  const { translations } = useLanguage();
+
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isActionModalOpen, setIsActionModalOpen] = useState(false);
@@ -92,8 +95,8 @@ const PaymentsManagement = () => {
     ));
 
     toast({
-      title: `Payment ${newStatus}`,
-      description: `Payment ${selectedPayment.referenceNumber} has been ${newStatus.toLowerCase()}.`,
+      title: `${translations.payment} ${translations[newStatus.toLowerCase() as keyof typeof translations]}`,      
+      description: `${translations.paymentFor} ${selectedPayment.referenceNumber} ${translations.hasBeen} ${translations[newStatus.toLowerCase() as keyof typeof translations]}.`,
     });
 
     setIsActionModalOpen(false);
@@ -103,8 +106,8 @@ const PaymentsManagement = () => {
 
   const handleExport = (format: 'csv' | 'pdf') => {
     toast({
-      title: 'Export Started',
-      description: `Exporting payments as ${format.toUpperCase()}...`,
+      title: translations.exportStarted,
+      description: `${translations.exporting} ${translations.payments} ${translations.as} ${format.toUpperCase()}...`,
     });
   };
 
@@ -114,7 +117,7 @@ const PaymentsManagement = () => {
       'Verified': 'default',
       'Rejected': 'destructive',
     };
-    return <Badge variant={variants[status]}>{status}</Badge>;
+    return <Badge variant={variants[status]}>{translations[status.toLowerCase() as keyof typeof translations]}</Badge>;
   };
 
   const filteredPayments = payments.filter(payment => {
@@ -127,112 +130,88 @@ const PaymentsManagement = () => {
   return (
     <AdminLayout>
       <div className="space-y-6">
-          {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Payments & Finance</h1>
-              <p className="text-muted-foreground">Manage and verify payment transactions</p>
+              <h1 className="text-3xl font-bold">{translations.paymentsAndFinance}</h1>
+              <p className="text-muted-foreground">{translations.paymentsAndFinanceDescription}</p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={() => handleExport('csv')} variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Export CSV
-              </Button>
-              <Button onClick={() => handleExport('pdf')} variant="outline">
-                <Download className="mr-2 h-4 w-4" />
-                Export PDF
-              </Button>
+              <Button onClick={() => handleExport('csv')} variant="outline"><Download className="mr-2 h-4 w-4" />{translations.exportCSV}</Button>
+              <Button onClick={() => handleExport('pdf')} variant="outline"><Download className="mr-2 h-4 w-4" />{translations.exportPDF}</Button>
             </div>
           </div>
 
-          {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-5 w-5" />
-                Filters
-              </CardTitle>
+              <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5" />{translations.filters}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <Label>Payment Method</Label>
+                  <Label>{translations.paymentMethod}</Label>
                   <Select value={filters.paymentMethod} onValueChange={(v) => setFilters({...filters, paymentMethod: v})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Methods</SelectItem>
+                      <SelectItem value="all">{translations.allMethods}</SelectItem>
                       <SelectItem value="M-Pesa">M-Pesa</SelectItem>
                       <SelectItem value="Airtel Money">Airtel Money</SelectItem>
-                      <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                      <SelectItem value="Bank Transfer">{translations.bankTransfer}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label>{translations.status}</Label>
                   <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="Verified">Verified</SelectItem>
-                      <SelectItem value="Rejected">Rejected</SelectItem>
+                      <SelectItem value="all">{translations.allStatuses}</SelectItem>
+                      <SelectItem value="Pending">{translations.pending}</SelectItem>
+                      <SelectItem value="Verified">{translations.verified}</SelectItem>
+                      <SelectItem value="Rejected">{translations.rejected}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Service Type</Label>
+                  <Label>{translations.serviceType}</Label>
                   <Select value={filters.serviceType} onValueChange={(v) => setFilters({...filters, serviceType: v})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Services</SelectItem>
-                      <SelectItem value="JiTesti">JiTesti</SelectItem>
-                      <SelectItem value="Elimika">Elimika</SelectItem>
-                      <SelectItem value="Leseni">Leseni</SelectItem>
-                      <SelectItem value="Job Post">Job Post</SelectItem>
+                      <SelectItem value="all">{translations.allServices}</SelectItem>
+                      <SelectItem value="JiTesti">{translations.jiTesti}</SelectItem>
+                      <SelectItem value="Elimika">{translations.elimika}</SelectItem>
+                      <SelectItem value="Leseni">{translations.licenses}</SelectItem>
+                      <SelectItem value="Job Post">{translations.jobPost}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Date Range</Label>
+                  <Label>{translations.dateRange}</Label>
                   <Input type="date" />
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Payments Table */}
           <Card>
-            <CardHeader>
-              <CardTitle>Payment Transactions</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>{translations.paymentTransactions}</CardTitle></CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Driver Name</TableHead>
-                      <TableHead>Service Type</TableHead>
-                      <TableHead>Payment Method</TableHead>
-                      <TableHead>Reference Number</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date Paid</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Actions</TableHead>
+                      <TableHead>{translations.driverName}</TableHead>
+                      <TableHead>{translations.serviceType}</TableHead>
+                      <TableHead>{translations.paymentMethod}</TableHead>
+                      <TableHead>{translations.referenceNumber}</TableHead>
+                      <TableHead>{translations.amount}</TableHead>
+                      <TableHead>{translations.datePaid}</TableHead>
+                      <TableHead>{translations.status}</TableHead>
+                      <TableHead>{translations.actions}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredPayments.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                          No payments found matching your filters.
-                        </TableCell>
-                      </TableRow>
+                      <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">{translations.noPaymentsFound}</TableCell></TableRow>
                     ) : (
                       filteredPayments.map((payment) => (
                         <TableRow key={payment.id}>
@@ -243,16 +222,7 @@ const PaymentsManagement = () => {
                           <TableCell>{payment.amount}</TableCell>
                           <TableCell>{payment.datePaid}</TableCell>
                           <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleViewDetails(payment)}
-                            >
-                              <Eye className="h-4 w-4 mr-1" />
-                              View
-                            </Button>
-                          </TableCell>
+                          <TableCell><Button variant="ghost" size="sm" onClick={() => handleViewDetails(payment)}><Eye className="h-4 w-4 mr-1" />{translations.view}</Button></TableCell>
                         </TableRow>
                       ))
                     )}
@@ -262,117 +232,60 @@ const PaymentsManagement = () => {
             </CardContent>
           </Card>
 
-          {/* Payment Detail Dialog */}
           <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Payment Details</DialogTitle>
-            <DialogDescription>
-              Review payment information and proof
-            </DialogDescription>
-          </DialogHeader>
-          {selectedPayment && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Driver Name</Label>
-                  <p className="text-sm font-medium">{selectedPayment.driverName}</p>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>{translations.paymentDetails}</DialogTitle>
+                <DialogDescription>{translations.paymentDetailsDescription}</DialogDescription>
+              </DialogHeader>
+              {selectedPayment && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><Label>{translations.driverName}</Label><p className="text-sm font-medium">{selectedPayment.driverName}</p></div>
+                    <div><Label>{translations.serviceType}</Label><p className="text-sm font-medium">{selectedPayment.serviceType}</p></div>
+                    <div><Label>{translations.paymentMethod}</Label><p className="text-sm font-medium">{selectedPayment.paymentMethod}</p></div>
+                    <div><Label>{translations.referenceNumber}</Label><p className="text-sm font-mono">{selectedPayment.referenceNumber}</p></div>
+                    <div><Label>{translations.amount}</Label><p className="text-sm font-medium">{selectedPayment.amount}</p></div>
+                    <div><Label>{translations.datePaid}</Label><p className="text-sm">{selectedPayment.datePaid}</p></div>
+                    <div><Label>{translations.status}</Label><div>{getStatusBadge(selectedPayment.status)}</div></div>
+                  </div>
+                  <div className="border rounded-lg p-4 bg-muted/30">
+                    <Label className="mb-2 block">{translations.paymentProof}</Label>
+                    <div className="bg-muted h-48 rounded flex items-center justify-center text-muted-foreground">[{translations.receiptPreview}]</div>
+                  </div>
                 </div>
-                <div>
-                  <Label>Service Type</Label>
-                  <p className="text-sm font-medium">{selectedPayment.serviceType}</p>
-                </div>
-                <div>
-                  <Label>Payment Method</Label>
-                  <p className="text-sm font-medium">{selectedPayment.paymentMethod}</p>
-                </div>
-                <div>
-                  <Label>Reference Number</Label>
-                  <p className="text-sm font-mono">{selectedPayment.referenceNumber}</p>
-                </div>
-                <div>
-                  <Label>Amount</Label>
-                  <p className="text-sm font-medium">{selectedPayment.amount}</p>
-                </div>
-                <div>
-                  <Label>Date Paid</Label>
-                  <p className="text-sm">{selectedPayment.datePaid}</p>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <div>{getStatusBadge(selectedPayment.status)}</div>
-                </div>
-              </div>
-              
-              <div className="border rounded-lg p-4 bg-muted/30">
-                <Label className="mb-2 block">Payment Proof</Label>
-                <div className="bg-muted h-48 rounded flex items-center justify-center text-muted-foreground">
-                  [Receipt/Screenshot Preview]
-                </div>
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsDetailOpen(false)}>
-              Close
-            </Button>
-            {selectedPayment?.status === 'Pending' && (
-              <>
-                <Button
-                  variant="destructive"
-                  onClick={() => handleActionClick('reject')}
-                >
-                  <XCircle className="mr-2 h-4 w-4" />
-                  Reject
-                </Button>
-                <Button onClick={() => handleActionClick('verify')}>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Verify Payment
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+              )}
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => setIsDetailOpen(false)}>{translations.close}</Button>
+                {selectedPayment?.status === 'Pending' && (
+                  <>
+                    <Button variant="destructive" onClick={() => handleActionClick('reject')}><XCircle className="mr-2 h-4 w-4" />{translations.reject}</Button>
+                    <Button onClick={() => handleActionClick('verify')}><CheckCircle className="mr-2 h-4 w-4" />{translations.verifyPayment}</Button>
+                  </>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
-      {/* Action Confirmation Modal */}
-      <Dialog open={isActionModalOpen} onOpenChange={setIsActionModalOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {actionType === 'verify' ? 'Verify Payment' : 'Reject Payment'}
-            </DialogTitle>
-            <DialogDescription>
-              {actionType === 'verify' 
-                ? 'Confirm that this payment has been verified.'
-                : 'Please provide a reason for rejecting this payment.'}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Admin Notes {actionType === 'reject' && '(Required)'}</Label>
-              <Textarea
-                value={adminNote}
-                onChange={(e) => setAdminNote(e.target.value)}
-                placeholder="Add any notes or reasons..."
-                rows={3}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsActionModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant={actionType === 'reject' ? 'destructive' : 'default'}
-              onClick={handleConfirmAction}
-            >
-              Confirm {actionType === 'verify' ? 'Verification' : 'Rejection'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+          <Dialog open={isActionModalOpen} onOpenChange={setIsActionModalOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{actionType === 'verify' ? translations.verifyPayment : translations.rejectPayment}</DialogTitle>
+                <DialogDescription>{actionType === 'verify' ? translations.verifyPaymentDescription : translations.rejectPaymentDescription}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label>{translations.adminNotes} {actionType === 'reject' && `(${translations.required})`}</Label>
+                  <Textarea value={adminNote} onChange={(e) => setAdminNote(e.target.value)} placeholder={translations.adminNotesPlaceholder} rows={3} />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsActionModalOpen(false)}>{translations.cancel}</Button>
+                <Button variant={actionType === 'reject' ? 'destructive' : 'default'} onClick={handleConfirmAction}>{translations.confirm} {actionType === 'verify' ? translations.verification : translations.rejection}</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
     </AdminLayout>
   );
 };

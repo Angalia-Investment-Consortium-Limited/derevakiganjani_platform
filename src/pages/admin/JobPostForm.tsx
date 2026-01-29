@@ -1,332 +1,186 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { toast } from '@/hooks/use-toast';
-import { ArrowLeft, Save, Eye } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { ArrowLeft, Save, Eye, Loader2 } from 'lucide-react';
+import { useAdminJob, useCreateJob, useUpdateJob } from '@/hooks/useAdminJobs';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { tanzanianRegions } from '@/lib/regions';
+import type { Job } from '@/types/jobs';
+
+// Define a type for the form data that is different from the Job type
+// because the form uses strings for skills and benefits.
+type JobPostFormData = Omit<Job, 'skills' | 'benefits' | 'postedOn'> & {
+  skills: string;
+  benefits: string;
+};
 
 const JobPostForm = () => {
   const navigate = useNavigate();
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const isEditMode = !!id;
+  const { t } = useLanguage();
+  const { toast } = useToast();
 
-  const [formData, setFormData] = useState({
-    employer: '',
-    jobTitle: '',
+  const { job, isLoading: loadingJob, error: loadError } = useAdminJob(id || null);
+  const { createJob, loading: creating } = useCreateJob();
+  const { updateJob, loading: updating } = useUpdateJob();
+
+  const [formData, setFormData] = useState<Partial<JobPostFormData>>({
+    employerId: '',
+    title: '',
     jobType: '',
     positions: 1,
     vehicleType: '',
-    licenseCategory: [] as string[],
+    licenseCategory: [],
     minExperience: 0,
     skills: '',
     region: '',
     district: '',
-    salaryMin: '',
-    salaryMax: '',
+    salaryMin: 0,
+    salaryMax: 0,
     benefits: '',
     description: '',
-    deadline: '',
-    startDate: '',
+    deadline: undefined,
+    startDate: undefined,
     status: 'draft'
   });
 
-  const handleSubmit = (status: 'draft' | 'published') => {
-    // Validation
-    if (!formData.employer || !formData.jobTitle || !formData.vehicleType || 
-        formData.licenseCategory.length === 0 || !formData.region || !formData.jobType || !formData.description) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
+  useEffect(() => {
+    if (isEditMode && job) {
+      const { skills, benefits, postedOn, ...restOfJob } = job;
+      setFormData({
+        ...restOfJob,
+        skills: Array.isArray(skills) ? skills.join(', ') : '',
+        benefits: Array.isArray(benefits) ? benefits.join(', ') : '',
+        deadline: job.deadline ? new Date((job.deadline as any).seconds * 1000).toISOString().split('T')[0] : '',
+        startDate: job.startDate ? new Date((job.startDate as any).seconds * 1000).toISOString().split('T')[0] : '',
       });
+    }
+  }, [isEditMode, job]);
+
+  const handleSubmit = async (action: 'draft' | 'published') => {
+    if (!formData.title || !formData.employerId || !formData.vehicleType || !formData.licenseCategory || formData.licenseCategory.length === 0 || !formData.region || !formData.jobType || !formData.description) {
+      toast({ title: t('validationError'), description: t('fillAllRequiredFields'), variant: "destructive" });
       return;
     }
 
-    const action = status === 'published' ? 'published' : 'saved as draft';
-    toast({
-      title: "Success",
-      description: `Job post ${action} successfully`,
-    });
-    navigate('/admin/job-posts');
+    const status = action === 'published' ? 'Open' : 'draft';
+
+    const jobData: Partial<Job> = {
+        ...formData,
+        skills: typeof formData.skills === 'string' ? formData.skills.split(',').map(s => s.trim()).filter(Boolean) : [],
+        benefits: typeof formData.benefits === 'string' ? formData.benefits.split(',').map(b => b.trim()).filter(Boolean) : [],
+        status
+    };
+
+    try {
+        if (isEditMode && id) {
+            await updateJob({ id, ...jobData });
+        } else {
+            await createJob(jobData);
+        }
+        
+        const toastAction = action === 'published' ? t('published') : t('savedAsDraft');
+        toast({ title: t('success'), description: `${t('jobPost')} ${toastAction} ${t('successfully')}` });
+        navigate('/admin/jobs');
+    } catch (err: any) {
+        toast({ title: t('error'), description: err.message || t('failedToSaveJobPost'), variant: 'destructive' });
+    }
   };
+
+  const isSubmitting = creating || updating;
 
   return (
     <AdminLayout>
-      <Button
-        variant="ghost"
-        onClick={() => navigate('/admin/job-posts')}
-        className="mb-4"
-      >
+      <Button variant="ghost" onClick={() => navigate('/admin/jobs')} className="mb-4">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Job Posts
+        {t('backToJobPosts')}
       </Button>
 
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">
-          {isEditMode ? 'Edit Job Post' : 'Create New Job Post'}
-        </h1>
-        <p className="text-muted-foreground">
-          {isEditMode ? 'Update job post details' : 'Fill in the details to create a new job posting'}
-        </p>
+        <h1 className="text-3xl font-bold">{isEditMode ? t('editJobPost') : t('createNewJobPost')}</h1>
+        <p className="text-muted-foreground">{isEditMode ? t('updateJobPostDetails') : t('fillJobPostDetails')}</p>
       </div>
 
-      <div className="space-y-6">
-        {/* Employer & Role */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Employer & Role</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="employer">Employer *</Label>
-              <Input
-                id="employer"
-                value={formData.employer}
-                onChange={(e) => setFormData({ ...formData, employer: e.target.value })}
-                placeholder="Select or search employer"
-              />
+      {loadingJob && <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto my-16" />}
+      {loadError && <p className="text-destructive text-center">{loadError}</p>}
+
+      {!loadingJob && !loadError && (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader><CardTitle>{t('employerAndRole')}</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                  <div><Label htmlFor="employer">{t('employer')} *</Label><Input id="employer" value={formData.employerId || ''} onChange={(e) => setFormData({ ...formData, employerId: e.target.value })} placeholder={t('selectOrSearchEmployer')} /></div>
+                  <div><Label htmlFor="jobTitle">{t('jobTitle')} *</Label><Input id="jobTitle" value={formData.title || ''} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder={t('jobTitlePlaceholder')} /></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                          <Label htmlFor="jobType">{t('jobType')} *</Label>
+                          <Select value={formData.jobType || ''} onValueChange={(value) => setFormData({ ...formData, jobType: value as Job['jobType'] })}><SelectTrigger id="jobType"><SelectValue placeholder={t('selectJobType')} /></SelectTrigger><SelectContent><SelectItem value="full-time">{t('fullTime')}</SelectItem><SelectItem value="contract">{t('contract')}</SelectItem><SelectItem value="temporary">{t('temporary')}</SelectItem></SelectContent></Select>
+                      </div>
+                      <div><Label htmlFor="positions">{t('numberOfPositions')} *</Label><Input id="positions" type="number" min="1" value={formData.positions || 1} onChange={(e) => setFormData({ ...formData, positions: parseInt(e.target.value) || 1 })} /></div>
+                  </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader><CardTitle>{t('requirements')}</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <Label htmlFor="vehicleType">{t('vehicleType')} *</Label>
+                        <Select value={formData.vehicleType || ''} onValueChange={(value) => setFormData({ ...formData, vehicleType: value as Job['vehicleType'] })}><SelectTrigger id="vehicleType"><SelectValue placeholder={t('selectVehicleType')} /></SelectTrigger><SelectContent><SelectItem value="car">{t('car')}</SelectItem><SelectItem value="motorcycle">{t('motorcycle')}</SelectItem><SelectItem value="bus">{t('bus')}</SelectItem><SelectItem value="truck">{t('truck')}</SelectItem><SelectItem value="other">{t('other')}</SelectItem></SelectContent></Select>
+                    </div>
+                    <div>
+                        <Label htmlFor="licenseCategory">{t('licenseCategoryRequired')} *</Label>
+                        <Select value={(formData.licenseCategory && formData.licenseCategory[0]) || ''} onValueChange={(value) => setFormData({ ...formData, licenseCategory: [value] })}><SelectTrigger id="licenseCategory"><SelectValue placeholder={t('selectLicenseCategory')} /></SelectTrigger><SelectContent><SelectItem value="A">{t('classA')}</SelectItem><SelectItem value="B">{t('classB')}</SelectItem><SelectItem value="C">{t('classC')}</SelectItem><SelectItem value="D">{t('classD')}</SelectItem><SelectItem value="E">{t('classE')}</SelectItem></SelectContent></Select>
+                    </div>
+                    <div><Label htmlFor="minExperience">{t('minExperienceYears')}</Label><Input id="minExperience" type="number" min="0" value={formData.minExperience || 0} onChange={(e) => setFormData({ ...formData, minExperience: parseInt(e.target.value) || 0 })} /></div>
+                    <div><Label htmlFor="skills">{t('skillsRequirements')}</Label><Textarea id="skills" value={formData.skills || ''} onChange={(e) => setFormData({ ...formData, skills: e.target.value })} placeholder={t('skillsPlaceholder')} rows={4} /></div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader><CardTitle>{t('locationAndCompensation')}</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <Label htmlFor="region">{t('region')} *</Label>
+                            <Select value={formData.region || ''} onValueChange={(value) => setFormData({ ...formData, region: value })}><SelectTrigger id="region"><SelectValue placeholder={t('selectRegion')} /></SelectTrigger><SelectContent>{tanzanianRegions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select>
+                        </div>
+                        <div><Label htmlFor="district">{t('district')} *</Label><Input id="district" value={formData.district || ''} onChange={(e) => setFormData({ ...formData, district: e.target.value })} placeholder={t('enterDistrict')} /></div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><Label htmlFor="salaryMin">{t('minSalary')}</Label><Input id="salaryMin" value={String(formData.salaryMin || 0)} onChange={(e) => setFormData({ ...formData, salaryMin: parseInt(e.target.value) || 0 })} placeholder="e.g., 500000" /></div>
+                        <div><Label htmlFor="salaryMax">{t('maxSalary')}</Label><Input id="salaryMax" value={String(formData.salaryMax || 0)} onChange={(e) => setFormData({ ...formData, salaryMax: parseInt(e.target.value) || 0 })} placeholder="e.g., 800000" /></div>
+                    </div>
+                    <div><Label htmlFor="benefits">{t('benefits')}</Label><Textarea id="benefits" value={formData.benefits || ''} onChange={(e) => setFormData({ ...formData, benefits: e.target.value })} placeholder={t('benefitsPlaceholder')} rows={3} /></div>
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader><CardTitle>{t('descriptionAndDates')}</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                    <div><Label htmlFor="description">{t('jobDescription')} *</Label><Textarea id="description" value={formData.description || ''} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder={t('jobDescriptionPlaceholder')} rows={6} /></div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><Label htmlFor="deadline">{t('applicationDeadline')}</Label><Input id="deadline" type="date" value={formData.deadline as string || ''} onChange={(e) => setFormData({ ...formData, deadline: e.target.value })} /></div>
+                        <div><Label htmlFor="startDate">{t('startDateOptional')}</Label><Input id="startDate" type="date" value={formData.startDate as string || ''} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} /></div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <div className="sticky bottom-0 bg-background border-t p-4 flex gap-4 justify-end">
+              <Button variant="outline" onClick={() => navigate('/admin/jobs')} disabled={isSubmitting}>{t('cancel')}</Button>
+              <Button variant="secondary" onClick={() => handleSubmit('draft')} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} {t('saveAsDraft')}</Button>
+              <Button onClick={() => handleSubmit('published')} disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4 mr-2" />} {t('publish')}</Button>
             </div>
-
-            <div>
-              <Label htmlFor="jobTitle">Job Title *</Label>
-              <Input
-                id="jobTitle"
-                value={formData.jobTitle}
-                onChange={(e) => setFormData({ ...formData, jobTitle: e.target.value })}
-                placeholder="e.g., Truck Driver, Bus Operator"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="jobType">Job Type *</Label>
-                <Select value={formData.jobType} onValueChange={(value) => setFormData({ ...formData, jobType: value })}>
-                  <SelectTrigger id="jobType">
-                    <SelectValue placeholder="Select job type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full-time">Full-time</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="temporary">Temporary</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="positions">Number of Positions *</Label>
-                <Input
-                  id="positions"
-                  type="number"
-                  min="1"
-                  value={formData.positions}
-                  onChange={(e) => setFormData({ ...formData, positions: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Requirements */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Requirements</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="vehicleType">Vehicle Type *</Label>
-              <Select value={formData.vehicleType} onValueChange={(value) => setFormData({ ...formData, vehicleType: value })}>
-                <SelectTrigger id="vehicleType">
-                  <SelectValue placeholder="Select vehicle type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="car">Car</SelectItem>
-                  <SelectItem value="motorcycle">Motorcycle</SelectItem>
-                  <SelectItem value="bus">Bus</SelectItem>
-                  <SelectItem value="truck">Truck</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="licenseCategory">License Category Required *</Label>
-              <Select 
-                value={formData.licenseCategory[0] || ''} 
-                onValueChange={(value) => setFormData({ ...formData, licenseCategory: [value] })}
-              >
-                <SelectTrigger id="licenseCategory">
-                  <SelectValue placeholder="Select license category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A">Class A (Motorcycle)</SelectItem>
-                  <SelectItem value="B">Class B (Light Vehicle)</SelectItem>
-                  <SelectItem value="C">Class C (Medium Vehicle)</SelectItem>
-                  <SelectItem value="D">Class D (Heavy Vehicle)</SelectItem>
-                  <SelectItem value="E">Class E (Articulated Vehicle)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="minExperience">Minimum Experience (years)</Label>
-              <Input
-                id="minExperience"
-                type="number"
-                min="0"
-                value={formData.minExperience}
-                onChange={(e) => setFormData({ ...formData, minExperience: parseInt(e.target.value) || 0 })}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="skills">Skills / Requirements</Label>
-              <Textarea
-                id="skills"
-                value={formData.skills}
-                onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                placeholder="List required skills and qualifications"
-                rows={4}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Location & Compensation */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Location & Compensation</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="region">Region *</Label>
-                <Select value={formData.region} onValueChange={(value) => setFormData({ ...formData, region: value })}>
-                  <SelectTrigger id="region">
-                    <SelectValue placeholder="Select region" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="dar-es-salaam">Dar es Salaam</SelectItem>
-                    <SelectItem value="arusha">Arusha</SelectItem>
-                    <SelectItem value="mwanza">Mwanza</SelectItem>
-                    <SelectItem value="dodoma">Dodoma</SelectItem>
-                    <SelectItem value="mbeya">Mbeya</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="district">District *</Label>
-                <Input
-                  id="district"
-                  value={formData.district}
-                  onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                  placeholder="Enter district"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="salaryMin">Minimum Salary (TZS)</Label>
-                <Input
-                  id="salaryMin"
-                  value={formData.salaryMin}
-                  onChange={(e) => setFormData({ ...formData, salaryMin: e.target.value })}
-                  placeholder="e.g., 500000"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="salaryMax">Maximum Salary (TZS)</Label>
-                <Input
-                  id="salaryMax"
-                  value={formData.salaryMax}
-                  onChange={(e) => setFormData({ ...formData, salaryMax: e.target.value })}
-                  placeholder="e.g., 800000"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="benefits">Benefits</Label>
-              <Textarea
-                id="benefits"
-                value={formData.benefits}
-                onChange={(e) => setFormData({ ...formData, benefits: e.target.value })}
-                placeholder="Health insurance, accommodation, transport allowance, etc."
-                rows={3}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Description & Dates */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Description & Dates</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="description">Job Description *</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Detailed job description, responsibilities, and requirements"
-                rows={6}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="deadline">Application Deadline</Label>
-                <Input
-                  id="deadline"
-                  type="date"
-                  value={formData.deadline}
-                  onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="startDate">Start Date (Optional)</Label>
-                <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="sticky bottom-0 bg-background border-t p-4 flex gap-4 justify-end">
-          <Button
-            variant="outline"
-            onClick={() => navigate('/admin/job-posts')}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => handleSubmit('draft')}
-          >
-            <Save className="h-4 w-4 mr-2" />
-            Save as Draft
-          </Button>
-          <Button onClick={() => handleSubmit('published')}>
-            <Eye className="h-4 w-4 mr-2" />
-            Publish
-          </Button>
-        </div>
-      </div>
+          </div>
+      )}
     </AdminLayout>
   );
 };

@@ -59,7 +59,7 @@ const AdminLogin = () => {
 
       // Use React Router navigation instead of window.location
       // This preserves React state and allows AuthContext to work properly
-      navigate('/admin');
+      navigate('/auth/redirect');
     } catch (error: any) {
       console.error('[AdminLogin] Login error:', error);
       

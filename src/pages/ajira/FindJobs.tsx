@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,62 +6,50 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, MapPin, Briefcase, Building2, DollarSign, Calendar } from 'lucide-react';
+import { Search, MapPin, Briefcase, Building2, DollarSign, Calendar, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useJobs } from '@/hooks/useJobs';
+import { useRegions } from '@/hooks/useLicense';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const FindJobs = () => {
   const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  const { toast } = useToast();
+  const [filters, setFilters] = useState({ searchTerm: '', vehicleType: '', licenseCategory: '', region: '', jobType: '' });
+  const { jobs, loading: jobsLoading } = useJobs(filters);
+  const { regions, loading: regionsLoading } = useRegions();
+  const [applying, setApplying] = useState<string | null>(null);
 
-  const jobs = [
-    {
-      id: 1,
-      title: 'Experienced Truck Driver',
-      employer: 'ABC Transport Ltd',
-      location: 'Dar es Salaam, Kinondoni',
-      vehicleType: 'Truck',
-      licenseRequired: 'D',
-      salary: '500,000 - 800,000 TZS',
-      jobType: 'Full-time',
-      postedOn: '2 days ago',
-      applications: 8,
-    },
-    {
-      id: 2,
-      title: 'Company Car Driver',
-      employer: 'TechCorp Tanzania',
-      location: 'Dar es Salaam, Ilala',
-      vehicleType: 'Car',
-      licenseRequired: 'B',
-      salary: '400,000 - 600,000 TZS',
-      jobType: 'Full-time',
-      postedOn: '4 days ago',
-      applications: 15,
-    },
-    {
-      id: 3,
-      title: 'Bus Driver - Tourist Routes',
-      employer: 'Safari Adventures',
-      location: 'Arusha',
-      vehicleType: 'Bus',
-      licenseRequired: 'C',
-      salary: '600,000 - 900,000 TZS',
-      jobType: 'Contract',
-      postedOn: '1 week ago',
-      applications: 12,
-    },
-    {
-      id: 4,
-      title: 'Delivery Motorcycle Rider',
-      employer: 'QuickDeliver',
-      location: 'Dar es Salaam',
-      vehicleType: 'Motorcycle',
-      licenseRequired: 'A',
-      salary: '300,000 - 450,000 TZS',
-      jobType: 'Part-time',
-      postedOn: '3 days ago',
-      applications: 23,
-    },
-  ];
+  const handleFilterChange = (filterName: string, value: string) => {
+    setFilters(prev => ({ ...prev, [filterName]: value }));
+  };
+
+  const handleApply = async (jobId: string) => {
+    if (!currentUser) {
+      toast({ title: 'Error', description: 'You must be logged in to apply.', variant: 'destructive' });
+      return;
+    }
+
+    setApplying(jobId);
+    try {
+      await addDoc(collection(db, 'applications'), {
+        jobId,
+        driverId: currentUser.uid,
+        employerId: jobs.find(j => j.id === jobId)?.employerId, // You need to make sure employerId is on the job object
+        status: 'Submitted',
+        appliedOn: Timestamp.now(),
+      });
+      toast({ title: 'Success', description: 'Application submitted successfully!' });
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to submit application.', variant: 'destructive' });
+    } finally {
+      setApplying(null);
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -81,26 +70,26 @@ const FindJobs = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search jobs..." className="pl-10" />
+                <Input placeholder="Search jobs..." className="pl-10" onChange={(e) => handleFilterChange('searchTerm', e.target.value)} />
               </div>
-              <Select>
+              <Select onValueChange={(value) => handleFilterChange('vehicleType', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Vehicle Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Vehicles</SelectItem>
-                  <SelectItem value="car">Car</SelectItem>
-                  <SelectItem value="motorcycle">Motorcycle</SelectItem>
-                  <SelectItem value="bus">Bus</SelectItem>
-                  <SelectItem value="truck">Truck</SelectItem>
+                  <SelectItem value="">All Vehicles</SelectItem>
+                  <SelectItem value="Car">Car</SelectItem>
+                  <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                  <SelectItem value="Bus">Bus</SelectItem>
+                  <SelectItem value="Truck">Truck</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
+              <Select onValueChange={(value) => handleFilterChange('licenseCategory', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="License Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="">All Categories</SelectItem>
                   <SelectItem value="A">Category A</SelectItem>
                   <SelectItem value="B">Category B</SelectItem>
                   <SelectItem value="C">Category C</SelectItem>
@@ -108,44 +97,32 @@ const FindJobs = () => {
                   <SelectItem value="E">Category E</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
+              <Select onValueChange={(value) => handleFilterChange('region', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Region" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Regions</SelectItem>
-                  <SelectItem value="dar">Dar es Salaam</SelectItem>
-                  <SelectItem value="arusha">Arusha</SelectItem>
-                  <SelectItem value="mwanza">Mwanza</SelectItem>
-                  <SelectItem value="dodoma">Dodoma</SelectItem>
+                  <SelectItem value="">All Regions</SelectItem>
+                  {regions.map(region => (
+                    <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-              <Select>
+              <Select onValueChange={(value) => handleFilterChange('jobType', value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Job Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="fulltime">Full-time</SelectItem>
-                  <SelectItem value="contract">Contract</SelectItem>
-                  <SelectItem value="temporary">Temporary</SelectItem>
-                  <SelectItem value="parttime">Part-time</SelectItem>
+                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="Full-time">Full-time</SelectItem>
+                  <SelectItem value="Contract">Contract</SelectItem>
+                  <SelectItem value="Temporary">Temporary</SelectItem>
+                  <SelectItem value="Part-time">Part-time</SelectItem>
                 </SelectContent>
               </Select>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Salary Range" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Salaries</SelectItem>
-                  <SelectItem value="300-500">300k - 500k TZS</SelectItem>
-                  <SelectItem value="500-700">500k - 700k TZS</SelectItem>
-                  <SelectItem value="700-1000">700k - 1M TZS</SelectItem>
-                  <SelectItem value="1000+">1M+ TZS</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Salary range filter is not implemented in the hook yet */}
             </div>
           </CardContent>
         </Card>
@@ -154,66 +131,64 @@ const FindJobs = () => {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
               <p className="text-muted-foreground">{jobs.length} jobs found</p>
-              <Select>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recent">Most Recent</SelectItem>
-                  <SelectItem value="salary-high">Salary: High to Low</SelectItem>
-                  <SelectItem value="salary-low">Salary: Low to High</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Sort by is not implemented in the hook yet */}
             </div>
 
-            {jobs.map((job) => (
-              <Card 
-                key={job.id}
-                className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
-                onClick={() => navigate(`/ajira/job/${job.id}`)}
-              >
-                <CardContent className="pt-6">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h3 className="text-xl font-semibold mb-1">{job.title}</h3>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <Building2 className="h-4 w-4" />
-                        <span>{job.employer}</span>
+            {jobsLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : (
+              jobs.map((job) => (
+                <Card 
+                  key={job.id}
+                  className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
+                  onClick={() => navigate(`/ajira/job/${job.id}`)}
+                >
+                  <CardContent className="pt-6">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="text-xl font-semibold mb-1">{job.title}</h3>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Building2 className="h-4 w-4" />
+                          <span>{job.employerName}</span>
+                        </div>
+                      </div>
+                      <Badge variant="outline">Category {job.licenseRequired}</Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-muted-foreground" />
+                        <span>{job.location}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Briefcase className="h-4 w-4 text-muted-foreground" />
+                        <span>{job.vehicleType} • {job.jobType}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        <span>{job.salary}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <span>Posted {new Date(job.postedOn.seconds * 1000).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <Badge variant="outline">Category {job.licenseRequired}</Badge>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{job.location}</span>
+                    <div className="flex justify-between items-center pt-3 border-t">
+                      <span className="text-sm text-muted-foreground">
+                        {/* Application count not available on job object yet */}
+                      </span>
+                      <Button size="sm" onClick={(e) => { e.stopPropagation(); handleApply(job.id); }} disabled={applying === job.id}>
+                        {applying === job.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        {applying === job.id ? 'Applying...' : 'Apply Now'}
+                      </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Briefcase className="h-4 w-4 text-muted-foreground" />
-                      <span>{job.vehicleType} • {job.jobType}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <span>{job.salary}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span>Posted {job.postedOn}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center pt-3 border-t">
-                    <span className="text-sm text-muted-foreground">
-                      {job.applications} applications
-                    </span>
-                    <Button size="sm">
-                      Apply Now
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              )))
+            }
           </div>
 
           <div className="space-y-6">

@@ -24,7 +24,7 @@ import type {
 } from '@/types/license';
 
 export function useRegions() {
-  const [regions, setRegions] = useState<string[]>([]);
+  const [regions, setRegions] = useState<{ id: string; name: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<any | null>(null);
 
@@ -33,7 +33,10 @@ export function useRegions() {
     setError(null);
     try {
       const querySnapshot = await getDocs(collection(db, 'regions'));
-      const regionData = querySnapshot.docs.map((doc) => doc.data().name);
+      const regionData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.data().name,
+      }));
       setRegions(regionData);
     } catch (e) {
       setError(e);
@@ -102,7 +105,7 @@ export function useSubmitApplication() {
         return {
           success: true,
           message: 'Application submitted successfully',
-          application: { ...formData, name: docRef.id, status: 'Submitted', creation: new Date().toISOString() },
+          application: { ...formData, name: docRef.id, status: 'Submitted', reference_number: docRef.id, submission_date: new Date().toISOString() },
         };
       } catch (e) {
         setError(e);
@@ -243,6 +246,34 @@ export function useDocumentUpload() {
   return { uploadDocument, isUploading, uploadProgress, error, reset };
 }
 
+export function useTrackApplication() {
+  const [refNo, setRefNo] = useState<string>('');
+  const [isTracking, setIsTracking] = useState(false);
+
+  const { application, error, isLoading, refetch } = useApplicationStatus(
+    isTracking ? refNo : null
+  );
+
+  const trackApplication = useCallback((referenceNumber: string) => {
+    setRefNo(referenceNumber);
+    setIsTracking(true);
+  }, []);
+
+  const reset = useCallback(() => {
+    setRefNo('');
+    setIsTracking(false);
+  }, []);
+
+  return {
+    application,
+    error,
+    isLoading,
+    trackApplication,
+    reset,
+    refetch,
+  };
+}
+
 export function useApplicationDetails(applicationId: string) {
   return useApplicationStatus(applicationId);
 }
@@ -303,7 +334,7 @@ export function useApplicationStatistics() {
         completed: applications.filter((a) => a.status === 'Completed').length,
         by_type: {
           new_license: applications.filter((a) => a.application_type === 'New License').length,
-          renewal: applications.filter((a) => a.application_type === 'Renewal').length,
+          renewal: applications.filter((a) => a.application_type === 'License Renewal').length,
           latra_exam: applications.filter((a) => a.application_type === 'LATRA Exam').length,
         },
       };
@@ -453,7 +484,7 @@ export function useFileValidation(options?: {
       currentStep,
       uploadedFiles,
       updateFormData,
-      nextStep,
+nextStep,
       previousStep,
       addFile,
     };

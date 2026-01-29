@@ -4,49 +4,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Users, UserCheck, Calendar, TrendingUp, Bell, Plus, Eye } from 'lucide-react';
+import { Briefcase, Users, UserCheck, Calendar, TrendingUp, Bell, Plus, Eye, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useEmployerDashboard } from '@/hooks/useEmployerDashboard';
 
 const EmployerDashboard = () => {
   const navigate = useNavigate();
+  const { stats, recentApplicants, recentJobPosts, loading } = useEmployerDashboard();
 
-  const stats = [
-    { title: 'Total Job Posts', value: '12', icon: Briefcase, color: 'text-primary' },
-    { title: 'Total Applicants', value: '156', icon: Users, color: 'text-blue-500' },
-    { title: 'Shortlisted', value: '28', icon: UserCheck, color: 'text-success' },
-    { title: 'Interviews', value: '8', icon: Calendar, color: 'text-warning' },
-    { title: 'Hired', value: '5', icon: TrendingUp, color: 'text-green-600' },
-    { title: 'Notifications', value: '3', icon: Bell, color: 'text-destructive' },
-  ];
-
-  const recentApplicants = [
-    { id: 1, name: 'John Mwamba', job: 'Truck Driver', category: 'D', experience: '5 yrs', applied: '2 hours ago', status: 'New' },
-    { id: 2, name: 'Mary Kamara', job: 'Company Car Driver', category: 'B', experience: '3 yrs', applied: '5 hours ago', status: 'Viewed' },
-    { id: 3, name: 'David Luka', job: 'Bus Driver', category: 'C', experience: '7 yrs', applied: '1 day ago', status: 'Shortlisted' },
-  ];
-
-  const recentJobPosts = [
-    { id: 1, title: 'Experienced Truck Driver', applications: 8, status: 'Published', postedOn: '2025-01-20' },
-    { id: 2, title: 'Company Car Driver', applications: 15, status: 'Published', postedOn: '2025-01-18' },
-    { id: 3, title: 'Bus Driver - Tourist Routes', applications: 0, status: 'Draft', postedOn: '2025-01-22' },
+  const statCards = [
+    { title: 'Total Job Posts', value: stats.totalJobPosts, icon: Briefcase, color: 'text-primary' },
+    { title: 'Total Applicants', value: stats.totalApplicants, icon: Users, color: 'text-blue-500' },
+    { title: 'Shortlisted', value: stats.shortlisted, icon: UserCheck, color: 'text-success' },
+    { title: 'Interviews', value: stats.interviews, icon: Calendar, color: 'text-warning' },
+    { title: 'Hired', value: stats.hired, icon: TrendingUp, color: 'text-green-600' },
+    { title: 'Notifications', value: '3', icon: Bell, color: 'text-destructive' }, // Notifications not yet implemented
   ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'New':
-        return 'bg-blue-500/10 text-blue-500';
-      case 'Viewed':
-        return 'bg-muted text-muted-foreground';
-      case 'Shortlisted':
-        return 'bg-success/10 text-success';
-      case 'Published':
-        return 'bg-success/10 text-success';
-      case 'Draft':
-        return 'bg-warning/10 text-warning';
-      default:
-        return '';
+      case 'New': return 'bg-blue-500/10 text-blue-500';
+      case 'Viewed': return 'bg-muted text-muted-foreground';
+      case 'Shortlisted': return 'bg-success/10 text-success';
+      case 'Published': return 'bg-success/10 text-success';
+      case 'Draft': return 'bg-warning/10 text-warning';
+      default: return '';
     }
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -59,7 +47,7 @@ const EmployerDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
-          {stats.map((stat, index) => (
+          {statCards.map((stat, index) => (
             <Card key={index}>
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -104,13 +92,13 @@ const EmployerDashboard = () => {
                   <TableBody>
                     {recentApplicants.map((applicant) => (
                       <TableRow key={applicant.id}>
-                        <TableCell className="font-medium">{applicant.name}</TableCell>
-                        <TableCell>{applicant.job}</TableCell>
+                        <TableCell className="font-medium">{applicant.driverName}</TableCell>
+                        <TableCell>{applicant.jobTitle}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">Cat {applicant.category}</Badge>
+                          <Badge variant="outline">Cat {applicant.licenseCategory}</Badge>
                         </TableCell>
-                        <TableCell>{applicant.experience}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{applicant.applied}</TableCell>
+                        <TableCell>{applicant.driverExperience} yrs</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{new Date(applicant.appliedOn.seconds * 1000).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(applicant.status)}>{applicant.status}</Badge>
                         </TableCell>
@@ -118,7 +106,7 @@ const EmployerDashboard = () => {
                           <Button 
                             size="sm" 
                             variant="ghost"
-                            onClick={() => navigate(`/employer/drivers/${applicant.id}`)}
+                            onClick={() => navigate(`/employer/drivers/${applicant.driverId}`)}
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -186,12 +174,12 @@ const EmployerDashboard = () => {
                     <TableRow key={job.id}>
                       <TableCell className="font-medium">{job.title}</TableCell>
                       <TableCell className="text-center">
-                        <span className="font-semibold">{job.applications}</span>
+                        <span className="font-semibold">{job.applicationCount || 0}</span>
                       </TableCell>
                       <TableCell>
                         <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
                       </TableCell>
-                      <TableCell>{job.postedOn}</TableCell>
+                      <TableCell>{new Date(job.postedOn.seconds * 1000).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <Button 
                           size="sm" 
