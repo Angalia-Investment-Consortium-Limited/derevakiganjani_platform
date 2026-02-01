@@ -6,83 +6,111 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Briefcase, Calendar, DollarSign, MapPin, FileText, Loader2 } from 'lucide-react';
+import { Briefcase, Calendar, DollarSign, MapPin, FileText, Loader2, PlusCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRegions } from '@/hooks/useLicense';
+import { useRegions, useDistricts } from '@/hooks/useLicense';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import type { Job } from '@/types/jobs';
+import type { EmployerProfile } from '@/types/auth';
 
 const PostJob = () => {
   const { toast } = useToast();
-  const { currentUser } = useAuth();
-  const { regions } = useRegions();
+  const { profile } = useAuth();
+  const employerProfile = profile as EmployerProfile;
   const navigate = useNavigate();
+
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [formData, setFormData] = useState({ 
-    title: '', 
-    vehicleType: '', 
-    licenseRequired: '', 
-    jobType: '', 
-    positions: 1, 
-    salary: '', 
-    location: '', 
-    district: '', 
-    startDate: '', 
-    description: '', 
-    requirements: '', 
-  });
+  
+  const initialFormData: Partial<Job> = {
+    title: '',
+    jobType: 'full-time',
+    region: '',
+    district: '',
+    minExperience: 0,
+    salaryMin: undefined,
+    salaryMax: undefined,
+    description: '',
+    skills: [],
+    benefits: [],
+    licenseCategory: [],
+    deadline: '',
+  };
+  const [formData, setFormData] = useState<Partial<Job>>(initialFormData);
+  const [newSkill, setNewSkill] = useState('');
+  const [newBenefit, setNewBenefit] = useState('');
 
+  const { regions, isLoading: regionsLoading } = useRegions();
+  const { districts, isLoading: districtsLoading } = useDistricts(formData.region || '');
+  
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
+    const { id, value, type } = e.target;
+    setFormData(prev => ({ ...prev, [id]: type === 'number' ? Number(value) : value }));
   };
 
-  const handleSelectChange = (id: string, value: string) => {
+  const handleSelectChange = (id: keyof Job, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [id]: value }));
+    if (id === 'region') {
+      setFormData(prev => ({ ...prev, district: '' }));
+    }
   };
+
+  const handleAddItem = (field: 'skills' | 'benefits', value: string) => {
+    if (value.trim()) {
+      setFormData(prev => ({...prev, [field]: [...(prev[field] || []), value.trim()]}));
+      if (field === 'skills') setNewSkill('');
+      if (field === 'benefits') setNewBenefit('');
+    }
+  };
+
+  const handleRemoveItem = (field: 'skills' | 'benefits', index: number) => {
+    setFormData(prev => ({...prev, [field]: (prev[field] || []).filter((_, i) => i !== index)}));
+  };
+
+  const requiredFields: (keyof Job)[] = ['title', 'jobType', 'region', 'district', 'description', 'deadline'];
+  const isFormValid = useMemo(() => {
+    return requiredFields.every(field => formData[field] && (Array.isArray(formData[field]) ? (formData[field] as any[]).length > 0 : true));
+  }, [formData]);
 
   const handleSubmit = async (status: 'Published' | 'Draft') => {
-    if (!currentUser) {
-      toast({ title: "Error", description: "You must be logged in to post a job.", variant: "destructive" });
+    if (!employerProfile) {
+      toast({ title: "Error", description: "Could not load employer profile.", variant: "destructive" });
       return;
+    }
+    if (status === 'Published' && !isFormValid) {
+        toast({ title: "Missing Fields", description: "Please fill all required fields before publishing.", variant: "destructive" });
+        return;
     }
 
     setIsSaving(true);
     try {
       await addDoc(collection(db, 'jobs'), {
         ...formData,
-        employerId: currentUser.uid,
-        employerName: currentUser.displayName, // Assumes displayName is available
+        employerId: employerProfile.user,
+        employerName: employerProfile.company_name,
         postedOn: Timestamp.now(),
         status,
-        requirements: formData.requirements.split('\n'), // Split requirements into an array
       });
       if (status === 'Published') {
         setShowSuccessModal(true);
       } else {
-        toast({
-          title: "Draft Saved",
-          description: "Your job post has been saved as a draft.",
-        });
+        toast({ title: "Draft Saved", description: "Your job post has been saved as a draft." });
         navigate('/ajiri-dereva/my-jobs');
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to save job post.", variant: "destructive" });
+      console.error("Error saving job post:", error);
+      toast({ title: "Error", description: "Failed to save job post. Please try again.", variant: "destructive" });
     } finally {
       setIsSaving(false);
     }
   };
+
+  const resetForm = () => setFormData(initialFormData);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -97,149 +125,127 @@ const PostJob = () => {
         <Card>
           <CardHeader>
             <CardTitle>Job Details</CardTitle>
-            <CardDescription>Fill in the details to post your job vacancy</CardDescription>
+            <CardDescription>Fill in the details to post your job vacancy. Fields marked with * are required.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="title">Job Title *</Label>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="title" placeholder="e.g., Experienced Truck Driver" className="pl-10" value={formData.title} onChange={handleInputChange} />
-                </div>
+                <Input id="title" value={formData.title} onChange={handleInputChange} disabled={isSaving} />
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="vehicleType">Vehicle Type *</Label>
-                <Select onValueChange={(value) => handleSelectChange('vehicleType', value)} value={formData.vehicleType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select vehicle type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Car">Car</SelectItem>
-                    <SelectItem value="Motorcycle">Motorcycle</SelectItem>
-                    <SelectItem value="Bus">Bus</SelectItem>
-                    <SelectItem value="Truck">Truck</SelectItem>
-                    <SelectItem value="Trailer">Trailer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="licenseRequired">License Category Required *</Label>
-                <Select onValueChange={(value) => handleSelectChange('licenseRequired', value)} value={formData.licenseRequired}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="A">Category A - Motorcycle</SelectItem>
-                    <SelectItem value="B">Category B - Light Vehicle</SelectItem>
-                    <SelectItem value="C">Category C - Medium Vehicle</SelectItem>
-                    <SelectItem value="D">Category D - Heavy Vehicle</SelectItem>
-                    <SelectItem value="E">Category E - Trailer</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="jobType">Job Type *</Label>
-                <Select onValueChange={(value) => handleSelectChange('jobType', value)} value={formData.jobType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select job type" />
-                  </SelectTrigger>
+                <Select onValueChange={(v) => handleSelectChange('jobType', v)} value={formData.jobType} disabled={isSaving}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Full-time">Full-time</SelectItem>
-                    <SelectItem value="Contract">Contract</SelectItem>
-                    <SelectItem value="Temporary">Temporary</SelectItem>
-                    <SelectItem value="Part-time">Part-time</SelectItem>
+                    <SelectItem value="full-time">Full-time</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="temporary">Temporary</SelectItem>
+                    <SelectItem value="part-time">Part-time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="positions">Number of Positions *</Label>
-                <Input id="positions" type="number" placeholder="e.g., 2" min="1" value={formData.positions} onChange={handleInputChange} />
+                <Label htmlFor="region">Location - Region *</Label>
+                <Select onValueChange={(v) => handleSelectChange('region', v)} value={formData.region} disabled={isSaving || regionsLoading}>
+                  <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
+                  <SelectContent>
+                    {regions.map(r => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="salary">Salary Range (TZS) *</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input id="salary" placeholder="e.g., 500,000 - 800,000" className="pl-10" value={formData.salary} onChange={handleInputChange} />
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="location">Location - Region *</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Select onValueChange={(value) => handleSelectChange('location', value)} value={formData.location}>
-                    <SelectTrigger className="pl-10">
-                      <SelectValue placeholder="Select region" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {regions.map(region => (
-                        <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="district">District *</Label>
-                 <Input id="district" placeholder="e.g., Kinondoni" value={formData.district} onChange={handleInputChange} />
+                <Select onValueChange={(v) => handleSelectChange('district', v)} value={formData.district} disabled={isSaving || districtsLoading || !formData.region}>
+                  <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
+                  <SelectContent>
+                    {districts.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Expected Start Date *</Label>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input id="startDate" type="date" className="pl-10" value={formData.startDate} onChange={handleInputChange} />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="salaryMin">Salary From (TZS)</Label>
+                <Input id="salaryMin" type="number" value={formData.salaryMin} onChange={handleInputChange} disabled={isSaving} placeholder="e.g., 500,000"/>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="salaryMax">Salary To (TZS)</Label>
+                <Input id="salaryMax" type="number" value={formData.salaryMax} onChange={handleInputChange} disabled={isSaving} placeholder="e.g., 800,000" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="minExperience">Minimum Experience (Years)</Label>
+                <Input id="minExperience" type="number" value={formData.minExperience} onChange={handleInputChange} disabled={isSaving} />
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="deadline">Application Deadline *</Label>
+                <Input id="deadline" type="date" value={formData.deadline} onChange={handleInputChange} disabled={isSaving} />
+              </div>
+            </div>
+
+             <div className="space-y-2">
+                <Label>License Category Required</Label>
+                <Select onValueChange={(v) => handleSelectChange('licenseCategory', v)} disabled={isSaving} >
+                    <SelectTrigger><SelectValue placeholder="Select all that apply" /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="A">A - Motorcycle</SelectItem>
+                        <SelectItem value="B">B - Car</SelectItem>
+                        <SelectItem value="C1">C1 - Medium Truck</SelectItem>
+                        <SelectItem value="C2">C2 - Medium Bus</SelectItem>
+                        <SelectItem value="C3">C3 - Medium Vehicle with Trailer</SelectItem>
+                        <SelectItem value="D">D - Heavy Bus</SelectItem>
+                        <SelectItem value="E">E - Heavy Truck with Trailer</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="description">Job Description *</Label>
-              <div className="relative">
-                <FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Textarea 
-                  id="description" 
-                  placeholder="Describe the job role, responsibilities, and working conditions..."
-                  rows={5}
-                  className="pl-10 pt-3"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                />
+              <Textarea id="description" rows={6} value={formData.description} onChange={handleInputChange} disabled={isSaving} />
+            </div>
+
+            <div className="space-y-4">
+              <Label>Skills Required</Label>
+              <div className="flex flex-wrap gap-2">
+                {formData.skills?.map((skill, i) => (
+                  <Badge key={i} variant="secondary" className="flex items-center gap-1">
+                    {skill}
+                    <XCircle className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveItem('skills', i)} />
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input value={newSkill} onChange={(e) => setNewSkill(e.target.value)} placeholder="e.g., Defensive Driving" />
+                <Button variant="outline" size="icon" onClick={() => handleAddItem('skills', newSkill)}><PlusCircle className="h-4 w-4" /></Button>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="requirements">Requirements * (one per line)</Label>
-              <Textarea 
-                id="requirements" 
-                placeholder="List the qualifications, experience, and skills required..."
-                rows={4}
-                value={formData.requirements}
-                onChange={handleInputChange}
-              />
+            <div className="space-y-4">
+              <Label>Benefits</Label>
+              <div className="flex flex-wrap gap-2">
+                {formData.benefits?.map((benefit, i) => (
+                  <Badge key={i} variant="default" className="flex items-center gap-1">
+                    {benefit}
+                    <XCircle className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveItem('benefits', i)} />
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <Input value={newBenefit} onChange={(e) => setNewBenefit(e.target.value)} placeholder="e.g., Health Insurance" />
+                <Button variant="outline" size="icon" onClick={() => handleAddItem('benefits', newBenefit)}><PlusCircle className="h-4 w-4" /></Button>
+              </div>
             </div>
 
-            <div className="flex gap-3 pt-4">
-              <Button onClick={() => handleSubmit('Draft')} variant="outline" className="flex-1" disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Save as Draft
+            <div className="flex gap-3 pt-4 border-t">
+              <Button onClick={() => handleSubmit('Draft')} variant="outline" className="flex-1" disabled={isSaving || !formData.title}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save as Draft
               </Button>
-              <Button onClick={() => handleSubmit('Published')} className="flex-1" disabled={isSaving}>
-                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Publish Job
+              <Button onClick={() => handleSubmit('Published')} className="flex-1" disabled={isSaving || !isFormValid}>
+                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Publish Job
               </Button>
             </div>
           </CardContent>
@@ -250,12 +256,10 @@ const PostJob = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Job Posted Successfully!</DialogTitle>
-            <DialogDescription>
-              Your job vacancy has been published and is now visible to qualified drivers.
-            </DialogDescription>
+            <DialogDescription>Your job vacancy is now visible to qualified drivers.</DialogDescription>
           </DialogHeader>
           <div className="flex gap-3 mt-4">
-            <Button variant="outline" className="flex-1" onClick={() => { setShowSuccessModal(false); setFormData({ title: '', vehicleType: '', licenseRequired: '', jobType: '', positions: 1, salary: '', location: '', district: '', startDate: '', description: '', requirements: '' }); }}>
+            <Button variant="outline" className="flex-1" onClick={() => { setShowSuccessModal(false); resetForm(); }}>
               Post Another Job
             </Button>
             <Button className="flex-1" onClick={() => navigate('/ajiri-dereva/my-jobs')}>

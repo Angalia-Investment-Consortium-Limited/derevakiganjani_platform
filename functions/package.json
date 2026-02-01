@@ -18,6 +18,7 @@
     "sharp": "^0.32.1"
   },
   "devDependencies": {
+    "@types/nodemailer": "^7.0.9",
     "firebase-functions-test": "^3.1.0"
   },
   "private": true

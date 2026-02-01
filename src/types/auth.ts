@@ -48,6 +48,11 @@ export interface EmployerProfile {
   company_logo?: string;
   verified: boolean;
   verification_status?: 'Pending' | 'Verified' | 'Rejected';
+  tin_number?: string;
+  business_license_number?: string;
+  contact_person_position?: string;
+  company_region?: string;
+  company_district?: string;
 }
 
 export interface AdminProfile {

@@ -10,17 +10,42 @@ if (admin.apps.length === 0) {
 const db = admin.firestore();
 
 /**
- * Sends a notification to a user.
+ * Sends a notification to a user and a push notification via FCM.
  * @param {string} userId The ID of the user to notify.
  * @param {object} notification The notification payload.
  */
-const sendNotification = async (userId: string, notification: object) => {
+const sendNotification = async (userId: string, notification: any) => {
+  // Save the notification to Firestore
   const notificationRef = db.collection('users').doc(userId).collection('notifications');
-  return notificationRef.add({
+  await notificationRef.add({
     ...notification,
     timestamp: admin.firestore.FieldValue.serverTimestamp(),
     read: false, // Mark as unread by default
   });
+
+  // Send a push notification
+  const userRef = db.collection('users').doc(userId);
+  const userDoc = await userRef.get();
+  const userData = userDoc.data();
+
+  if (userData && userData.fcmTokens && userData.fcmTokens.length > 0) {
+    const payload = {
+      notification: {
+        title: 'You have a new notification',
+        body: notification.message,
+      },
+      data: {
+        link: notification.link || '',
+      },
+    };
+
+    try {
+      await admin.messaging().sendToDevice(userData.fcmTokens, payload);
+      console.log('Push notification sent successfully.');
+    } catch (error) {
+      console.error('Error sending push notification:', error);
+    }
+  }
 };
 
 /**

@@ -75,7 +75,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(userData);
 
         if (userData.roles && userData.roles.length > 0) {
-          const profileCollection = `${userData.roles[0].toLowerCase()}Profiles`;
+          const profileCollection = `${userData.roles[0].toLowerCase()}s`;
           const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
           const profileDoc = await getDoc(profileDocRef);
 
@@ -163,7 +163,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       phoneNumber: phone_number,
     });
 
-    const profileCollection = `${role.toLowerCase()}Profiles`;
+    const profileCollection = `${role.toLowerCase()}s`;
     const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
     await setDoc(profileDocRef, {
       ...profileData,
@@ -178,7 +178,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateProfile = async (data: Partial<DriverProfile | EmployerProfile | AdminProfile>) => {
     if (!currentUser || !user?.roles) return;
 
-    const profileCollection = `${user.roles[0].toLowerCase()}Profiles`;
+    const profileCollection = `${user.roles[0].toLowerCase()}s`;
     const profileDocRef = doc(db, profileCollection, currentUser.uid);
     await updateDoc(profileDocRef, data);
     await fetchUserProfile(currentUser); // Refresh profile

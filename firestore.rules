@@ -54,8 +54,12 @@ service cloud.firestore {
     // Employers: Can manage their own profile. Admins can verify/manage all.
     match /employers/{employerId} {
       allow read: if isOwner(employerId) || isAdmin();
-      // Allow owner to update their profile, but NOT the verificationStatus
-      allow update: if isOwner(employerId) && request.resource.data.verificationStatus == resource.data.verificationStatus;
+      // Allow owner to update profile BUT NOT change verification status unless submitting.
+      // Admins can update anything.
+      allow update: if isAdmin() || (isOwner(employerId) && (
+        request.resource.data.verificationStatus == resource.data.verificationStatus ||
+        (resource.data.verificationStatus == 'Unverified' && request.resource.data.verificationStatus == 'Pending')
+      ));
       allow create: if request.auth.uid != null; // New employer can sign up
     }
 
@@ -73,10 +77,10 @@ service cloud.firestore {
       allow update: if isOwner(resource.data.employerId) || isAdmin(); // Employer updates status
     }
 
-    // Driver Profiles: Drivers can manage their own. Employers can read.
-    match /driver_profiles/{profileId} {
-        allow read: if request.auth != null; // Drivers and Employers can view
-        allow create, update: if isOwner(profileId);
+    // Drivers: Drivers can manage their own profile. Employers and Admins can read.
+    match /drivers/{driverId} {
+        allow read: if request.auth != null; // Drivers, Employers and Admins can view
+        allow create, update: if isOwner(driverId);
     }
 
     // License Applications: Drivers manage their own. Admins manage all.

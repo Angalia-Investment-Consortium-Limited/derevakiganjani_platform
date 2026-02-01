@@ -4,7 +4,7 @@ export interface Job {
     id: string;
     employerId: string;
     title: string;
-    jobType: 'full-time' | 'contract' | 'temporary' | '';
+    jobType: 'full-time' | 'contract' | 'temporary' | 'part-time' | '';
     positions: number;
     vehicleType: 'car' | 'motorcycle' | 'bus' | 'truck' | 'other' | '';
     licenseCategory: string[];
@@ -20,16 +20,24 @@ export interface Job {
     startDate?: Timestamp | string;
     status: 'Open' | 'Closed' | 'draft';
     postedOn: Timestamp;
+    applicationCount?: number;
 }
 
 export interface Application {
     id: string;
     jobId: string;
     jobTitle: string;
-    applicantId: string;
-    applicantName: string;
-    applicationDate: string;
-    status: 'Pending' | 'Reviewed' | 'Shortlisted' | 'Rejected';
+    employerId: string;
+    driverId: string; // Corrected from applicantId
+    appliedOn: Timestamp; // Corrected from applicationDate
+    status: 'New' | 'Viewed' | 'Shortlisted' | 'Interview' | 'Hired' | 'Rejected' | 'Pending';
+    
+    // Denormalized data from driver profile, included when application is created
+    licenseCategory: string;
+    driverExperience: number;
+
+    // Dynamically added in hooks
+    driverName?: string; 
 }
 
 export interface EmployerVerification {
