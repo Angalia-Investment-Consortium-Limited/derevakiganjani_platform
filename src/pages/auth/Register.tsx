@@ -16,11 +16,16 @@ import derevaLogo from '../../assets/logo.png';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import type { UserRole } from '@/types/auth';
+import { OTPInput } from '@/components/auth/OTPInput';
+import { OTPTimer } from '@/components/auth/OTPTimer';
 
 type UserType = 'driver' | 'employer';
+type RegistrationStep = 'details' | 'otp' | 'done';
 
 const Register = () => {
   const [userType, setUserType] = useState<UserType>('driver');
+  const [step, setStep] = useState<RegistrationStep>('details');
+
   // Common fields
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -45,7 +50,7 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t, language: uiLanguage } = useLanguage();
-  const { currentUser, register } = useAuth();
+  const { currentUser, register, otp: otpAuth } = useAuth();
 
   // Sync preferred language with UI language on mount
   useEffect(() => {
@@ -61,37 +66,49 @@ const Register = () => {
     }
   }, [currentUser, navigate]);
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Combined validation logic
+  const validateDetails = () => {
     if (
       (userType === 'driver' && (!fullName || !phone)) ||
       (userType === 'employer' && (!companyName || !contactPerson || !phone)) ||
       !password || !confirmPassword
     ) {
       toast({ title: t('error'), description: t('fillAllRequired'), variant: 'destructive' });
-      return;
+      return false;
     }
-
     if (password !== confirmPassword) {
       toast({ title: t('error'), description: t('passwordMismatch'), variant: 'destructive' });
-      return;
+      return false;
     }
-
     if (password.length < 8) {
-        toast({ title: t('error'), description: t('passwordTooShort'), variant: 'destructive' });
-        return;
+      toast({ title: t('error'), description: t('passwordTooShort'), variant: 'destructive' });
+      return false;
     }
-
     if (!agreeTerms) {
       toast({ title: t('error'), description: t('agreeToTerms'), variant: 'destructive' });
-      return;
+      return false;
     }
+    return true;
+  };
 
+  const handleSendOTP = async () => {
+    if (!validateDetails()) return;
     setIsLoading(true);
-
     try {
+      await otpAuth.sendOTP(phone);
+      setStep('otp');
+      toast({ title: t('success'), description: t('otpSentSuccess') });
+    } catch (error: any) {
+      toast({ title: t('error'), description: error.message || t('otpSentError'), variant: 'destructive' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTPAndRegister = async (otpCode: string) => {
+    setIsLoading(true);
+    try {
+      await otpAuth.verifyOTP(otpCode);
+      
       const registrationData = {
         email,
         password,
@@ -111,19 +128,19 @@ const Register = () => {
               website: companyWebsite,
             }),
       };
-        
+      
       await register(registrationData);
-
-      toast({ 
-        title: t('success'), 
-        description: 'Account created successfully! Please check your email to verify your account before logging in.' 
+      
+      setStep('done');
+      toast({
+        title: t('success'),
+        description: 'Account created successfully! Please check your email to verify your account before logging in.'
       });
 
-      // Redirect based on user type
       if (userType === 'employer') {
-        navigate('/employer/pending-verification', { 
+        navigate('/employer/pending-verification', {
           replace: true,
-          state: { 
+          state: {
             message: 'Your employer account has been created. Please check your email to verify your account. You will receive a separate email once your account is approved.'
           }
         });
@@ -132,52 +149,61 @@ const Register = () => {
       }
 
     } catch (error: any) {
-        let errorMessage = 'Registration failed. Please try again.';
-        if (error.code === 'auth/email-already-in-use') {
-            errorMessage = 'This email is a'+'lready registered. Please use a different email or login.';
-        } else if (error.code === 'auth/weak-password') {
-            errorMessage = 'The password is too weak. Please use a stronger password.';
-        } else if (error.message) {
-            errorMessage = error.message;
-        }
-        toast({
-            title: t('error'),
-            description: errorMessage,
-            variant: 'destructive',
-        });
+      let errorMessage = 'Registration failed. Please try again.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email is already registered. Please use a different email or login.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'The password is too weak. Please use a stronger password.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      toast({
+        title: t('error'),
+        description: errorMessage,
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <Breadcrumb className="mb-6">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/">Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>Register</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-
-        <div className="flex items-center justify-center">
-          <Card className="w-full max-w-2xl">
-            <CardHeader className="space-y-4">
-              <div className="flex justify-center">
-                <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
-              </div>
-              <CardTitle className="text-2xl text-center">{t('createAccount')}</CardTitle>
-              <CardDescription className="text-center">{t('registerSubtitle')}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleRegister} className="space-y-6">
-                <div className="space-y-3">
+  const handleResendOTP = async () => {
+    try {
+      await otpAuth.resendOTP(phone);
+      toast({ title: t('success'), description: t('otpSentSuccess') });
+    } catch (error: any) {
+      toast({ title: t('error'), description: error.message || t('otpSentError'), variant: 'destructive' });
+    }
+  };
+  
+  const renderStep = () => {
+    switch (step) {
+      case 'otp':
+        return (
+          <div className="space-y-6 text-center">
+             <h3 className="text-xl font-semibold">Verify Your Phone Number</h3>
+             <p className="text-muted-foreground">
+                An OTP has been sent to <strong>{phone}</strong>. Please enter it below.
+             </p>
+             <OTPInput length={6} onComplete={handleVerifyOTPAndRegister} />
+             {otpAuth.error && <p className="text-sm font-medium text-destructive">{otpAuth.error}</p>}
+             <div className="flex items-center justify-center space-x-2 text-sm">
+                <OTPTimer
+                    duration={60}
+                    onTimeout={handleResendOTP}
+                    onResend={handleResendOTP}
+                />
+             </div>
+             <Button variant="link" onClick={() => setStep('details')}>
+                Change phone number
+             </Button>
+          </div>
+        );
+      case 'details':
+      default:
+        return (
+          <form onSubmit={(e) => { e.preventDefault(); handleSendOTP(); }} className="space-y-6">
+            <div className="space-y-3">
                   <Label>{t('accountType')}</Label>
                   <div className="grid grid-cols-2 gap-4">
                     <button
@@ -293,16 +319,47 @@ const Register = () => {
                   </label>
                 </div>
 
-                <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
-                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {isLoading ? 'Creating Account...' : t('createAccount')}
-                </Button>
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {isLoading ? 'Proceeding...' : 'Proceed to Verify Phone'}
+            </Button>
 
-                <div className="text-center text-sm">
-                  <span className="text-muted-foreground">{t('alreadyHaveAccount')} </span>
-                  <Link to="/login" className="text-primary hover:underline font-medium">{t('loginHere')}</Link>
-                </div>
-              </form>
+            <div className="text-center text-sm">
+              <span className="text-muted-foreground">{t('alreadyHaveAccount')} </span>
+              <Link to="/login" className="text-primary hover:underline font-medium">{t('loginHere')}</Link>
+            </div>
+          </form>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Register</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
+        <div className="flex items-center justify-center">
+          <Card className="w-full max-w-2xl">
+            <CardHeader className="space-y-4">
+              <div className="flex justify-center">
+                <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
+              </div>
+              <CardTitle className="text-2xl text-center">{t('createAccount')}</CardTitle>
+              <CardDescription className="text-center">{t('registerSubtitle')}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {renderStep()}
             </CardContent>
           </Card>
         </div>

@@ -5,6 +5,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Award, Download, RotateCcw, BookOpen } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
 
 const TestResult = () => {
   const location = useLocation();
@@ -26,6 +34,21 @@ const TestResult = () => {
       <Header />
       
       <main className="flex-1 container py-12">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/jitesti">JiTesti</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Result</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <div className="max-w-3xl mx-auto space-y-6">
           {/* Result Card */}
           <Card className={`border-2 ${passed ? 'border-success' : 'border-destructive'}`}>

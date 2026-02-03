@@ -2,27 +2,34 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { ServiceCard } from '@/components/ServiceCard';
 import { Users, FileText, GraduationCap, BarChart3, BookOpen, Briefcase, ClipboardList, Wallet, Award, Download, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useFrappeGetCall } from 'frappe-react-sdk';
 import { useEffect, useState } from 'react';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app } from '@/lib/firebase';
 
 const Admin = () => {
   const [stats, setStats] = useState<any>(null);
-  
-  // Fetch dashboard statistics
-  const { data, error, isLoading } = useFrappeGetCall<any>(
-    'derevahuduma_platform.api.admin.get_dashboard_stats',
-    undefined,
-    undefined,
-    {
-      revalidateOnFocus: false,
-    }
-  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (data?.message?.data) {
-      setStats(data.message.data);
-    }
-  }, [data]);
+    const fetchStats = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const functions = getFunctions(app);
+        const getDashboardStats = httpsCallable(functions, 'getDashboardStats');
+        const result: any = await getDashboardStats();
+        setStats(result.data.data);
+      } catch (err: any) {
+        setError(err.message || "Failed to load dashboard statistics. Please try again.");
+        console.error("Error fetching dashboard stats:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   const modules = [
     {
@@ -141,7 +148,7 @@ const Admin = () => {
             <Card className="col-span-full">
               <CardContent className="py-8">
                 <p className="text-center text-destructive">
-                  Failed to load dashboard statistics. Please try again.
+                  {error}
                 </p>
               </CardContent>
             </Card>

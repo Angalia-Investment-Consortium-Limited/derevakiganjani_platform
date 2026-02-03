@@ -74,7 +74,7 @@ const MyJobs = () => {
                         <CardTitle>{job.title}</CardTitle>
                         <CardDescription>{job.region}, {job.district} | Type: {job.jobType}</CardDescription>
                     </div>
-                    <Badge variant={job.status === 'Open' ? 'success' : 'secondary'}>{job.status}</Badge>
+                    <Badge variant={job.status === 'Open' ? 'default' : job.status === 'Closed' ? 'destructive' : 'secondary'}>{job.status}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="flex justify-between items-center">

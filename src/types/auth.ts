@@ -1,7 +1,8 @@
-export type UserRole = 'Driver' | 'Employer' | 'Admin' | 'Staff';
+export type UserRole = 'Driver' | 'Employer' | 'Admin' | 'Staff' | 'SuperAdmin';
 
 export interface User {
   id: string;
+  uid: string;
   name: string;
   email: string;
   full_name: string;
@@ -55,14 +56,13 @@ export interface EmployerProfile {
   company_district?: string;
 }
 
+// Corrected AdminProfile to exactly match the 'admins' collection in Firestore.
 export interface AdminProfile {
-  name: string;
-  user: string;
-  full_name: string;
-  phone_number: string;
-  email?: string;
-  department?: string;
-  position?: string;
+  uid: string;
+  email: string;
+  fullName: string;
+  role: UserRole;
+  createdAt: any; // Using 'any' to represent the Firestore Timestamp
 }
 
 export interface AuthState {

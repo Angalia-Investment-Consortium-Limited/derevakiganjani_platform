@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,34 +9,58 @@ import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { OTPInput } from '@/components/auth/OTPInput';
+import { OTPTimer } from '@/components/auth/OTPTimer';
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [phone, setPhone] = useState('');
+  const [otp, setOtp] = useState('');
   const { t } = useLanguage();
-  const { sendPasswordResetEmail } = useAuth();
+  const { toast } = useToast();
+  const { otp: otpAuth } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) {
-      toast({ title: t('error'), description: 'Please enter your email address', variant: 'destructive' });
+  const handleSendOTP = async () => {
+    if (!phone) {
+      toast({ title: t('error'), description: 'Please enter your phone number', variant: 'destructive' });
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
     try {
-      await sendPasswordResetEmail(email);
-      toast({ title: t('success'), description: 'Password reset email sent. Please check your inbox.' });
-    } catch (err: any) {
-      const errorMessage = err.message || 'Failed to send reset email';
-      setError(errorMessage);
-      toast({ title: t('error'), description: errorMessage, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
+      await otpAuth.sendOTP(phone);
+      toast({ title: t('success'), description: t('otpSentSuccess') });
+    } catch (error: any) {
+      toast({ title: t('error'), description: error.message || t('otpSentError'), variant: 'destructive' });
     }
+  };
+
+  const handleVerifyOTP = async (otpCode: string) => {
+    try {
+      await otpAuth.verifyOTP(otpCode);
+      toast({ title: t('success'), description: 'Phone number verified successfully.' });
+      navigate('/reset-password', { state: { phone } });
+    } catch (error: any) {
+      toast({ title: t('error'), description: error.message || 'Failed to verify OTP', variant: 'destructive' });
+    }
+  };
+  
+  const handleResendOTP = async () => {
+    try {
+      await otpAuth.resendOTP(phone);
+      toast({ title: t('success'), description: t('otpSentSuccess') });
+    } catch (error: any) {
+      toast({ title: t('error'), description: error.message || t('otpSentError'), variant: 'destructive' });
+    }
+  };
+
+  useEffect(() => {
+    if (otp.length === 6) {
+      handleVerifyOTP(otp);
+    }
+  }, [otp]);
+
+  const handleOtpChange = (value: string) => {
+    setOtp(value);
   };
 
   return (
@@ -46,19 +70,40 @@ const ForgotPassword = () => {
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Forgot Password</CardTitle>
-            <CardDescription>Enter your email to reset your password</CardDescription>
+            <CardDescription>
+              {otpAuth.otpSent 
+                ? `Enter the OTP sent to ${phone}` 
+                : 'Enter your phone number to reset your password'}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            {!otpAuth.otpSent ? (
+              <form onSubmit={(e) => { e.preventDefault(); handleSendOTP(); }} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="255712345678" required />
+                </div>
+                <Button type="submit" className="w-full" disabled={otpAuth.isLoading}>
+                  {otpAuth.isLoading ? 'Sending...' : 'Send OTP'}
+                </Button>
+              </form>
+            ) : (
+              <div className="space-y-6 text-center">
+                <OTPInput
+                  length={6}
+                  value={otp}
+                  onChange={handleOtpChange}
+                />
+                {otpAuth.error && <p className="text-sm font-medium text-destructive">{otpAuth.error}</p>}
+                <div className="flex items-center justify-center space-x-2 text-sm">
+                    <OTPTimer
+                        duration={60}
+                        onResend={handleResendOTP}
+                    />
+                </div>
+                <Button variant="link" onClick={otpAuth.reset}>Change phone number</Button>
               </div>
-              {error && <p className="text-sm font-medium text-destructive">{error}</p>}
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Sending...' : 'Send Reset Email'}
-              </Button>
-            </form>
+            )}
             <div className="mt-4 text-center text-sm">
               Remembered your password? <Link to="/login" className="underline">Login</Link>
             </div>

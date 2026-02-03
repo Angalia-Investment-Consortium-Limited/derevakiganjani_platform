@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -15,6 +16,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
 
 export default function TestCategories() {
   const { t, language } = useLanguage();
@@ -71,6 +80,18 @@ export default function TestCategories() {
       <Header />
       
       <main className="flex-1 container mx-auto px-4 py-8">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>JiTesti</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold mb-2">
@@ -123,7 +144,7 @@ export default function TestCategories() {
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>{t('error') || 'Error'}</AlertTitle>
             <AlertDescription>
-              {error?.message || error?.toString() || 'Failed to load categories'}
+              {error || 'Failed to load categories'}
               <Button
                 variant="outline"
                 size="sm"
@@ -176,25 +197,15 @@ export default function TestCategories() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCategories.map((category) => (
-                  <CategoryCard key={category.name} category={category} />
+                  <CategoryCard key={category.id} category={category} />
                 ))}
               </div>
             )}
           </>
         )}
 
-        {/* Info Section */}
-        <div className="mt-12 p-6 bg-muted rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">
-            {t('howItWorks') || 'How It Works'}
-          </h2>
-          <ol className="space-y-2 list-decimal list-inside">
-            <li>{t('step1') || 'Choose a test category that matches your needs'}</li>
-            <li>{t('step2') || 'Complete the payment process'}</li>
-            <li>{t('step3') || 'Take the test within the allocated time'}</li>
-            <li>{t('step4') || 'Receive your results and certificate (if passed)'}</li>
-          </ol>
-        </div>
+        
+       
       </main>
 
       <Footer />

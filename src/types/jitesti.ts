@@ -10,6 +10,7 @@
 // ============================================================================
 
 export interface TestCategory {
+  id: string;
   name: string;
   category_code: 'MOTO' | 'BASIC' | 'VIP' | 'PSV' | 'HGV' | 'INTERVIEW';
   name_en: string;
@@ -20,7 +21,7 @@ export interface TestCategory {
   pass_mark: number;
   duration_minutes: number;
   total_questions: number;
-  is_active: number;
+  status: 'active' | 'inactive';
   display_order?: number;
   available_questions?: number;
 }

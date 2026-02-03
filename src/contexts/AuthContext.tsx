@@ -8,10 +8,8 @@ import {
   signOut,
   sendPasswordResetEmail,
   sendEmailVerification,
-  RecaptchaVerifier,
-  signInWithPhoneNumber,
 } from 'firebase/auth';
-import type { User as FirebaseUser, ConfirmationResult } from 'firebase/auth';
+import type { User as FirebaseUser } from 'firebase/auth';
 import {
   doc,
   getDoc,
@@ -27,6 +25,7 @@ import type {
   EmployerProfile,
   AdminProfile,
 } from '@/types/auth';
+import { useOTP } from '@/hooks/useOTP';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
@@ -37,20 +36,16 @@ interface AuthContextType {
   profileLoading: boolean;
   userType: UserRole | null;
   roles: UserRole[];
-  loading: boolean; // Added loading property
-
+  loading: boolean;
   login: (username: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   register: (data: RegisterData) => Promise<any>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
-  signInWithPhone: (phoneNumber: string, appVerifier: RecaptchaVerifier) => Promise<void>;
-  verifyOtp: (otp: string) => Promise<void>;
   updateProfile: (data: Partial<DriverProfile | EmployerProfile | AdminProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
-  phoneLoginStep: 'enter-phone' | 'enter-otp';
-  otpError: string | null;
-  resetPhoneLogin: () => void;
+  otp: ReturnType<typeof useOTP>;
 }
+
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -60,9 +55,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<DriverProfile | EmployerProfile | AdminProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [phoneLoginStep, setPhoneLoginStep] = useState<'enter-phone' | 'enter-otp'>('enter-phone');
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [otpError, setOtpError] = useState<string | null>(null);
+  const otp = useOTP();
 
   const fetchUserProfile = useCallback(async (firebaseUser: FirebaseUser) => {
     setProfileLoading(true);
@@ -75,7 +68,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(userData);
 
         if (userData.roles && userData.roles.length > 0) {
-          const profileCollection = `${userData.roles[0].toLowerCase()}s`;
+          const primaryRole = userData.roles[0];
+          let profileCollection = '';
+
+          if (primaryRole === 'SuperAdmin' || primaryRole === 'Admin' || primaryRole === 'Staff') {
+            profileCollection = 'admins';
+          } else {
+            profileCollection = `${primaryRole.toLowerCase()}s`;
+          }
+
           const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
           const profileDoc = await getDoc(profileDocRef);
 
@@ -117,35 +118,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return sendPasswordResetEmail(auth, email);
   };
 
-  const signInWithPhone = async (phoneNumber: string, appVerifier: RecaptchaVerifier) => {
-    try {
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-      setConfirmationResult(confirmation);
-      setPhoneLoginStep('enter-otp');
-      setOtpError(null);
-    } catch (error) {
-      console.error("Error sending OTP:", error);
-      setOtpError("Failed to send OTP. Please try again.");
-    }
-  };
-
-  const verifyOtp = async (otp: string) => {
-    if (!confirmationResult) return;
-    try {
-      await confirmationResult.confirm(otp);
-      setPhoneLoginStep('enter-phone'); // Reset for next time
-    } catch (error) {
-      console.error("Error verifying OTP:", error);
-      setOtpError("Invalid OTP. Please try again.");
-    }
-  };
-
-  const resetPhoneLogin = () => {
-    setPhoneLoginStep('enter-phone');
-    setConfirmationResult(null);
-    setOtpError(null);
-  };
-
   const register = async (data: RegisterData) => {
     const { email, password, role, phone_number, ...profileData } = data;
 
@@ -157,18 +129,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     await setDoc(userDocRef, {
       uid: firebaseUser.uid,
-      email: firebaseUser.email || '', // Ensure email is a string
+      email: firebaseUser.email || '',
       roles: [role],
       createdAt: Timestamp.now(),
       phoneNumber: phone_number,
     });
 
-    const profileCollection = `${role.toLowerCase()}s`;
+    let profileCollection = '';
+    if (role === 'SuperAdmin' || role === 'Admin' || role === 'Staff') {
+      profileCollection = 'admins';
+    } else {
+      profileCollection = `${role.toLowerCase()}s`;
+    }
+
     const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
     await setDoc(profileDocRef, {
       ...profileData,
       uid: firebaseUser.uid,
-      email: firebaseUser.email || '', // Ensure email is a string
+      email: firebaseUser.email || '',
       phoneNumber: phone_number,
     });
 
@@ -178,7 +156,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const updateProfile = async (data: Partial<DriverProfile | EmployerProfile | AdminProfile>) => {
     if (!currentUser || !user?.roles) return;
 
-    const profileCollection = `${user.roles[0].toLowerCase()}s`;
+    const primaryRole = user.roles[0];
+    let profileCollection = '';
+    if (primaryRole === 'SuperAdmin' || primaryRole === 'Admin' || primaryRole === 'Staff') {
+      profileCollection = 'admins';
+    } else {
+      profileCollection = `${primaryRole.toLowerCase()}s`;
+    }
+
     const profileDocRef = doc(db, profileCollection, currentUser.uid);
     await updateDoc(profileDocRef, data);
     await fetchUserProfile(currentUser); // Refresh profile
@@ -205,14 +190,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     register,
     sendPasswordResetEmail: sendPasswordReset,
-    signInWithPhone,
-    verifyOtp,
     updateProfile,
     refreshProfile,
-    phoneLoginStep,
-    otpError,
-    resetPhoneLogin,
-    loading: isLoading, // Assign isLoading to loading
+    loading: isLoading,
+    otp,
   };
 
   return (

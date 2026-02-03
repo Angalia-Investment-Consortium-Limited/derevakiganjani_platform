@@ -55,16 +55,16 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     const [listError, setListError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
+      if (!currentUser) return; // Don't fetch if user is not authenticated
       setIsLoading(true);
       try {
-        const q = query(collection(db, 'tests'), where('isActive', '==', true));
+        const q = query(collection(db, 'jitesti-categories'), where('status', '==', 'active'));
         const querySnapshot = await getDocs(q);
         const categories = querySnapshot.docs.map(doc => {
             const data = doc.data() as DocumentData;
             return {
                 id: doc.id,
-                name: data.name,
-                category_code: data.category_code,
+                name: data.name_en, // Default to English name
                 name_en: data.name_en,
                 name_sw: data.name_sw,
                 description_en: data.description_en,
@@ -73,17 +73,19 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
                 pass_mark: data.pass_mark,
                 price: data.price,
                 total_questions: data.total_questions,
-                is_active: data.isActive,
+                status: data.status,
+                license_class: data.license_class,
+                category_code: data.category_code, // Add this line
                 createdAt: data.createdAt,
-                updatedAt: data.updatedAt,
             } as TestCategory;
         });
         setData(categories);
       } catch (err) {
+        console.error("[JiTesti] Error fetching categories:", err);
         setListError(err instanceof Error ? err.message : 'Failed to fetch categories');
       }
       setIsLoading(false);
-    }, []);
+    }, [currentUser]); // Add currentUser as a dependency
 
     useEffect(() => {
       fetchData();
@@ -97,21 +99,21 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     setLoading(true);
     setError(null);
     try {
-      const docRef = doc(db, 'tests', categoryId);
+      const docRef = doc(db, 'jitesti-categories', categoryId);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
+        // The logic for fetching related questions might need adjustment if question category IDs have changed.
         const questionsQuery = query(
           collection(db, 'questions'),
-          where('categoryId', '==', categoryId),
+          where('categoryId', '==', categoryId), 
           where('isActive', '==', true)
         );
         const questionsSnapshot = await getDocs(questionsQuery);
 
         return {
             id: docSnap.id,
-            name: data.name,
-            category_code: data.category_code,
+            name: data.name_en,
             name_en: data.name_en,
             name_sw: data.name_sw,
             description_en: data.description_en,
@@ -120,9 +122,10 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
             pass_mark: data.pass_mark,
             price: data.price,
             total_questions: data.total_questions,
-            is_active: data.is_active,
+            status: data.status,
+            license_class: data.license_class,
+            category_code: data.category_code,
             createdAt: data.createdAt,
-            updatedAt: data.updatedAt,
             available_questions: questionsSnapshot.size,
         } as CategoryDetails;
       }
@@ -139,10 +142,10 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch Test Details
-      const testDocRef = doc(db, 'tests', categoryId);
+      // 1. Fetch Test Details from the correct collection
+      const testDocRef = doc(db, 'jitesti-categories', categoryId);
       const testDocSnap = await getDoc(testDocRef);
-      if (!testDocSnap.exists()) throw new Error("Test not found");
+      if (!testDocSnap.exists()) throw new Error("Test category not found");
       const testData = testDocSnap.data() as TestCategory;
 
       // 2. Fetch Questions

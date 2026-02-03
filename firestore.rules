@@ -3,97 +3,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is a verified admin
-    function isAdmin() {
-      return get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'SuperAdmin';
+    // Rule: Logged-in users can read their own user document.
+    // This is required to get a user's roles.
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Note: You may want to add write/create rules later.
     }
 
-    // Helper function to check if a user is a verified employer
-    function isVerifiedEmployer() {
-      return get(/databases/$(database)/documents/employers/$(request.auth.uid)).data.verificationStatus == 'Verified';
-    }
-
-    // Helper function to check if a user is the owner of a document
-    function isOwner(userId) {
-      return request.auth.uid == userId;
-    }
-
-    // Admins: Full access for management
+    // Rule: Logged-in users can read their own admin profile.
+    // This is required for SuperAdmin login to work.
     match /admins/{userId} {
-      allow read, write: if isAdmin();
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Note: You may want to add write/create rules later.
     }
 
-    // Courses & Lessons: Read-only for users, full access for Admins
-    match /courses/{courseId} {
+    match /jitesti-categories/{categoryId} {
       allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    match /lessons/{lessonId} {
-      allow read: if request.auth != null;
-      allow write: if isAdmin();
-    }
-    
-    // Questions & Tests: Only Admins can manage the question bank and test configs
-    match /questions/{questionId} {
-        allow read, write: if isAdmin();
-    }
-    match /tests/{testId} {
-        allow read, write: if isAdmin();
     }
 
-    // Enrollments & Certificates: Users can only access their own. Admins can access all.
-    match /course_enrollments/{enrollmentId} {
-      allow read, update: if isOwner(resource.data.driverId) || isAdmin();
-      allow create: if isOwner(request.resource.data.driverId);
-    }
-    match /certificates/{certificateId} {
-      allow read: if isOwner(resource.data.driverId) || isAdmin();
-      allow create, update: if isAdmin(); // Only admins should issue/update certs
-    }
+    // --- IMPORTANT ---
+    // Add the rest of your collection rules below.
+    // For example, if you have a 'drivers' collection:
+    //
+    // match /drivers/{driverId} {
+    //   allow read, write: if request.auth != null; // Example: allow any logged-in user
+    // }
 
-    // Employers: Can manage their own profile. Admins can verify/manage all.
-    match /employers/{employerId} {
-      allow read: if isOwner(employerId) || isAdmin();
-      // Allow owner to update profile BUT NOT change verification status unless submitting.
-      // Admins can update anything.
-      allow update: if isAdmin() || (isOwner(employerId) && (
-        request.resource.data.verificationStatus == resource.data.verificationStatus ||
-        (resource.data.verificationStatus == 'Unverified' && request.resource.data.verificationStatus == 'Pending')
-      ));
-      allow create: if request.auth.uid != null; // New employer can sign up
-    }
-
-    // Jobs: Read-only for drivers. Employers can manage their own jobs. Admins can manage all.
-    match /jobs/{jobId} {
-      allow read: if request.auth != null;
-      allow create: if isVerifiedEmployer();
-      allow update, delete: if isVerifiedEmployer() && resource.data.employerId == request.auth.uid || isAdmin();
-    }
-    
-    // Job Applications: Drivers create their own. Employers and Admins can view.
-    match /job_applications/{applicationId} {
-      allow read: if isOwner(resource.data.driverId) || isOwner(resource.data.employerId) || isAdmin();
-      allow create: if isOwner(request.resource.data.driverId);
-      allow update: if isOwner(resource.data.employerId) || isAdmin(); // Employer updates status
-    }
-
-    // Drivers: Drivers can manage their own profile. Employers and Admins can read.
-    match /drivers/{driverId} {
-        allow read: if request.auth != null; // Drivers, Employers and Admins can view
-        allow create, update: if isOwner(driverId);
-    }
-
-    // License Applications: Drivers manage their own. Admins manage all.
-    match /license_applications/{applicationId} {
-      allow read, update: if isOwner(resource.data.userId) || isAdmin();
-      allow create: if isOwner(request.resource.data.userId);
-    }
-    
-    // Payments: Users can only see their own. Admins can see all.
-    match /payments/{paymentId} {
-        allow read: if isOwner(resource.data.userId) || isAdmin();
-        // Writes to payments should only be done from a trusted backend server/function
-        allow write: if false; 
-    }
   }
 }

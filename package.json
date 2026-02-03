@@ -47,6 +47,7 @@
     "embla-carousel-react": "^8.6.0",
     "firebase": "^12.8.0",
     "firebase-admin": "^13.6.0",
+    "firebase-functions": "^7.0.5",
     "frappe-react-sdk": "^1.13.0",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.553.0",

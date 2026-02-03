@@ -7,6 +7,7 @@ import { LanguageProvider } from "./contexts/LanguageContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { RoleBasedRoute } from "./components/RoleBasedRoute";
+import { AdminRoleBasedRoute } from "./components/AdminRoleBasedRoute";
 import { EmployerVerificationGuard } from "./components/EmployerVerificationGuard";
 import AuthRedirect from "./components/AuthRedirect";
 import Home from "./pages/Home";
@@ -164,9 +165,9 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/admin" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <Admin />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/elimika" element={
               <ProtectedRoute>
@@ -199,49 +200,49 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/admin/courses" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <CourseManager />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/course/:courseId" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <CourseEditor />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/course/:courseId/lesson/:lessonId" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <LessonBuilder />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/course/:courseId/quiz" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <QuizBuilder />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/learners" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <LearnerProgress />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/questions" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <QuestionBankManager />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/question/:questionId" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <QuestionEditor />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/test-config" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <TestConfiguration />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/license-requests" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <LicenseRequestsManagement />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/employer/pending-verification" element={
               <RoleBasedRoute allowedRoles={['Employer']}>
@@ -361,69 +362,69 @@ const App = () => (
             <Route path="/driver/:driverId" element={<DriverPublicProfile />} />
             <Route path="/employer/:employerId" element={<EmployerProfile />} />
             <Route path="/admin/job-posts" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <JobPostsManagement />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/jobs/new" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <JobPostForm />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/jobs/:id" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <JobPostDetail />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/jobs/:id/edit" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <JobPostForm />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/payments" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <PaymentsManagement />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/certificates" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <CertificatesManagement />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/reports" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <ReportsCenter />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/matching" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <MatchingMonitor />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/recruitment-reports" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <RecruitmentReports />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/users" element={
-              <RoleBasedRoute allowedRoles={['Admin']}>
+              <AdminRoleBasedRoute>
                 <UsersManagement />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/users/new" element={
-              <RoleBasedRoute allowedRoles={['Admin']}>
+              <AdminRoleBasedRoute>
                 <UserForm />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/users/:id/edit" element={
-              <RoleBasedRoute allowedRoles={['Admin']}>
+              <AdminRoleBasedRoute>
                 <UserForm />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/settings/roles" element={
-              <RoleBasedRoute allowedRoles={['Admin']}>
+              <AdminRoleBasedRoute>
                 <RolesPermissions />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             
             {/* JiTesti Routes */}
@@ -469,24 +470,24 @@ const App = () => (
               </ProtectedRoute>
             } />
             <Route path="/admin/license-applications" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <LicenseApplicationsManagement />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/license-application/:id" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <LicenseApplicationReview />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/license-statistics" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <LicenseStatistics />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } />
             <Route path="/admin/employer-verification" element={
-              <RoleBasedRoute allowedRoles={['Admin', 'Staff']}>
+              <AdminRoleBasedRoute>
                 <EmployerVerificationManagement />
-              </RoleBasedRoute>
+              </AdminRoleBasedRoute>
             } /> 
 
             {/* Privacy Policy Routes */}
@@ -505,4 +506,3 @@ const App = () => (
   );
 
   export default App;
-

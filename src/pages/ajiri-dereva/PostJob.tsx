@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Briefcase, Calendar, DollarSign, MapPin, FileText, Loader2, PlusCircle, XCircle } from 'lucide-react';
@@ -112,6 +113,14 @@ const PostJob = () => {
 
   const resetForm = () => setFormData(initialFormData);
 
+  const formatDeadline = (deadline: string | Timestamp | undefined): string => {
+    if (!deadline) return '';
+    if (deadline instanceof Timestamp) {
+      return deadline.toDate().toISOString().split('T')[0];
+    }
+    return deadline;
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -162,7 +171,7 @@ const PostJob = () => {
                 <Select onValueChange={(v) => handleSelectChange('district', v)} value={formData.district} disabled={isSaving || districtsLoading || !formData.region}>
                   <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
                   <SelectContent>
-                    {districts.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
+                    {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -183,7 +192,7 @@ const PostJob = () => {
               </div>
                <div className="space-y-2">
                 <Label htmlFor="deadline">Application Deadline *</Label>
-                <Input id="deadline" type="date" value={formData.deadline} onChange={handleInputChange} disabled={isSaving} />
+                <Input id="deadline" type="date" value={formatDeadline(formData.deadline)} onChange={handleInputChange} disabled={isSaving} />
               </div>
             </div>
 

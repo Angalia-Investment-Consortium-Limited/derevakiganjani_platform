@@ -31,7 +31,7 @@ export const CategoryCard = ({ category }: CategoryCardProps) => {
               {categoryDescription}
             </CardDescription>
           </div>
-          {category.is_active ? (
+          {category.status === 'active' ? (
             <Badge variant="default" className="ml-2">
               {t('active') || 'Active'}
             </Badge>
@@ -73,7 +73,7 @@ export const CategoryCard = ({ category }: CategoryCardProps) => {
         <Button 
           onClick={handleStartTest} 
           className="w-full"
-          disabled={!category.is_active}
+          disabled={category.status !== 'active'}
         >
           {t('startTest') || 'Start Test'}
         </Button>

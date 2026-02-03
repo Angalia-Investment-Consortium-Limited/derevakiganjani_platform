@@ -7,48 +7,46 @@ import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { FileText, RefreshCw, GraduationCap, Search, ArrowRight, CheckCircle, Clock, AlertCircle, TrendingUp } from 'lucide-react';
-import { useFrappeGetDocCount, useFrappeGetDocList } from 'frappe-react-sdk';
+import { getDocumentCount, getDocuments, licenseApplicationsCollection } from '@/lib/firebase';
+import type { Filter } from '@/lib/firebase';
 import type { LicenseApplication } from '@/types/license';
 import { STATUS_COLORS } from '@/types/license';
+import { useEffect, useState } from 'react';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
 
 const LicenseRequest = () => {
   const { language } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [totalCount, setTotalCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [approvedCount, setApprovedCount] = useState(0);
+  const [recentApplications, setRecentApplications] = useState<LicenseApplication[]>([]);
 
-  // Get current user email
-  const currentUser = user?.email || '';
+  useEffect(() => {
+    if (user) {
+      const baseFilters: Filter[] = [['user', '==', user.uid]];
+      const pendingFilters: Filter[] = [...baseFilters, ['status', '==', 'Pending']];
+      const approvedFilters: Filter[] = [...baseFilters, ['status', '==', 'Approved']];
 
-  // Fetch user's application counts using frappe-react-sdk
-  const { data: totalCount } = useFrappeGetDocCount(
-    'License Application',
-    currentUser ? [['user', '=', currentUser]] : undefined
-  );
-
-  const { data: pendingCount } = useFrappeGetDocCount(
-    'License Application',
-    currentUser ? [['user', '=', currentUser], ['status', '=', 'Pending']] : undefined
-  );
-
-  const { data: approvedCount } = useFrappeGetDocCount(
-    'License Application',
-    currentUser ? [['user', '=', currentUser], ['status', '=', 'Approved']] : undefined
-  );
-
-  // Fetch recent applications
-  const { data: recentApplications, isLoading: loadingRecent } = useFrappeGetDocList<LicenseApplication>(
-    'License Application',
-    {
-      fields: ['name', 'application_type', 'status', 'creation', 'license_category'],
-      filters: currentUser ? [['user', '=', currentUser]] : [],
-      limit: 3,
-      orderBy: {
-        field: 'creation',
-        order: 'desc'
-      }
-    },
-    currentUser ? 'license-recent-applications' : null
-  );
+      getDocumentCount(licenseApplicationsCollection, baseFilters).then(setTotalCount);
+      getDocumentCount(licenseApplicationsCollection, pendingFilters).then(setPendingCount);
+      getDocumentCount(licenseApplicationsCollection, approvedFilters).then(setApprovedCount);
+      
+      getDocuments(licenseApplicationsCollection, {
+        filters: baseFilters,
+        limit: 3,
+        orderBy: { field: 'creation', order: 'desc' },
+      }).then(apps => setRecentApplications(apps as LicenseApplication[]));
+    }
+  }, [user]);
 
   const services = [
     {
@@ -144,6 +142,17 @@ const LicenseRequest = () => {
       <Header />
       
       <main className="flex-1 container mx-auto px-4 py-8">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>License Services</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <div className="max-w-7xl mx-auto">
           {/* Header Section */}
           <div className="text-center mb-12">

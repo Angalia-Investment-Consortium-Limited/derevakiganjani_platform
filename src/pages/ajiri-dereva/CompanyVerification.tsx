@@ -216,7 +216,7 @@ const CompanyVerification = () => {
                   <Select value={formData.company_district || ''} onValueChange={(v) => handleSelectChange('company_district', v)} disabled={!isEditable || districtsLoading || !selectedRegion}>
                     <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
                     <SelectContent>
-                      {districts.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
+                      {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

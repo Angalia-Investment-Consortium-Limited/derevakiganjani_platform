@@ -8,6 +8,7 @@ export interface Job {
     positions: number;
     vehicleType: 'car' | 'motorcycle' | 'bus' | 'truck' | 'other' | '';
     licenseCategory: string[];
+    licenseRequired: string;
     minExperience: number;
     skills: string[];
     region: string;

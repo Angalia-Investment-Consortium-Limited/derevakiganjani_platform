@@ -56,6 +56,7 @@ export interface LicenseDocument {
 
 // License Application
 export interface LicenseApplication {
+  id: string; // Add the id property
   name: string; // Reference number (e.g., LIC-2025-00001)
   user: string;
   application_type: ApplicationType;

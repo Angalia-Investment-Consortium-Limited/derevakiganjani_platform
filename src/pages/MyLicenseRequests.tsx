@@ -23,6 +23,14 @@ import {
 } from '@/components/ui/select';
 import { FileText, Search, Eye, Plus, Calendar, CheckCircle2, Clock, XCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
 
 interface LicenseRequest {
   id: string;
@@ -116,6 +124,21 @@ const MyLicenseRequests = () => {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-secondary/5">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbLink href="/license-request">License Services</BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>My Requests</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <div className="max-w-7xl mx-auto">
           <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
