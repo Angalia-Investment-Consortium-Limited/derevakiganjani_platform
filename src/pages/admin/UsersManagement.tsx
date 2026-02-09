@@ -261,12 +261,12 @@ const UsersManagement = () => {
                   ) : (
                     users.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.full_name}</TableCell>
+                        <TableCell className="font-medium">{user.full_name || '-'}</TableCell>
                         <TableCell>{user.mobile_no || '-'}</TableCell>
                         <TableCell>{user.email || '-'}</TableCell>
                         <TableCell>
-                          <Badge variant={getRoleBadgeColor(user.user_type || '')}>
-                            {user.user_type || 'Unknown'}
+                          <Badge variant={getRoleBadgeColor(user.roles?.[0] || '')}>
+                            {user.roles?.join(', ') || 'Unknown'}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -275,7 +275,7 @@ const UsersManagement = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {user.created_on ? new Date(user.created_on).toLocaleDateString() : '-'}
+                          {user.createdAt ? new Date(user.createdAt.seconds * 1000).toLocaleDateString() : '-'}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>

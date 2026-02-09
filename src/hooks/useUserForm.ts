@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { doc, getDoc, setDoc, updateDoc, Timestamp, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { User, AdminProfile, EmployerProfile, DriverProfile, UserRole } from '@/types/auth';
+import type { User, UserRole } from '@/types/auth';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
 
@@ -67,50 +67,58 @@ export const useUserForm = (userId: string | null) => {
     const createUserCallable = httpsCallable(functions, 'createUser');
 
     try {
-      const { profile, ...userData } = formData;
-      const role = userData.user_type as UserRole;
+      const role = formData.user_type as UserRole;
       
       if (isEdit) {
         if (!userId) throw new Error("User ID is missing for an update operation.");
         
         const batch = writeBatch(db);
 
-        // Update user document
+        // 1. Prepare User Document Update
         const userRef = doc(db, 'users', userId);
-        const userUpdatePayload: Partial<User> = {
-            full_name: userData.full_name,
-            email: userData.email,
-            mobile_no: userData.mobile_no,
-            enabled: userData.status === 'active',
-            status: userData.status === 'active' ? 'Active' : 'Suspended',
+        const userUpdatePayload: { [key: string]: any } = {
+            full_name: formData.full_name,
+            email: formData.email,
+            mobile_no: formData.mobile_no,
+            enabled: formData.status === 'active',
+            status: formData.status === 'active' ? 'Active' : 'Suspended',
         };
-        batch.update(userRef, userUpdatePayload as any);
-
-        // Update profile document
+        batch.update(userRef, userUpdatePayload);
+        
+        // 2. Prepare Profile Document Update/Creation
         if (role && roleCollectionMap[role]) {
             const profileRef = doc(db, roleCollectionMap[role], userId);
-            batch.update(profileRef, profile);
+            
+            const profilePayload: { [key: string]: any } = {};
+            const knownUserFields = ['id', 'profile', 'password', 'user_type', 'full_name', 'email', 'mobile_no', 'enabled', 'status'];
+            for (const key in formData) {
+                if (!knownUserFields.includes(key)) {
+                    profilePayload[key] = formData[key];
+                }
+            }
+
+            batch.set(profileRef, profilePayload, { merge: true });
+        }
+        
+        if (formData.password) {
+          console.warn("Password update from client form is not implemented securely.");
         }
 
         await batch.commit();
 
       } else {
-        // Create user via Firebase Function
         await createUserCallable({ 
-            email: userData.email, 
-            password: userData.password, 
-            displayName: userData.full_name, 
+            email: formData.email, 
+            password: formData.password, 
+            displayName: formData.full_name, 
             role 
         });
-        // The function should trigger the creation of user and profile docs.
-        // We might need to manually create/update the profile data here if the function doesn't handle it.
-        // For now, assume the function sets the basics, and we navigate away.
       }
 
     } catch (err: any) {
       console.error("Error saving user:", err);
       setError(err.message || 'Failed to save user');
-      throw err; // Re-throw to be caught in the component
+      throw err;
     } finally {
       setIsSubmitting(false);
     }

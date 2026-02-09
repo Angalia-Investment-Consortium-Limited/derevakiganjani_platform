@@ -128,36 +128,68 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const userCredential = await createUserWithEmailAndPassword(auth, email!, password);
     const firebaseUser = userCredential.user;
 
+    // 1. Create 'users' document
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     await setDoc(userDocRef, {
       uid: firebaseUser.uid,
       email: firebaseUser.email || '',
       roles: [role],
       createdAt: Timestamp.now(),
+      full_name: role === 'Driver' ? (profileData as any).full_name : (profileData as any).company_name,
+      mobile_no: phone_number,
       phoneNumber: phone_number,
+      enabled: true,
+      status: 'Active',
     });
 
     let profileCollection = '';
+    let finalProfileData: any = {};
+
+    // 2. Prepare profile document data based on role
     if (role === 'Driver') {
       profileCollection = 'driver_profiles';
-    } else if (role === 'Employer') {
-      profileCollection = 'employers';
-    } else if (role === 'SuperAdmin' || role === 'Admin' || role === 'Staff') {
-      profileCollection = 'admins';
-    }
-
-    if(profileCollection){
-      const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
-      await setDoc(profileDocRef, {
-        ...profileData,
+      const driverData = profileData as any;
+      finalProfileData = {
         uid: firebaseUser.uid,
         email: firebaseUser.email || '',
-        phoneNumber: phone_number,
-      });
+        createdAt: Timestamp.now(),
+        lastUpdated: Timestamp.now(),
+        fullName: driverData.full_name,
+        phone_number: phone_number,
+        nationalId: driverData.national_id,
+        preferredLanguage: driverData.preferred_language,
+        bio: '',
+        driverId: '',
+        licenseNumber: '',
+        skills: [],
+      };
+    } else if (role === 'Employer') {
+      profileCollection = 'employers';
+      const employerData = profileData as any;
+      finalProfileData = {
+        userId: firebaseUser.uid,
+        company_email: email,
+        company_phone: phone_number,
+        account_creation_date: Timestamp.now(),
+        company_name: employerData.company_name,
+        contactPerson: employerData.contact_person,
+        companyRegistration: employerData.company_registration,
+        address: { street: employerData.address || '', city: '', country: '' },
+        website: employerData.website || '',
+        verificationStatus: 'Pending',
+        industry: '',
+      };
+    }
+
+    // 3. Create profile document
+    if (profileCollection) {
+      const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
+      await setDoc(profileDocRef, finalProfileData);
     }
 
     return userCredential;
   };
+
 
   const updateUser = async (data: Partial<User>) => {
     if (!currentUser) return;

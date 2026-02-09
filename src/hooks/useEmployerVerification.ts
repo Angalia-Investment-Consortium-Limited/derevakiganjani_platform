@@ -1,125 +1,68 @@
-
-import { useState, useCallback, useEffect } from 'react';
-import { collection, getDocs, query, where, orderBy, limit, startAfter, getCountFromServer, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { useState, useEffect, useCallback } from 'react';
+import { collection, getDocs, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { EmployerVerification } from '@/types/jobs'; // This might need adjustment depending on the final data structure
+import type { Employer } from '@/types/employer';
 
-const PAGE_SIZE = 10;
-
-// --- HOOK for the list of employer verification requests ---
+// Hook for the main management page (/employer-verification)
 export const useEmployerVerificationManagement = () => {
-  const [employers, setEmployers] = useState<any[]>([]);
-  const [total, setTotal] = useState(0);
+  const [employers, setEmployers] = useState<Employer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [currentPage, setCurrentPage] = useState(0);
-  const [lastDoc, setLastDoc] = useState<any>(null);
 
-  const buildQuery = useCallback(() => {
-    // Corrected collection name to 'employer_profiles' as per schema
-    let q = query(collection(db, 'employer_profiles'));
-
-    if (statusFilter !== 'all') {
-      q = query(q, where('verification_status', '==', statusFilter));
-    }
-
-    if (searchTerm) {
-      q = query(q, where('company_name', '>=', searchTerm), where('company_name', '<=', searchTerm + '\uf8ff'));
-    }
-
-    return q;
-  }, [statusFilter, searchTerm]);
-
-  const fetchEmployers = useCallback(async (page = 0) => {
+  const fetchEmployers = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     try {
-      const q = buildQuery();
-
-      const countSnapshot = await getCountFromServer(q);
-      setTotal(countSnapshot.data().count);
-
-      let pageQuery = query(q, orderBy('company_name', 'asc'), limit(PAGE_SIZE));
-      if (page > 0 && lastDoc) {
-        pageQuery = query(pageQuery, startAfter(lastDoc));
-      }
-
-      const querySnapshot = await getDocs(pageQuery);
-      const employersData = querySnapshot.docs.map(d => ({ 
-          id: d.id, 
-          ...d.data(),
-          status: d.data().verification_status, // Align field name
-      }));
-      setEmployers(employersData);
-      setLastDoc(querySnapshot.docs[querySnapshot.docs.length - 1]);
-
+      const employersCollection = collection(db, 'employers');
+      const querySnapshot = await getDocs(employersCollection);
+      const employersList = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Employer[];
+      setEmployers(employersList);
     } catch (err: any) {
-      console.error("Error fetching employer profiles:", err);
-      setError(err.message || 'Failed to fetch employer profiles');
+      console.error("Error fetching employers: ", err);
+      setError('Failed to fetch employer verification requests. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [lastDoc, buildQuery]);
-
-  const refresh = useCallback(() => {
-    setCurrentPage(0);
-    setLastDoc(null);
-    fetchEmployers(0);
-  }, [fetchEmployers]);
+  }, []);
 
   useEffect(() => {
-      fetchEmployers(currentPage);
-  }, [currentPage, fetchEmployers]);
+    fetchEmployers();
+  }, [fetchEmployers]);
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
-
-  return {
-    employers, total, isLoading, error, searchTerm, setSearchTerm, statusFilter, setStatusFilter,
-    currentPage, setCurrentPage, totalPages, refresh,
-  };
+  return { employers, isLoading, error, refresh: fetchEmployers };
 };
 
-
-// --- HOOK for a single employer review ---
+// Hook for the individual review page (/employer-review/:id)
 export const useEmployerReview = (employerId: string | null) => {
-  const [employer, setEmployer] = useState<any | null>(null);
+  const [employer, setEmployer] = useState<Employer | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const fetchEmployer = useCallback(async () => {
     if (!employerId) {
-      setIsLoading(false);
-      return;
+        setIsLoading(false);
+        setError('No employer ID provided.');
+        return;
     }
+
     setIsLoading(true);
     setError(null);
     try {
-      // The primary document is in 'employer_profiles'
-      const profileRef = doc(db, 'employer_profiles', employerId);
-      const profileSnap = await getDoc(profileRef);
+      const employerDocRef = doc(db, 'employers', employerId);
+      const docSnap = await getDoc(employerDocRef);
 
-      if (!profileSnap.exists()) {
-        throw new Error('Employer profile not found');
+      if (docSnap.exists()) {
+        setEmployer({ id: docSnap.id, ...docSnap.data() } as Employer);
+      } else {
+        setError('Employer not found.');
+        setEmployer(null);
       }
-      const employerData = { id: profileSnap.id, ...profileSnap.data() };
-      
-      // We also need the user's base info (like email) from the 'users' collection
-      const userRef = doc(db, 'users', employerId);
-      const userSnap = await getDoc(userRef);
-      if(userSnap.exists()) {
-          employerData.email = userSnap.data().email;
-          employerData.phone = userSnap.data().mobile_no;
-      }
-
-      setEmployer(employerData);
-
     } catch (err: any) {
-      console.error("Error fetching employer for review:", err);
-      setError(err.message || 'Failed to fetch employer data');
+      console.error(`Error fetching employer ${employerId}: `, err);
+      setError('Failed to fetch employer details. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -129,24 +72,20 @@ export const useEmployerReview = (employerId: string | null) => {
     fetchEmployer();
   }, [fetchEmployer]);
 
-  const updateVerificationStatus = async (newStatus: 'Verified' | 'Rejected', remarks: string) => {
-    if (!employerId) return;
-    setIsUpdating(true);
-    try {
-      const employerRef = doc(db, 'employer_profiles', employerId);
-      await updateDoc(employerRef, { 
-          verification_status: newStatus, 
-          verification_remarks: remarks,
-          verified_at: new Date(),
-      });
-      // Optimistically update local state
-      setEmployer((prev: any) => prev ? { ...prev, verification_status: newStatus, verification_remarks: remarks } : null);
-    } catch (err: any) {
-      throw new Error(err.message || 'Failed to update verification status');
-    } finally {
-      setIsUpdating(false);
+  const updateEmployerStatus = async (status: 'verified' | 'rejected', remarks: string) => {
+    if (!employerId) {
+        throw new Error('Cannot update status without an employer ID.');
     }
+
+    const employerDocRef = doc(db, 'employers', employerId);
+    await updateDoc(employerDocRef, {
+        verificationStatus: status,
+        remarks: remarks,
+        processedAt: Timestamp.now(), // Keep a record of when it was processed
+    });
+    // Refresh local data after update
+    fetchEmployer();
   };
 
-  return { employer, isLoading, error, isUpdating, updateVerificationStatus, refresh: fetchEmployer };
+  return { employer, isLoading, error, updateEmployerStatus, refresh: fetchEmployer };
 };

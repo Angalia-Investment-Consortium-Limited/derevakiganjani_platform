@@ -12,8 +12,12 @@ This collection stores basic information about all registered users, linking the
 | :--- | :--- | :--- |
 | `createdAt` | Timestamp | The date and time the user account was created. |
 | `email` | String | The user's email address. |
+| `enabled` | Boolean | Flag to indicate if the user account is active. |
 | `full_name` | String | The user's full name. |
-| `roles` | Array | An array of strings representing user roles (e.g., `["Employer"]`, `["Admin"]`, `["Driver"]`). |
+| `mobile_no` | String | The user's mobile number. |
+| `phoneNumber`| String | The user's phone number. |
+| `roles` | Array | An array of strings representing user roles (e.g., `["Driver"]`). |
+| `status` | String | The current status of the user account (e.g., "Active"). |
 | `uid` | String | The user's unique ID from Firebase Authentication. |
 
 ---
@@ -36,17 +40,20 @@ Stores profile information for users with the "Admin" role.
 ### `employers`
 Stores profile information for users with the "Employer" role.
 
-**Document ID:** User's UID from Firebase Authentication or a custom ID.
+**Document ID:** User's UID from Firebase Authentication.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `companyName` | String | The name of the employer's company. |
-| `contactPerson`| String | The name of the primary contact at the company. |
-| `email` | String | The employer's contact email. |
-| `verificationStatus` | String | The status of the employer's verification (e.g., "Verified", "Pending"). |
-| `uid` | String | The employer's user ID. |
+| `account_creation_date` | Timestamp | The date and time the employer account was created. |
 | `address` | Map | An object containing the company's address (`city`, `country`, `street`). |
+| `company_email`| String | The company's primary contact email. |
+| `company_name` | String | The name of the employer's company. |
+| `company_phone`| String | The company's phone number. |
+| `companyRegistration` | String | The company's registration number (from the registration form). |
+| `contactPerson`| String | The name of the primary contact at the company. |
 | `industry` | String | The industry the company operates in. |
+| `userId` | String | The employer's unique user ID. |
+| `verificationStatus` | String | The status of the employer's verification (e.g., "Verified", "Pending"). |
 | `website` | String | The company's official website. |
 
 ---

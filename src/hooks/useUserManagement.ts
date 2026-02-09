@@ -74,18 +74,33 @@ export const useUserManagement = () => {
           pageCursors.current[currentPage + 1] = lastVisible;
         }
 
-        let usersData = querySnapshot.docs.map(d => ({ ...d.data(), id: d.id, uid: d.id }) as User);
+        const usersData = await Promise.all(querySnapshot.docs.map(async (userDoc) => {
+          const userData = { ...userDoc.data(), id: userDoc.id, uid: userDoc.id } as User;
+          const role = userData.roles?.[0] as UserRole;
+          let profileData: AdminProfile | EmployerProfile | DriverProfile | null = null;
+
+          if (role && roleCollectionMap[role]) {
+            const profileRef = doc(db, roleCollectionMap[role], userDoc.id);
+            const profileSnap = await getDoc(profileRef);
+            if (profileSnap.exists()) {
+              profileData = profileSnap.data() as any;
+            }
+          }
+
+          return { ...userData, ...profileData };
+        }));
 
         if (searchQuery) {
           const lowercasedQuery = searchQuery.toLowerCase();
-          usersData = usersData.filter(user => 
+          const filteredUsers = usersData.filter(user => 
             user.full_name?.toLowerCase().includes(lowercasedQuery) ||
             user.email?.toLowerCase().includes(lowercasedQuery) ||
             user.mobile_no?.includes(lowercasedQuery)
           );
+          setUsers(filteredUsers);
+        } else {
+          setUsers(usersData);
         }
-
-        setUsers(usersData);
 
       } catch (err: any) {
         console.error("Error fetching users:", err);
