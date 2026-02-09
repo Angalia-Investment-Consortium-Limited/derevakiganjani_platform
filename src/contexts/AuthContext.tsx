@@ -7,7 +7,6 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-  sendEmailVerification,
 } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import {
@@ -41,6 +40,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   register: (data: RegisterData) => Promise<any>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
+  updateUser: (data: Partial<User>) => Promise<void>;
   updateProfile: (data: Partial<DriverProfile | EmployerProfile | AdminProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
   otp: ReturnType<typeof useOTP>;
@@ -71,17 +71,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           const primaryRole = userData.roles[0];
           let profileCollection = '';
 
-          if (primaryRole === 'SuperAdmin' || primaryRole === 'Admin' || primaryRole === 'Staff') {
+          if (primaryRole === 'Driver') {
+            profileCollection = 'driver_profiles';
+          } else if (primaryRole === 'Employer') {
+            profileCollection = 'employers';
+          } else if (primaryRole === 'SuperAdmin' || primaryRole === 'Admin' || primaryRole === 'Staff') {
             profileCollection = 'admins';
-          } else {
-            profileCollection = `${primaryRole.toLowerCase()}s`;
           }
 
-          const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
-          const profileDoc = await getDoc(profileDocRef);
+          if (profileCollection) {
+            const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
+            const profileDoc = await getDoc(profileDocRef);
 
-          if (profileDoc.exists()) {
-            setProfile(profileDoc.data() as DriverProfile | EmployerProfile | AdminProfile);
+            if (profileDoc.exists()) {
+              setProfile(profileDoc.data() as DriverProfile | EmployerProfile | AdminProfile);
+            }
           }
         }
       }
@@ -124,8 +128,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const userCredential = await createUserWithEmailAndPassword(auth, email!, password);
     const firebaseUser = userCredential.user;
 
-    await sendEmailVerification(firebaseUser);
-
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     await setDoc(userDocRef, {
       uid: firebaseUser.uid,
@@ -136,21 +138,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     });
 
     let profileCollection = '';
-    if (role === 'SuperAdmin' || role === 'Admin' || role === 'Staff') {
+    if (role === 'Driver') {
+      profileCollection = 'driver_profiles';
+    } else if (role === 'Employer') {
+      profileCollection = 'employers';
+    } else if (role === 'SuperAdmin' || role === 'Admin' || role === 'Staff') {
       profileCollection = 'admins';
-    } else {
-      profileCollection = `${role.toLowerCase()}s`;
     }
 
-    const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
-    await setDoc(profileDocRef, {
-      ...profileData,
-      uid: firebaseUser.uid,
-      email: firebaseUser.email || '',
-      phoneNumber: phone_number,
-    });
+    if(profileCollection){
+      const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
+      await setDoc(profileDocRef, {
+        ...profileData,
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        phoneNumber: phone_number,
+      });
+    }
 
     return userCredential;
+  };
+
+  const updateUser = async (data: Partial<User>) => {
+    if (!currentUser) return;
+    const userDocRef = doc(db, 'users', currentUser.uid);
+    await updateDoc(userDocRef, data);
+    setUser((prevUser) => ({ ...prevUser, ...data } as User));
   };
 
   const updateProfile = async (data: Partial<DriverProfile | EmployerProfile | AdminProfile>) => {
@@ -158,15 +171,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const primaryRole = user.roles[0];
     let profileCollection = '';
-    if (primaryRole === 'SuperAdmin' || primaryRole === 'Admin' || primaryRole === 'Staff') {
+    if (primaryRole === 'Driver') {
+      profileCollection = 'driver_profiles';
+    } else if (primaryRole === 'Employer') {
+      profileCollection = 'employers';
+    } else if (primaryRole === 'SuperAdmin' || primaryRole === 'Admin' || primaryRole === 'Staff') {
       profileCollection = 'admins';
-    } else {
-      profileCollection = `${primaryRole.toLowerCase()}s`;
     }
 
-    const profileDocRef = doc(db, profileCollection, currentUser.uid);
-    await updateDoc(profileDocRef, data);
-    await fetchUserProfile(currentUser); // Refresh profile
+    if(profileCollection){
+      const profileDocRef = doc(db, profileCollection, currentUser.uid);
+      await updateDoc(profileDocRef, data);
+      setProfile((prevProfile) => ({ ...prevProfile, ...data } as any));
+    }
   };
 
   const refreshProfile = async () => {
@@ -190,6 +207,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     register,
     sendPasswordResetEmail: sendPasswordReset,
+    updateUser,
     updateProfile,
     refreshProfile,
     loading: isLoading,

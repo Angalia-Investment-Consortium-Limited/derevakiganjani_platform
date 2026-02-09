@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '@/lib/firebase';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app as firebaseApp } from '../lib/firebase';
 
 interface UseOTPOptions {
   onSuccess?: () => void;
@@ -15,8 +15,7 @@ interface OTPState {
   pinId?: string;
 }
 
-const requestOTPFunction = httpsCallable(functions, 'requestOTP');
-const verifyOTPFunction = httpsCallable(functions, 'verifyOTP');
+const functions = getFunctions(firebaseApp);
 
 export const useOTP = (options?: UseOTPOptions) => {
   const [state, setState] = useState<OTPState>({
@@ -26,11 +25,17 @@ export const useOTP = (options?: UseOTPOptions) => {
     verified: false,
   });
 
+  console.log('useOTP hook initialized with state:', state);
+
   const sendOTP = async (mobile_no: string) => {
+    console.log('sendOTP called with mobile_no:', mobile_no);
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const result: any = await requestOTPFunction({ mobile_no });
+      const requestOTPFunc = httpsCallable(functions, 'requestOTP');
+      const result: any = await requestOTPFunc({ mobile_no });
+
+      console.log('requestOTP result:', result);
 
       if (!result.data.success) {
         throw new Error('Failed to send OTP');
@@ -44,8 +49,10 @@ export const useOTP = (options?: UseOTPOptions) => {
         pinId: result.data.pinId,
       }));
 
+      console.log('sendOTP successful, new state:', { ...state, otpSent: true, pinId: result.data.pinId });
       options?.onSuccess?.();
     } catch (error: any) {
+      console.error('Error in sendOTP:', error);
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -58,13 +65,11 @@ export const useOTP = (options?: UseOTPOptions) => {
   };
 
   const verifyOTP = async (otp_code: string) => {
+    console.log('verifyOTP called with otp_code:', otp_code);
     if (!state.pinId) {
       const error = new Error("pinId is not available. Please request an OTP first.");
-      setState((prev) => ({
-        ...prev,
-        isLoading: false,
-        error: error.message,
-      }));
+      console.error(error.message);
+      setState((prev) => ({ ...prev, error: error.message }));
       options?.onError?.(error);
       throw error;
     }
@@ -72,7 +77,9 @@ export const useOTP = (options?: UseOTPOptions) => {
     setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const result: any = await verifyOTPFunction({ pinId: state.pinId, pin: otp_code });
+      const verifyOTPFunc = httpsCallable(functions, 'verifyOTP');
+      const result: any = await verifyOTPFunc({ pinId: state.pinId, pin: otp_code });
+      console.log('verifyOTP result:', result);
 
       if (result.data.success) {
         setState((prev) => ({
@@ -81,11 +88,13 @@ export const useOTP = (options?: UseOTPOptions) => {
           verified: true,
           error: null,
         }));
+        console.log('verifyOTP successful, new state:', { ...state, verified: true });
         options?.onSuccess?.();
       } else {
         throw new Error('Invalid OTP');
       }
     } catch (error: any) {
+      console.error('Error in verifyOTP:', error);
       setState((prev) => ({
         ...prev,
         isLoading: false,
@@ -98,11 +107,12 @@ export const useOTP = (options?: UseOTPOptions) => {
   };
 
   const resendOTP = async (mobile_no: string) => {
-    // Re-sending is the same as sending a new one with Beem
+    console.log('resendOTP called with mobile_no:', mobile_no);
     await sendOTP(mobile_no);
   };
 
   const reset = () => {
+    console.log('reset called, resetting state');
     setState({
       isLoading: false,
       error: null,

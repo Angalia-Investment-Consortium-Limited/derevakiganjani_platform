@@ -39,15 +39,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Plus, Search, MoreVertical, Download, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUserManagement } from '@/hooks/useUsers';
-import useDebounce from '@/hooks/useDebounce';
+import { useUserManagement } from '@/hooks/useUserManagement';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const UsersManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { language, translations } = useLanguage();
+  const { t } = useLanguage();
 
   const {
     users,
@@ -70,17 +69,12 @@ const UsersManagement = () => {
     refresh,
   } = useUserManagement();
 
-  // State for delete confirmation dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
-  // Debounce search query
-  const [debouncedSearchQuery] = useDebounce(searchQuery, 500);
-
-  // Refresh data when debounced search changes
   useEffect(() => {
     refresh();
-  }, [debouncedSearchQuery, roleFilter, statusFilter, currentPage, refresh]);
+  }, [roleFilter, statusFilter, searchQuery, refresh]);
 
   const handleSuspendUser = async (userId: string, userName: string, currentStatus: boolean) => {
     try {
@@ -88,16 +82,15 @@ const UsersManagement = () => {
       await toggleUserStatus(userId, newStatus);
       
       toast({
-        title: newStatus ? translations.userActivated : translations.userSuspended,
-        description: `${userName} ` + (newStatus ? translations.hasBeenActivated : translations.hasBeenSuspended),
+        title: t(newStatus ? 'userActivated' : 'userSuspended'),
+        description: `${userName} ${t(newStatus ? 'hasBeenActivated' : 'hasBeenSuspended')}`,
       });
       
-      // Refresh the list
       refresh();
     } catch (err: any) {
       toast({
-        title: translations.error,
-        description: err?.message || translations.failedToUpdateUserStatus,
+        title: t('error'),
+        description: err?.message || t('failedToUpdateUserStatus'),
         variant: 'destructive',
       });
     }
@@ -115,20 +108,17 @@ const UsersManagement = () => {
       await deleteUser(userToDelete.id);
       
       toast({
-        title: translations.userDeleted,
-        description: `${userToDelete.name} ` + translations.hasBeenDeleted,
+        title: t('userDeleted'),
+        description: `${userToDelete.name} ${t('hasBeenDeleted')}`,
       });
       
-      // Close dialog and reset state
       setDeleteDialogOpen(false);
       setUserToDelete(null);
-      
-      // Refresh the list
       refresh();
     } catch (err: any) {
       toast({
-        title: translations.error,
-        description: err?.message || translations.failedToDeleteUser,
+        title: t('error'),
+        description: err?.message || t('failedToDeleteUser'),
         variant: 'destructive',
       });
     }
@@ -136,43 +126,37 @@ const UsersManagement = () => {
 
   const handleExport = () => {
     toast({
-      title: translations.exportStarted,
-      description: translations.exportingUserData,
+      title: t('exportStarted'),
+      description: t('exportingUserData'),
     });
-    // TODO: Implement actual export logic
   };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'Admin':
-        return 'destructive';
-      case 'Employer':
-        return 'default';
-      case 'Driver':
-        return 'secondary';
-      default:
-        return 'outline';
+      case 'Admin': return 'destructive';
+      case 'Employer': return 'default';
+      case 'Driver': return 'secondary';
+      default: return 'outline';
     }
   };
 
-  // Show error state
   if (error && !isLoading) {
     return (
       <AdminLayout>
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold">{translations.usersManagement}</h1>
-              <p className="text-muted-foreground mt-1">{translations.manageUsersDescription}</p>
+              <h1 className="text-3xl font-bold">{t('User Management')}</h1>
+              <p className="text-muted-foreground mt-1">{t('Mange Users Description')}</p>
             </div>
           </div>
           <Card>
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <p className="text-destructive mb-4">
-                  {translations.failedToLoadUsers}: {typeof error === 'string' ? error : error?.message || 'Unknown error'}
+                  {t('failedToLoadUsers')}: {error}
                 </p>
-                <Button onClick={refresh}>{translations.retry}</Button>
+                <Button onClick={refresh}>{t('retry')}</Button>
               </div>
             </CardContent>
           </Card>
@@ -186,35 +170,34 @@ const UsersManagement = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">{translations.usersManagement}</h1>
-            <p className="text-muted-foreground mt-1">{translations.manageUsersDescription}</p>
+            <h1 className="text-3xl font-bold">{t('usersManagement')}</h1>
+            <p className="text-muted-foreground mt-1">{t('manageUsersDescription')}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
-              {translations.export}
+              {t('export')}
             </Button>
             <Button onClick={() => navigate('/admin/users/new')}>
               <Plus className="h-4 w-4 mr-2" />
-              {translations.addUser}
+              {t('addUser')}
             </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>{translations.allUsers}</CardTitle>
+            <CardTitle>{t('allUsers')}</CardTitle>
             <CardDescription>
-              {translations.viewAndManageAllUsers.replace('{total}', total.toString())}
+              {t('viewAndManageAllUsers', { total: total.toString() })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Filters */}
             <div className="flex flex-col md:flex-row gap-4">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={translations.searchByNamePhoneEmail}
+                  placeholder={t('searchByNamePhoneEmail')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -222,44 +205,42 @@ const UsersManagement = () => {
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder={translations.filterByRole} />
+                  <SelectValue placeholder={t('filterByRole')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{translations.allRoles}</SelectItem>
-                  <SelectItem value="driver">{translations.driver}</SelectItem>
-                  <SelectItem value="employer">{translations.employer}</SelectItem>
-                  <SelectItem value="admin">{translations.admin}</SelectItem>
+                  <SelectItem value="all">{t('allRoles')}</SelectItem>
+                  <SelectItem value="driver">{t('driver')}</SelectItem>
+                  <SelectItem value="employer">{t('employer')}</SelectItem>
+                  <SelectItem value="admin">{t('admin')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder={translations.filterByStatus} />
+                  <SelectValue placeholder={t('filterByStatus')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{translations.allStatuses}</SelectItem>
-                  <SelectItem value="active">{translations.active}</SelectItem>
-                  <SelectItem value="suspended">{translations.suspended}</SelectItem>
+                  <SelectItem value="all">{t('allStatuses')}</SelectItem>
+                  <SelectItem value="active">{t('active')}</SelectItem>
+                  <SelectItem value="suspended">{t('suspended')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Users Table */}
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{translations.name}</TableHead>
-                    <TableHead>{translations.phone}</TableHead>
-                    <TableHead>{translations.email}</TableHead>
-                    <TableHead>{translations.role}</TableHead>
-                    <TableHead>{translations.status}</TableHead>
-                    <TableHead>{translations.createdOn}</TableHead>
+                    <TableHead>{t('name')}</TableHead>
+                    <TableHead>{t('phone')}</TableHead>
+                    <TableHead>{t('email')}</TableHead>
+                    <TableHead>{t('role')}</TableHead>
+                    <TableHead>{t('status')}</TableHead>
+                    <TableHead>{t('createdOn')}</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
-                    // Loading skeleton
                     Array.from({ length: 5 }).map((_, index) => (
                       <TableRow key={index}>
                         <TableCell><Skeleton className="h-4 w-32" /></TableCell>
@@ -274,14 +255,14 @@ const UsersManagement = () => {
                   ) : users.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        {translations.noUsersFound}
+                        {t('noUsersFound')}
                       </TableCell>
                     </TableRow>
                   ) : (
                     users.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
-                        <TableCell>{user.phone || '-'}</TableCell>
+                        <TableCell className="font-medium">{user.full_name}</TableCell>
+                        <TableCell>{user.mobile_no || '-'}</TableCell>
                         <TableCell>{user.email || '-'}</TableCell>
                         <TableCell>
                           <Badge variant={getRoleBadgeColor(user.user_type || '')}>
@@ -300,29 +281,25 @@ const UsersManagement = () => {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" disabled={toggling}>
-                                {toggling ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <MoreVertical className="h-4 w-4" />
-                                )}
+                                {toggling ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreVertical className="h-4 w-4" />}
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => navigate(`/admin/users/${user.id}/edit`)}>
-                                {translations.edit}
+                                {t('edit')}
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                onClick={() => handleSuspendUser(user.id, user.name, user.enabled)}
+                                onClick={() => handleSuspendUser(user.id, user.full_name, user.enabled)}
                               >
-                                {user.status === 'Active' ? translations.suspend : translations.activate}
+                                {user.status === 'Active' ? t('suspend') : t('activate')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
-                                onClick={() => handleDeleteClick(user.id, user.name)}
+                                onClick={() => handleDeleteClick(user.id, user.full_name)}
                                 className="text-destructive focus:text-destructive"
                               >
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                {translations.delete}
+                                {t('delete')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -334,11 +311,10 @@ const UsersManagement = () => {
               </Table>
             </div>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {translations.showing.replace('{count}', users.length.toString()).replace('{total}', total.toString())}
+                  {t('showing', { count: users.length.toString(), total: total.toString() })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -347,11 +323,11 @@ const UsersManagement = () => {
                     onClick={() => setCurrentPage(currentPage - 1)}
                     disabled={currentPage === 0 || isLoading}
                   >
-                    {translations.previous}
+                    {t('previous')}
                   </Button>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">
-                      {translations.page} {currentPage + 1} {translations.of} {totalPages}
+                      {t('page')} {currentPage + 1} {t('of')} {totalPages}
                     </span>
                   </div>
                   <Button
@@ -360,7 +336,7 @@ const UsersManagement = () => {
                     onClick={() => setCurrentPage(currentPage + 1)}
                     disabled={currentPage >= totalPages - 1 || isLoading}
                   >
-                    {translations.next}
+                    {t('next')}
                   </Button>
                 </div>
               </div>
@@ -369,17 +345,16 @@ const UsersManagement = () => {
         </Card>
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{translations.areYouSure}</AlertDialogTitle>
+            <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {translations.deleteUserConfirmation.replace('{name}', userToDelete?.name || '')}
+              {t('deleteUserConfirmation', { name: userToDelete?.name || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>{translations.cancel}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t('cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={deleting}
@@ -388,10 +363,10 @@ const UsersManagement = () => {
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {translations.deleting}...
+                  {t('deleting')}...
                 </>
               ) : (
-                translations.delete
+                t('delete')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

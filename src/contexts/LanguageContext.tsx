@@ -11,7 +11,7 @@ type TranslationSet = {
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, options?: Record<string, string | number>) => string;
   translations: TranslationSet;
 }
 
@@ -117,6 +117,7 @@ const translations = {
     previous: 'Previous',
     page: 'Page',
     of: 'of',
+    showingPage: 'Showing page {currentPage} of {totalPages} ({totalJobs} total jobs)',
     
     // Roles & Permissions
     rolesAndPermissions: 'Roles & Permissions',
@@ -272,6 +273,7 @@ const translations = {
     previous: 'Iliyopita',
     page: 'Ukurasa',
     of: 'wa',
+    showingPage: 'Inaonyesha ukurasa {currentPage} wa {totalPages} (kazi {totalJobs} jumla)',
 
     // Roles & Permissions
     rolesAndPermissions: 'Majukumu na Ruhusa',
@@ -322,16 +324,28 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     localStorage.setItem('language', lang);
   };
 
-  const t = (key: string): string => {
+  const t = (key: string, options?: Record<string, string | number>): string => {
     const keys = key.split('.');
-    let result: any = translations[language];
+    let current: string | TranslationSet | undefined = translations[language];
+
     for (const k of keys) {
-      result = result?.[k];
-      if (typeof result !== 'string' && typeof result !== 'object') {
-        return key; // Return key if not found
+      if (typeof current !== 'object' || current === null) {
+        return key;
       }
+      current = (current as TranslationSet)[k];
     }
-    return typeof result === 'string' ? result : key;
+
+    if (typeof current === 'string') {
+      let finalString = current;
+      if (options) {
+        for (const optionKey in options) {
+          finalString = finalString.replace(`{${optionKey}}`, String(options[optionKey]));
+        }
+      }
+      return finalString;
+    }
+
+    return key;
   };
 
   return (

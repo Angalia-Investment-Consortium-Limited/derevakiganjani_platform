@@ -1,3 +1,4 @@
+
 import { Toaster } from "./components/ui/toaster";
 import { Toaster as Sonner } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
@@ -67,6 +68,7 @@ import ReportsCenter from "./pages/admin/ReportsCenter";
 import EmployerDashboard from "./pages/ajiri-dereva/EmployerDashboard";
 import CompanyVerification from "./pages/ajiri-dereva/CompanyVerification";
 import JobApplicants from "./pages/ajiri-dereva/JobApplicants";
+import AdminJobApplicants from "./pages/admin/JobApplicants";
 import Interviews from "./pages/ajiri-dereva/Interviews";
 import Messages from "./pages/ajiri-dereva/Messages";
 import DriverProfile from "./pages/ajiri-dereva/DriverProfile";
@@ -87,6 +89,8 @@ import LicenseApplicationsManagement from "./pages/admin/LicenseApplicationsMana
 import LicenseApplicationReview from "./pages/admin/LicenseApplicationReview";
 import LicenseStatistics from "./pages/admin/LicenseStatistics";
 import EmployerVerificationManagement from "./pages/admin/EmployerVerificationManagement";
+import EmployerReview from "./pages/admin/EmployerReview";
+import JobManagement from "./pages/admin/JobManagement";
 import TestCategories from "./pages/jitesti/TestCategories";
 import PaymentPage from "./pages/jitesti/PaymentPage";
 import TestTaking from "./pages/jitesti/TestTaking";
@@ -272,9 +276,7 @@ const App = () => (
             } />
             <Route path="/employer/jobs/:jobId/applicants" element={
               <RoleBasedRoute allowedRoles={['Employer']}>
-                <EmployerVerificationGuard>
-                  <JobApplicants />
-                </EmployerVerificationGuard>
+                <JobApplicants />
               </RoleBasedRoute>
             } />
             <Route path="/employer/interviews" element={
@@ -311,7 +313,7 @@ const App = () => (
               </RoleBasedRoute>
             } />
             <Route path="/ajiri-dereva/register" element={<EmployerRegistration />} />
-            <Route path="/ajiri-dereva/post-job" element={
+            <Route path="/ajiri-dereva/post-.job" element={
               <RoleBasedRoute allowedRoles={['Employer']}>
                 <EmployerVerificationGuard>
                   <PostJob />
@@ -365,6 +367,16 @@ const App = () => (
               <AdminRoleBasedRoute>
                 <JobPostsManagement />
               </AdminRoleBasedRoute>
+            } />
+            <Route path="/admin/job-management" element={
+                <AdminRoleBasedRoute>
+                    <JobManagement />
+                </AdminRoleBasedRoute>
+            } />
+            <Route path="/admin/job-applicants/:jobId" element={
+                <AdminRoleBasedRoute>
+                    <AdminJobApplicants />
+                </AdminRoleBasedRoute>
             } />
             <Route path="/admin/jobs/new" element={
               <AdminRoleBasedRoute>
@@ -489,6 +501,11 @@ const App = () => (
                 <EmployerVerificationManagement />
               </AdminRoleBasedRoute>
             } /> 
+            <Route path="/admin/employer-review/:id" element={
+              <AdminRoleBasedRoute>
+                <EmployerReview />
+              </AdminRoleBasedRoute>
+            } />
 
             {/* Privacy Policy Routes */}
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />

@@ -240,18 +240,18 @@ const LicenseRequest = () => {
                 <div className="space-y-3">
                   {recentApplications.map((app) => (
                     <div
-                      key={app.name}
+                      key={app.fullName}
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted cursor-pointer transition-colors"
-                      onClick={() => navigate(`/license/application/${app.name}`)}
+                      onClick={() => navigate(`/license/application/${app.fullName}`)}
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
                           <FileText className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <p className="font-medium">{app.name}</p>
+                          <p className="font-medium">{app.fullName}</p>
                           <p className="text-sm text-muted-foreground">
-                            {app.application_type} - {language === 'sw' ? 'Aina' : 'Category'} {app.license_category}
+                            {app.applicationType} - {language === 'sw' ? 'Aina' : 'Category'} {app.licenseCategory}
                           </p>
                         </div>
                       </div>
@@ -395,7 +395,7 @@ const LicenseRequest = () => {
                   </div>
                   <div className="flex items-center gap-2 bg-background px-4 py-2 rounded-lg">
                     <span className="text-2xl">🕐</span>
-                    <span className="font-medium">{language === 'sw' ? 'Jumatatu-Ijumaa, 8 Asubuhi-5 Jioni' : 'Mon-Fri, 8AM-5PM'}</span>
+                    <span className="font-.medium">{language === 'sw' ? 'Jumatatu-Ijumaa, 8 Asubuhi-5 Jioni' : 'Mon-Fri, 8AM-5PM'}</span>
                   </div>
                 </div>
               </div>

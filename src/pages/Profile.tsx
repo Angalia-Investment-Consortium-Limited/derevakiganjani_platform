@@ -4,11 +4,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Mail, Phone, MapPin, Edit, Save, X } from 'lucide-react';
-import { useState } from 'react';
+import { User, Mail, Phone, MapPin, Edit, Save, X, Briefcase, Car, Building, FileText, Globe, UserCheck, Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
@@ -23,300 +24,274 @@ import {
 } from '@/components/ui/breadcrumb';
 
 const Profile = () => {
-  const { user, profile, updateProfile } = useAuth();
+  const { user, profile, updateUser, updateProfile, refreshProfile, userType } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [formData, setFormData] = useState({
-    full_name: user?.full_name || '',
-    email: user?.email || '',
-    phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
-    address: (profile as any)?.address || '',
+    full_name: '',
+    email: '',
+    phone_number: '',
+    address: '',
+    bio: '',
+    license_number: '',
+    company_name: '',
+    company_registration: '',
+    contact_person: '',
+    website: '',
   });
 
+  useEffect(() => {
+    if (user || profile) {
+      const driverProfile = profile as DriverProfile;
+      const employerProfile = profile as EmployerProfile;
+      
+      setFormData({
+        full_name: user?.full_name || driverProfile?.full_name || '',
+        email: user?.email || '',
+        phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
+        address: (profile as any)?.address || '',
+        bio: driverProfile?.bio || '',
+        license_number: driverProfile?.license_number || '',
+        company_name: employerProfile?.company_name || '',
+        company_registration: employerProfile?.company_registration || '',
+        contact_person: employerProfile?.contact_person || '',
+        website: employerProfile?.website || '',
+      });
+    }
+  }, [user, profile]);
+
   const getUserInitials = () => {
-    if (!user?.full_name) return 'U';
-    const names = user.full_name.split(' ');
+    if (!formData.full_name) return 'U';
+    const names = formData.full_name.split(' ');
     return names.map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
   const handleSave = async () => {
+    setIsSubmitting(true);
     try {
-      await updateProfile(formData);
+      const clean = (obj: any) => JSON.parse(JSON.stringify(obj));
+
+      const userData = clean({
+        full_name: formData.full_name,
+      });
+
+      let profileData: any = clean({
+        phone_number: formData.phone_number,
+        address: formData.address,
+      });
+
+      if (userType === 'Driver') {
+        profileData = {
+          ...profileData,
+          full_name: formData.full_name,
+          bio: formData.bio,
+          license_number: formData.license_number,
+        };
+      } else if (userType === 'Employer') {
+        profileData = {
+          ...profileData,
+          company_name: formData.company_name,
+          company_registration: formData.company_registration,
+          contact_person: formData.contact_person,
+          website: formData.website,
+        };
+      }
+      
+      await updateUser(userData);
+      await updateProfile(clean(profileData));
+      await refreshProfile();
+
       setIsEditing(false);
-      toast({
-        title: t('success'),
-        description: 'Profile updated successfully',
-      });
+      toast({ title: t('success'), description: 'Profile updated successfully' });
     } catch (error: any) {
-      toast({
-        title: t('error'),
-        description: error.message || 'Failed to update profile',
-        variant: 'destructive',
-      });
+      toast({ title: t('error'), description: error.message || 'Failed to update profile', variant: 'destructive' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   const handleCancel = () => {
-    setFormData({
-      full_name: user?.full_name || '',
-      email: user?.email || '',
-      phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
-      address: (profile as any)?.address || '',
-    });
+    if (user || profile) {
+         const driverProfile = profile as DriverProfile;
+         const employerProfile = profile as EmployerProfile;
+         setFormData({
+            full_name: user?.full_name || driverProfile?.full_name || '',
+            email: user?.email || '',
+            phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
+            address: (profile as any)?.address || '',
+            bio: driverProfile?.bio || '',
+            license_number: driverProfile?.license_number || '',
+            company_name: employerProfile?.company_name || '',
+            company_registration: employerProfile?.company_registration || '',
+            contact_person: employerProfile?.contact_person || '',
+            website: employerProfile?.website || '',
+         });
+    }
     setIsEditing(false);
   };
 
   const getUserTypeLabel = () => {
-    switch (user?.user_type) {
-      case 'Driver':
-        return 'Driver';
-      case 'Employer':
-        return 'Employer';
-      case 'Admin':
-      case 'Staff':
-        return 'Administrator';
-      default:
-        return 'User';
-    }
+    return userType ? userType.charAt(0).toUpperCase() + userType.slice(1) : 'User';
   };
 
-  const getUserTypeBadgeColor = () => {
-    switch (user?.user_type) {
-      case 'Driver':
-        return 'bg-primary/10 text-primary';
-      case 'Employer':
-        return 'bg-secondary/10 text-secondary';
-      case 'Admin':
-      case 'Staff':
-        return 'bg-accent/10 text-accent';
-      default:
-        return 'bg-muted text-muted-foreground';
-    }
-  };
+  const renderDriverFields = () => (
+    <div className='space-y-6'>
+        <h3 className="font-semibold text-lg">Driver Details</h3>
+        <div className="space-y-2">
+            <Label htmlFor="bio">Bio</Label>
+            {isEditing ? (
+            <Textarea id="bio" value={formData.bio} onChange={(e) => setFormData({ ...formData, bio: e.target.value })} placeholder="A brief introduction about yourself" />
+            ) : (
+            <p className="text-sm text-muted-foreground pt-2">{formData.bio || 'Not provided'}</p>
+            )}
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="license_number">License Number</Label>
+            {isEditing ? (
+            <Input id="license_number" value={formData.license_number} onChange={(e) => setFormData({ ...formData, license_number: e.target.value })} placeholder="e.g., DL12345" />
+            ) : (
+            <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><Car className="h-4 w-4 text-muted-foreground" /><span>{formData.license_number || 'Not provided'}</span></div>
+            )}
+        </div>
+    </div>
+  );
+
+  const renderEmployerFields = () => (
+    <div className='space-y-6'>
+        <h3 className="font-semibold text-lg">Company Information</h3>
+        <div className="space-y-2">
+            <Label htmlFor="company_name">Company Name</Label>
+            {isEditing ? (
+                <Input id="company_name" value={formData.company_name} onChange={(e) => setFormData({ ...formData, company_name: e.target.value })} />
+            ) : (
+                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><Building className="h-4 w-4 text-muted-foreground" /><span>{formData.company_name || 'Not provided'}</span></div>
+            )}
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="contact_person">Contact Person</Label>
+            {isEditing ? (
+                <Input id="contact_person" value={formData.contact_person} onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })} />
+            ) : (
+                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><UserCheck className="h-4 w-4 text-muted-foreground" /><span>{formData.contact_person || 'Not provided'}</span></div>
+            )}
+        </div>
+        <div className="space-y-2">
+            <Label htmlFor="website">Website</Label>
+            {isEditing ? (
+                <Input id="website" value={formData.website} onChange={(e) => setFormData({ ...formData, website: e.target.value })} />
+            ) : (
+                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><Globe className="h-4 w-4 text-muted-foreground" /><span>{formData.website || 'Not provided'}</span></div>
+            )}
+        </div>
+         <div className="space-y-2">
+            <Label htmlFor="company_registration">Company Registration</Label>
+            {isEditing ? (
+                <Input id="company_registration" value={formData.company_registration} onChange={(e) => setFormData({ ...formData, company_registration: e.target.value })} />
+            ) : (
+                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><FileText className="h-4 w-4 text-muted-foreground" /><span>{formData.company_registration || 'Not provided'}</span></div>
+            )}
+        </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
       <main className="flex-1 container py-8">
         <Breadcrumb className="mb-6">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>My Profile</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
+            <BreadcrumbList>
+                <BreadcrumbItem><BreadcrumbLink href="/dashboard">Home</BreadcrumbLink></BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem><BreadcrumbPage>My Profile</BreadcrumbPage></BreadcrumbItem>
+            </BreadcrumbList>
         </Breadcrumb>
-        {/* Page Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">{t('myProfile')}</h1>
-          <p className="text-muted-foreground mt-1">View and manage your profile information</p>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Profile Card */}
           <Card className="lg:col-span-1">
             <CardHeader>
               <div className="flex flex-col items-center text-center">
-                <Avatar className="h-24 w-24 mb-4">
-                  <AvatarImage src={user?.user_image} alt={user?.full_name} />
-                  <AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback>
-                </Avatar>
-                <CardTitle className="text-xl">{user?.full_name}</CardTitle>
-                <CardDescription className="mt-1">{user?.email}</CardDescription>
-                <Badge className={`mt-3 ${getUserTypeBadgeColor()}`}>
-                  {getUserTypeLabel()}
-                </Badge>
+                <Avatar className="h-24 w-24 mb-4"><AvatarImage src={user?.user_image} alt={formData.full_name} /><AvatarFallback className="text-2xl">{getUserInitials()}</AvatarFallback></Avatar>
+                <CardTitle className="text-xl">{formData.full_name}</CardTitle>
+                <CardDescription className="mt-1">{formData.email}</CardDescription>
+                <Badge className={`mt-3`}>{getUserTypeLabel()}</Badge>
               </div>
             </CardHeader>
-            <CardContent>
-              <Separator className="mb-4" />
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Email:</span>
-                  <span className="font-medium">{user?.email || 'Not provided'}</span>
+             <CardContent>
+                <Separator className="mb-4" />
+                 <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-sm"><Mail className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Email:</span><span className="font-medium">{formData.email || 'Not provided'}</span></div>
+                    <div className="flex items-center gap-3 text-sm"><Phone className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Phone:</span><span className="font-medium">{formData.phone_number || 'Not provided'}</span></div>
+                    {(formData.address) && (
+                        <div className="flex items-center gap-3 text-sm"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Address:</span><span className="font-medium">{formData.address}</span></div>
+                    )}
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground">Phone:</span>
-                  <span className="font-medium">{user?.mobile_no || 'Not provided'}</span>
-                </div>
-                {(profile as any)?.address && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-muted-foreground">Address:</span>
-                    <span className="font-medium">{(profile as any).address}</span>
-                  </div>
-                )}
-              </div>
-            </CardContent>
+             </CardContent>
           </Card>
 
-          {/* Profile Information */}
           <Card className="lg:col-span-2">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle>Profile Information</CardTitle>
-                  <CardDescription>Manage your personal information</CardDescription>
+                  <CardDescription>Manage your personal and professional information</CardDescription>
                 </div>
                 {!isEditing ? (
-                  <Button onClick={() => setIsEditing(true)} variant="outline" size="sm">
-                    <Edit className="h-4 w-4 mr-2" />
-                    Edit Profile
-                  </Button>
+                  <Button onClick={() => setIsEditing(true)} variant="outline" size="sm"><Edit className="h-4 w-4 mr-2" />Edit</Button>
                 ) : (
                   <div className="flex gap-2">
-                    <Button onClick={handleSave} size="sm">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save
+                    <Button onClick={handleSave} size="sm" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Save className="h-4 w-4 mr-2" />Save
                     </Button>
-                    <Button onClick={handleCancel} variant="outline" size="sm">
-                      <X className="h-4 w-4 mr-2" />
-                      Cancel
-                    </Button>
+                    <Button onClick={handleCancel} variant="outline" size="sm" disabled={isSubmitting}><X className="h-4 w-4 mr-2" />Cancel</Button>
                   </div>
                 )}
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {/* Full Name */}
+                <h3 className="font-semibold text-lg">Personal Information</h3>
                 <div className="space-y-2">
                   <Label htmlFor="full_name">Full Name</Label>
                   {isEditing ? (
-                    <Input
-                      id="full_name"
-                      value={formData.full_name}
-                      onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    />
+                    <Input id="full_name" value={formData.full_name} onChange={(e) => setFormData({ ...formData, full_name: e.target.value })} />
                   ) : (
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <span>{user?.full_name || 'Not provided'}</span>
-                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><User className="h-4 w-4 text-muted-foreground" /><span>{formData.full_name || 'Not provided'}</span></div>
                   )}
                 </div>
-
-                {/* Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  {isEditing ? (
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    />
+                  <Label htmlFor="email">Email</Label>
+                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><Mail className="h-4 w-4 text-muted-foreground" /><span>{formData.email || 'Not provided'}</span></div>
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="phone_number">Phone</Label>
+                   {isEditing ? (
+                    <Input id="phone_number" value={formData.phone_number} onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })} />
                   ) : (
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span>{user?.email || 'Not provided'}</span>
-                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><Phone className="h-4 w-4 text-muted-foreground" /><span>{formData.phone_number || 'Not provided'}</span></div>
                   )}
                 </div>
-
-                {/* Phone Number */}
-                <div className="space-y-2">
-                  <Label htmlFor="phone_number">Phone Number</Label>
-                  {isEditing ? (
-                    <Input
-                      id="phone_number"
-                      type="tel"
-                      value={formData.phone_number}
-                      onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
-                    />
-                  ) : (
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <span>{(profile as any)?.phone_number || user?.mobile_no || 'Not provided'}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Address */}
                 <div className="space-y-2">
                   <Label htmlFor="address">Address</Label>
-                  {isEditing ? (
-                    <Input
-                      id="address"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      placeholder="Enter your address"
-                    />
+                   {isEditing ? (
+                    <Textarea id="address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} placeholder="e.g., 123 Main St, Arusha" />
                   ) : (
-                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <span>{(profile as any)?.address || 'Not provided'}</span>
-                    </div>
+                    <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><MapPin className="h-4 w-4 text-muted-foreground" /><span>{formData.address || 'Not provided'}</span></div>
                   )}
                 </div>
+                
+                <Separator />
 
-                {/* User Type Specific Information */}
-                {user?.user_type === 'Driver' && profile && (
-                  <>
-                    <Separator />
-                    <div className="space-y-4">
-                      <h3 className="font-semibold">Driver Information</h3>
-                      {(profile as DriverProfile).national_id && (
-                        <div className="space-y-2">
-                          <Label>National ID</Label>
-                          <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                            <span>{(profile as DriverProfile).national_id}</span>
-                          </div>
-                        </div>
-                      )}
-                      {(profile as any).status && (
-                        <div className="space-y-2">
-                          <Label>Status</Label>
-                          <Badge variant="outline">{(profile as any).status}</Badge>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
-
-                {user?.user_type === 'Employer' && profile && (
-                  <>
-                    <Separator />
-                    <div className="space-y-4">
-                      <h3 className="font-semibold">Company Information</h3>
-                      {(profile as EmployerProfile).company_name && (
-                        <div className="space-y-2">
-                          <Label>Company Name</Label>
-                          <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                            <span>{(profile as EmployerProfile).company_name}</span>
-                          </div>
-                        </div>
-                      )}
-                      {(profile as EmployerProfile).company_registration && (
-                        <div className="space-y-2">
-                          <Label>Registration Number</Label>
-                          <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50">
-                            <span>{(profile as EmployerProfile).company_registration}</span>
-                          </div>
-                        </div>
-                      )}
-                      {(profile as EmployerProfile).verification_status && (
-                        <div className="space-y-2">
-                          <Label>Verification Status</Label>
-                          <Badge variant="outline">{(profile as EmployerProfile).verification_status}</Badge>
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                {userType === 'Driver' && renderDriverFields()}
+                {userType === 'Employer' && renderEmployerFields()}
               </div>
             </CardContent>
           </Card>
         </div>
       </main>
-
       <Footer />
     </div>
   );

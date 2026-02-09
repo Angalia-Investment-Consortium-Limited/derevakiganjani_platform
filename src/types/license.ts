@@ -1,3 +1,5 @@
+import { Timestamp } from "firebase/firestore";
+
 /**
  * License Management Types
  *
@@ -14,20 +16,23 @@ export type LicenseCategory = 'A' | 'B' | 'C' | 'D' | 'E';
 export type LatraType = 'PSV' | 'HGV';
 
 // Application Status
-export type ApplicationStatus =
-  | 'Submitted'
-  | 'Pending Payment'
-  | 'Pending'
-  | 'Under Review'
-  | 'Approved'
-  | 'Rejected'
-  | 'Completed';
+export const ApplicationStatus = {
+  Submitted: 'submitted',
+  PendingPayment: 'pending_payment',
+  Pending: 'pending',
+  UnderReview: 'under_review',
+  Approved: 'approved',
+  Rejected: 'rejected',
+  Completed: 'completed',
+} as const;
+
+export type ApplicationStatus = typeof ApplicationStatus[keyof typeof ApplicationStatus];
 
 // Payment Status
 export type PaymentStatus =
-  | 'Unpaid'
-  | 'Paid'
-  | 'Failed';
+  | 'unpaid'
+  | 'paid'
+  | 'failed';
 
 // Document Types
 export type DocumentType =
@@ -48,48 +53,49 @@ export interface LicenseCategoryInfo {
 
 // License Application Document
 export interface LicenseDocument {
-  document_type: DocumentType;
-  file_url: string;
-  file_name: string;
-  upload_date: string;
+  documentType: DocumentType;
+  fileUrl: string;
+  fileName: string;
+  uploadDate: string;
 }
 
 // License Application
 export interface LicenseApplication {
   id: string; // Add the id property
-  name: string; // Reference number (e.g., LIC-2025-00001)
-  user: string;
-  application_type: ApplicationType;
-  full_name: string;
-  phone_number: string;
+  userId: string;
+  applicationType: ApplicationType;
+  fullName: string;
+  fullNameNormalized: string;
+  phoneNumber: string;
   email?: string;
   region: string;
   district: string;
-  license_category: LicenseCategory;
-  latra_type?: LatraType;
-  current_license_number?: string;
+  licenseCategory: LicenseCategory;
+  latraType?: LatraType;
+  currentLicenseNumber?: string;
   status: ApplicationStatus;
-  payment_status?: PaymentStatus;
-  ref_no?: string;
-  admin_comment?: string;
-  submission_date: string;
-  review_date?: string;
+  paymentStatus?: PaymentStatus;
+  refNo?: string;
+  adminComment?: string;
+  submittedOn: Timestamp;
+  reviewDate?: Timestamp;
   reviewer?: string;
-  reviewer_notes?: string;
+  remarks?: string;
   documents: LicenseDocument[];
+  processedOn?: Timestamp;
 }
 
 // Application Form Data
 export interface LicenseApplicationFormData {
-  application_type: ApplicationType;
-  full_name: string;
-  phone_number: string;
+  applicationType: ApplicationType;
+  fullName: string;
+  phoneNumber: string;
   email?: string;
   region: string;
   district: string;
-  license_category: LicenseCategory;
-  latra_type?: LatraType;
-  current_license_number?: string;
+  licenseCategory: LicenseCategory;
+  latraType?: LatraType;
+  currentLicenseNumber?: string;
   documents?: LicenseDocument[];
 }
 
@@ -259,24 +265,24 @@ export const APPLICATION_TYPES = {
 
 // Status Colors
 export const STATUS_COLORS: Record<ApplicationStatus, string> = {
-  'Submitted': 'bg-gray-100 text-gray-800 border-gray-200',
-  'Pending Payment': 'bg-orange-100 text-orange-800 border-orange-200',
-  'Pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  'Under Review': 'bg-blue-100 text-blue-800 border-blue-200',
-  'Approved': 'bg-green-100 text-green-800 border-green-200',
-  'Rejected': 'bg-red-100 text-red-800 border-red-200',
-  'Completed': 'bg-purple-100 text-purple-800 border-purple-200'
+  'submitted': 'bg-gray-100 text-gray-800 border-gray-200',
+  'pending_payment': 'bg-orange-100 text-orange-800 border-orange-200',
+  'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  'under_review': 'bg-blue-100 text-blue-800 border-blue-200',
+  'approved': 'bg-green-100 text-green-800 border-green-200',
+  'rejected': 'bg-red-100 text-red-800 border-red-200',
+  'completed': 'bg-purple-100 text-purple-800 border-purple-200'
 };
 
 // Status Translations
 export const STATUS_TRANSLATIONS: Record<ApplicationStatus, string> = {
-  'Submitted': 'Imewasilishwa',
-  'Pending Payment': 'Inasubiri Malipo',
-  'Pending': 'Inasubiri',
-  'Under Review': 'Inakaguliwa',
-  'Approved': 'Imeidhinishwa',
-  'Rejected': 'Imekataliwa',
-  'Completed': 'Imekamilika'
+  'submitted': 'Imewasilishwa',
+  'pending_payment': 'Inasubiri Malipo',
+  'pending': 'Inasubiri',
+  'under_review': 'Inakaguliwa',
+  'approved': 'Imeidhinishwa',
+  'rejected': 'Imekataliwa',
+  'completed': 'Imekamilika'
 };
 
 // Document Type Translations
@@ -296,8 +302,32 @@ export const REQUIRED_DOCUMENTS: Record<ApplicationType, DocumentType[]> = {
 };
 
 // File Upload Constraints
+const generalMaxSize = 8 * 1024 * 1024; // 8 MB
+const photoMaxSize = 4 * 1024 * 1024; // 4 MB
+const documentTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+const imageTypes = ['image/jpeg', 'image/png'];
+
 export const FILE_UPLOAD_CONFIG = {
-  maxSize: 8 * 1024 * 1024, // 8 MB in bytes
-  acceptedFormats: ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'],
-  acceptedExtensions: ['.jpg', '.jpeg', '.png', '.pdf']
+  allowedFileTypes: {
+    'NIDA': {
+        maxSize: generalMaxSize,
+        allowedTypes: documentTypes
+    },
+    'Driving License': {
+        maxSize: generalMaxSize,
+        allowedTypes: documentTypes
+    },
+    'PSV Certificate': {
+        maxSize: generalMaxSize,
+        allowedTypes: documentTypes
+    },
+    'HGV Certificate': {
+        maxSize: generalMaxSize,
+        allowedTypes: documentTypes
+    },
+    'Passport Photo': {
+        maxSize: photoMaxSize,
+        allowedTypes: imageTypes
+    }
+  }
 };

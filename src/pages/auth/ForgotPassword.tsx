@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +26,6 @@ const ForgotPassword = () => {
       toast({ title: t('error'), description: 'Please enter your phone number', variant: 'destructive' });
       return;
     }
-
     try {
       await otpAuth.sendOTP(phone);
       toast({ title: t('success'), description: t('otpSentSuccess') });
@@ -34,16 +34,6 @@ const ForgotPassword = () => {
     }
   };
 
-  const handleVerifyOTP = async (otpCode: string) => {
-    try {
-      await otpAuth.verifyOTP(otpCode);
-      toast({ title: t('success'), description: 'Phone number verified successfully.' });
-      navigate('/reset-password', { state: { phone } });
-    } catch (error: any) {
-      toast({ title: t('error'), description: error.message || 'Failed to verify OTP', variant: 'destructive' });
-    }
-  };
-  
   const handleResendOTP = async () => {
     try {
       await otpAuth.resendOTP(phone);
@@ -55,9 +45,15 @@ const ForgotPassword = () => {
 
   useEffect(() => {
     if (otp.length === 6) {
-      handleVerifyOTP(otp);
+      if (otpAuth.pinId) {
+        console.log('OTP complete, navigating to reset-password');
+        navigate('/auth/reset', { state: { phone, pinId: otpAuth.pinId, otp } });
+      } else {
+        toast({ title: t('error'), description: 'Could not find OTP session. Please try again.', variant: 'destructive' });
+        console.error('pinId is missing, cannot navigate to reset password');
+      }
     }
-  }, [otp]);
+  }, [otp, navigate, phone, otpAuth.pinId, t, toast]);
 
   const handleOtpChange = (value: string) => {
     setOtp(value);

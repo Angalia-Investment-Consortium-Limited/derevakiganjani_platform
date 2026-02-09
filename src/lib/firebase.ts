@@ -36,7 +36,7 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const storage = getStorage(app);
 const db = getFirestore(app);
-const functions = getFunctions(app);
+const functions = getFunctions(app, 'us-central1');
 const messaging = getMessaging(app);
 
 const employerDocumentsCollection = collection(db, 'employerDocuments');

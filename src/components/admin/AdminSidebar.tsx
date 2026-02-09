@@ -1,3 +1,4 @@
+
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -54,7 +55,7 @@ const navigationGroups = [
   {
     label: 'Leseni (Licenses)',
     items: [
-      { title: 'Requests', icon: FileText, href: '/admin/license-requests', badge: '12' }
+      { title: 'Applications', icon: FileText, href: '/admin/license-applications', badge: '12' }
     ]
   },
   {
@@ -76,9 +77,8 @@ const navigationGroups = [
   {
     label: 'Recruitment',
     items: [
-      { title: 'Job Posts', icon: Briefcase, href: '/admin/job-posts', badge: null },
-      { title: 'Driver Applications', icon: ClipboardList, href: '/admin/job-posts', badge: null },
-      { title: 'Matching Monitor', icon: Target, href: '/admin/job-posts', badge: null }
+      { title: 'Job Management', icon: Briefcase, href: '/admin/job-management', badge: null },
+      { title: 'Matching Monitor', icon: Target, href: '/admin/matching', badge: null }
     ]
   },
   {
@@ -146,9 +146,9 @@ export function AdminSidebar() {
               <SidebarMenu>
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild>
-                    <NavLink to="/admin/license-requests" end className={({ isActive }) => cn(isActive && 'bg-sidebar-accent')}>
+                    <NavLink to="/admin/license-applications" end className={({ isActive }) => cn(isActive && 'bg-sidebar-accent')}>
                       <FileText className="w-4 h-4" />
-                      <span>License Requests</span>
+                      <span>License Applications</span>
                       <Badge variant="secondary" className="ml-auto">12</Badge>
                     </NavLink>
                   </SidebarMenuButton>

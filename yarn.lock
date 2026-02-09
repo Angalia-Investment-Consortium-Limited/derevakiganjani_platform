@@ -250,6 +250,11 @@
     "@eslint/core" "^0.17.0"
     levn "^0.4.1"
 
+"@faker-js/faker@^10.3.0":
+  version "10.3.0"
+  resolved "https://registry.npmjs.org/@faker-js/faker/-/faker-10.3.0.tgz"
+  integrity sha512-It0Sne6P3szg7JIi6CgKbvTZoMjxBZhcv91ZrqrNuaZQfB5WoqYYbzCUOq89YR+VY8juY9M1vDWmDDa2TzfXCw==
+
 "@fastify/busboy@^3.0.0":
   version "3.2.0"
   resolved "https://registry.npmjs.org/@fastify/busboy/-/busboy-3.2.0.tgz"

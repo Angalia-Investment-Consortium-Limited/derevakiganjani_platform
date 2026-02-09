@@ -3,8 +3,8 @@ import { ServiceCard } from '@/components/ServiceCard';
 import { Users, FileText, GraduationCap, BarChart3, BookOpen, Briefcase, ClipboardList, Wallet, Award, Download, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { app } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { collection, getCountFromServer } from 'firebase/firestore';
 
 const Admin = () => {
   const [stats, setStats] = useState<any>(null);
@@ -16,10 +16,33 @@ const Admin = () => {
       setIsLoading(true);
       setError(null);
       try {
-        const functions = getFunctions(app);
-        const getDashboardStats = httpsCallable(functions, 'getDashboardStats');
-        const result: any = await getDashboardStats();
-        setStats(result.data.data);
+        const usersCol = collection(db, "users");
+        const driversCol = collection(db, "driver_profiles");
+        const employersCol = collection(db, "employers");
+        const applicationsCol = collection(db, "job_applications");
+
+        const [
+          usersSnap,
+          driversSnap,
+          employersSnap,
+          applicationsSnap
+        ] = await Promise.all([
+          getCountFromServer(usersCol),
+          getCountFromServer(driversCol),
+          getCountFromServer(employersCol),
+          getCountFromServer(applicationsCol)
+        ]);
+
+        const newStats = {
+          totalUsers: usersSnap.data().count,
+          totalDrivers: driversSnap.data().count,
+          totalEmployers: employersSnap.data().count,
+          totalJobApplications: applicationsSnap.data().count,
+        };
+        
+        console.log('Fetched stats directly from Firestore:', newStats);
+        setStats(newStats);
+
       } catch (err: any) {
         setError(err.message || "Failed to load dashboard statistics. Please try again.");
         console.error("Error fetching dashboard stats:", err);
@@ -111,19 +134,16 @@ const Admin = () => {
     }
   ];
 
-  // Dynamic KPIs based on fetched data
   const kpis = stats ? [
-    { label: 'Total Drivers', value: stats.total_drivers?.toString() || '0' },
-    { label: 'Total Employers', value: stats.total_employers?.toString() || '0' },
-    { label: 'Pending Licenses', value: stats.pending_license_requests?.toString() || '0' },
-    { label: 'Active Courses', value: stats.active_courses?.toString() || '0' },
-    { label: 'Active Job Posts', value: stats.active_job_posts?.toString() || '0' },
+    { label: 'Total Users', value: stats.totalUsers?.toString() || '0' },
+    { label: 'Total Drivers', value: stats.totalDrivers?.toString() || '0' },
+    { label: 'Total Employers', value: stats.totalEmployers?.toString() || '0' },
+    { label: 'Job Applications', value: stats.totalJobApplications?.toString() || '0' },
   ] : [
+    { label: 'Total Users', value: '-' },
     { label: 'Total Drivers', value: '-' },
     { label: 'Total Employers', value: '-' },
-    { label: 'Pending Licenses', value: '-' },
-    { label: 'Active Courses', value: '-' },
-    { label: 'Active Job Posts', value: '-' },
+    { label: 'Job Applications', value: '-' },
   ];
 
   return (
@@ -136,7 +156,7 @@ const Admin = () => {
         </div>
 
         {/* Quick KPIs */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {isLoading ? (
             <Card className="col-span-full">
               <CardContent className="flex items-center justify-center py-8">

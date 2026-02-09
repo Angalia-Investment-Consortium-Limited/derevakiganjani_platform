@@ -6,277 +6,121 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
-import { useUser, useCreateUser, useUpdateUser } from '@/hooks/useUsers';
-import { Loader2 } from 'lucide-react';
+import { useUserForm } from '@/hooks/useUserForm';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { tanzanianRegions } from '@/lib/regions';
 
 const UserForm = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { language, translations } = useLanguage();
-  const isEdit = !!id;
-
-  // Fetch user data if editing
-  const { user, isLoading: loadingUser, error: loadError } = useUser(id || null);
-  const { createUser, loading: creating } = useCreateUser();
-  const { updateUser, loading: updating } = useUpdateUser();
-
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [status, setStatus] = useState('active');
-  const [userType, setUserType] = useState<'Driver' | 'Employer' | 'Admin'>('Driver');
+  const { t } = useLanguage();
   
-  // Admin sub-roles
-  const [isTutor, setIsTutor] = useState(false);
-  const [isLicenseOfficer, setIsLicenseOfficer] = useState(false);
-  const [isTestOfficer, setIsTestOfficer] = useState(false);
-  const [isFinance, setIsFinance] = useState(false);
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const { user, isLoading, isSubmitting, error: submissionError, saveUser, isEdit } = useUserForm(id || null);
 
-  // Driver-specific fields
-  const [licenseNumber, setLicenseNumber] = useState('');
-  const [licenseCategory, setLicenseCategory] = useState('');
-  const [experience, setExperience] = useState('');
-  const [region, setRegion] = useState('');
-  const [district, setDistrict] = useState('');
-  const [nationalId, setNationalId] = useState('');
+  const [formData, setFormData] = useState<any>({});
 
-  // Employer-specific fields
-  const [companyName, setCompanyName] = useState('');
-  const [companyType, setCompanyType] = useState('');
-  const [companyRegistration, setCompanyRegistration] = useState('');
-  const [address, setAddress] = useState('');
-  const [website, setWebsite] = useState('');
-  const [verificationStatus, setVerificationStatus] = useState('unverified');
-
-  // Admin-specific fields
-  const [department, setDepartment] = useState('');
-  const [position, setPosition] = useState('');
-
-  // Language preference
-  const [lang, setLang] = useState<'en' | 'sw'>('sw');
-
-  // Load user data when editing
   useEffect(() => {
     if (isEdit && user) {
-      setFullName(user.name || '');
-      setPhone(user.phone || '');
-      setEmail(user.email || '');
-      setStatus(user.enabled ? 'active' : 'suspended');
-      setUserType(user.user_type || 'Driver');
-
-      if (user.profile) {
-        if (user.user_type === 'Driver') {
-          setLicenseNumber(user.profile.license_number || '');
-          setLicenseCategory(user.profile.license_category || '');
-          setExperience(user.profile.experience_years?.toString() || '');
-          setRegion(user.profile.region || '');
-          setDistrict(user.profile.district || '');
-          setNationalId(user.profile.national_id || '');
-          setLang(user.profile.preferred_language || 'sw');
-        } else if (user.user_type === 'Employer') {
-          setCompanyName(user.profile.company_name || '');
-          setCompanyType(user.profile.company_type || '');
-          setCompanyRegistration(user.profile.company_registration || '');
-          setAddress(user.profile.address || '');
-          setWebsite(user.profile.website || '');
-          setRegion(user.profile.region || '');
-          setDistrict(user.profile.district || '');
-          setVerificationStatus(user.profile.verification_status || 'unverified');
-        } else if (user.user_type === 'Admin') {
-          setDepartment(user.profile.department || '');
-          setPosition(user.profile.position || '');
-          setIsTutor(user.profile.is_tutor || false);
-          setIsLicenseOfficer(user.profile.is_license_officer || false);
-          setIsTestOfficer(user.profile.is_test_officer || false);
-          setIsFinance(user.profile.is_finance || false);
-          setIsSuperAdmin(user.profile.is_super_admin || false);
-        }
-      }
+      setFormData({
+        ...user,
+        ...user.profile,
+        status: user.enabled ? 'active' : 'suspended',
+        user_type: user.user_type || 'Driver'
+      });
     }
   }, [isEdit, user]);
+
+  const handleChange = (field: string, value: any) => {
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!fullName || !phone) {
-      toast({
-        title: translations.error,
-        description: translations.fillRequiredFields,
-        variant: 'destructive',
-      });
+    if (!formData.full_name || !formData.mobile_no) {
+      toast({ title: t('error'), description: t('fillRequiredFields'), variant: 'destructive' });
       return;
     }
 
-    if (!isEdit && !password) {
-      toast({
-        title: translations.error,
-        description: translations.passwordRequiredForNewUsers,
-        variant: 'destructive',
-      });
+    if (!isEdit && !formData.password) {
+      toast({ title: t('error'), description: t('passwordRequiredForNewUsers'), variant: 'destructive' });
       return;
     }
-
+    
     try {
-      const commonData = {
-        full_name: fullName,
-        mobile_no: phone,
-        email: email || undefined,
-      };
-
-      let profileData = {};
-      if (userType === 'Driver') {
-        profileData = { license_number: licenseNumber, license_category: licenseCategory, experience_years: experience, region, district, national_id: nationalId };
-      } else if (userType === 'Employer') {
-        profileData = { company_name: companyName, company_type: companyType, company_registration: companyRegistration, address, website, region, district, verification_status: verificationStatus };
-      } else if (userType === 'Admin') {
-        profileData = { department, position, is_tutor: isTutor, is_license_officer: isLicenseOfficer, is_test_officer: isTestOfficer, is_finance: isFinance, is_super_admin: isSuperAdmin };
-      }
-
-      if (isEdit) {
-        await updateUser({ user_id: id, ...commonData, password: password || undefined, ...profileData });
-        toast({ title: translations.success, description: translations.userUpdatedSuccessfully });
-      } else {
-        await createUser({ ...commonData, user_type: userType, password, language: lang, ...profileData });
-        toast({ title: translations.success, description: translations.userCreatedSuccessfully });
-      }
-
+      await saveUser(formData);
+      toast({ title: t('success'), description: isEdit ? t('userUpdatedSuccessfully') : t('userCreatedSuccessfully') });
       navigate('/admin/users');
     } catch (err: any) {
-      toast({
-        title: translations.error,
-        description: err?.message || translations.failedToSaveUser,
-        variant: 'destructive',
-      });
+      toast({ title: t('error'), description: err.message || t('failedToSaveUser'), variant: 'destructive' });
     }
   };
 
-  if (isEdit && loadingUser) {
-    return <AdminLayout><div className="max-w-4xl space-y-6"><Skeleton className="h-10 w-48 mb-2" /><Skeleton className="h-4 w-96" /></div></AdminLayout>;
+  if (isEdit && isLoading) {
+    return <AdminLayout><div className="max-w-4xl mx-auto space-y-6"><Skeleton className="h-10 w-48 mb-2" /><Skeleton className="h-4 w-96" /><Skeleton className="h-64 w-full" /></div></AdminLayout>;
   }
 
-  if (isEdit && loadError) {
-    return <AdminLayout><Card><CardContent className="pt-6 text-center py-8"><p className="text-destructive mb-4">{translations.failedToLoadUser}: {loadError.message}</p><Button onClick={() => navigate('/admin/users')}>{translations.backToUsers}</Button></CardContent></Card></AdminLayout>;
+  if (submissionError) {
+    return (
+        <AdminLayout>
+            <Button variant="ghost" onClick={() => navigate('/admin/users')} className="mb-4">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                {t('backToUsers')}
+            </Button>
+            <Card><CardContent className="pt-6 text-center py-8"><p className="text-destructive mb-4">{t('failedToLoadUser')}: {submissionError}</p></CardContent></Card>
+        </AdminLayout>
+    );
   }
 
-  const isSubmitting = creating || updating;
+  const userType = formData.user_type || 'Driver';
 
   return (
     <AdminLayout>
-      <div className="max-w-4xl space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+         <Button variant="ghost" onClick={() => navigate('/admin/users')} className="mb-4">
+             <ArrowLeft className="h-4 w-4 mr-2" />
+             {t('backToUsers')}
+         </Button>
         <div>
-          <h1 className="text-3xl font-bold">{isEdit ? translations.editUser : translations.addNewUser}</h1>
-          <p className="text-muted-foreground mt-1">{isEdit ? translations.updateUserDescription : translations.createUserDescription}</p>
+          <h1 className="text-3xl font-bold">{isEdit ? t('editUser') : t('addNewUser')}</h1>
+          <p className="text-muted-foreground mt-1">{isEdit ? t('updateUserDescription') : t('createUserDescription')}</p>
         </div>
 
         <form onSubmit={handleSave} className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>{translations.basicInformation}</CardTitle>
-              <CardDescription>{translations.basicInformationDescription}</CardDescription>
+              <CardTitle>{t('basicInformation')}</CardTitle>
+              <CardDescription>{t('basicInformationDescription')}</CardDescription>
             </CardHeader>
             <CardContent className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">{translations.fullName} <span className="text-destructive">*</span></Label>
-                <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={translations.enterFullName} required disabled={isSubmitting} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">{translations.phoneNumber} <span className="text-destructive">*</span></Label>
-                <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+255 712 345 678" required disabled={isSubmitting} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">{translations.email}</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" disabled={isSubmitting} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">{isEdit ? translations.newPassword : `${translations.password} *`}</Label>
-                <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={isEdit ? translations.leaveBlankToKeepCurrent : translations.enterPassword} disabled={isSubmitting} required={!isEdit} />
-              </div>
-              {!isEdit && (
-                  <div className="space-y-2">
-                    <Label htmlFor="language">{translations.preferredLanguage}</Label>
-                    <Select value={lang} onValueChange={(value: 'en' | 'sw') => setLang(value)} disabled={isSubmitting}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="sw">Swahili</SelectItem>
-                        <SelectItem value="en">English</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-                {isEdit && (
-                  <div className="space-y-2">
-                    <Label htmlFor="status">{translations.status}</Label>
-                    <Select value={status} onValueChange={setStatus} disabled={isSubmitting}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">{translations.active}</SelectItem>
-                        <SelectItem value="suspended">{translations.suspended}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+              <div className="space-y-2"><Label htmlFor="fullName">{t('fullName')} <span className="text-destructive">*</span></Label><Input id="fullName" value={formData.full_name || ''} onChange={(e) => handleChange('full_name', e.target.value)} required disabled={isSubmitting} /></div>
+              <div className="space-y-2"><Label htmlFor="phone">{t('phoneNumber')} <span className="text-destructive">*</span></Label><Input id="phone" type="tel" value={formData.mobile_no || ''} onChange={(e) => handleChange('mobile_no', e.target.value)} required disabled={isSubmitting} /></div>
+              <div className="space-y-2"><Label htmlFor="email">{t('email')}</Label><Input id="email" type="email" value={formData.email || ''} onChange={(e) => handleChange('email', e.target.value)} disabled={isSubmitting} /></div>
+              <div className="space-y-2"><Label htmlFor="password">{isEdit ? t('newPassword') : `${t('password')} *`}</Label><PasswordInput id="password" value={formData.password || ''} onChange={(e) => handleChange('password', e.target.value)} placeholder={isEdit ? t('leaveBlankToKeepCurrent') : ''} disabled={isSubmitting} required={!isEdit} /></div>
+              {!isEdit && (<div className="space-y-2"><Label htmlFor="language">{t('preferredLanguage')}</Label><Select value={formData.language || 'sw'} onValueChange={(value) => handleChange('language', value)} disabled={isSubmitting}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="sw">Swahili</SelectItem><SelectItem value="en">English</SelectItem></SelectContent></Select></div>)}
+              {isEdit && (<div className="space-y-2"><Label htmlFor="status">{t('status')}</Label><Select value={formData.status || 'active'} onValueChange={(value) => handleChange('status', value)} disabled={isSubmitting}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="active">{t('active')}</SelectItem><SelectItem value="suspended">{t('suspended')}</SelectItem></SelectContent></Select></div>)}
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>{translations.userTypeAndRole}</CardTitle>
-              <CardDescription>{translations.userTypeAndRoleDescription}</CardDescription>
-            </CardHeader>
+            <CardHeader><CardTitle>{t('userTypeAndRole')}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-                 <div className="space-y-2">
-                    <Label htmlFor="userType">{translations.userType}</Label>
-                    <Select value={userType} onValueChange={(value: 'Driver' | 'Employer' | 'Admin') => setUserType(value)} disabled={isEdit || isSubmitting}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Driver">{translations.driver}</SelectItem>
-                        <SelectItem value="Employer">{translations.employer}</SelectItem>
-                        <SelectItem value="Admin">{translations.admin}</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {isEdit && <p className="text-sm text-muted-foreground">{translations.userTypeCannotBeChanged}</p>}
-                </div>
+                 <div className="space-y-2"><Label htmlFor="userType">{t('userType')}</Label><Select value={userType} onValueChange={(value) => handleChange('user_type', value)} disabled={isEdit || isSubmitting}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Driver">{t('driver')}</SelectItem><SelectItem value="Employer">{t('employer')}</SelectItem><SelectItem value="Admin">{t('admin')}</SelectItem></SelectContent></Select>{isEdit && <p className="text-sm text-muted-foreground">{t('userTypeCannotBeChanged')}</p>}</div>
                 {userType === 'Admin' && (
-                    <div className="space-y-4 pt-4">
-                        <Separator />
-                        <Label className="text-base">{translations.adminSubRoles}</Label>
-                        <p className="text-sm text-muted-foreground">{translations.adminSubRolesDescription}</p>
+                    <div className="space-y-4 pt-4"><Separator /><Label className="text-base">{t('adminSubRoles')}</Label>
                         <div className="space-y-3">
-                           <div className="flex items-center space-x-2">
-                                <Checkbox id="tutor" checked={isTutor} onCheckedChange={(checked) => setIsTutor(checked as boolean)} disabled={isSubmitting} />
-                                <label htmlFor="tutor" className="text-sm cursor-pointer">{translations.tutor}</label>
-                           </div>
-                           <div className="flex items-center space-x-2">
-                                <Checkbox id="license" checked={isLicenseOfficer} onCheckedChange={(checked) => setIsLicenseOfficer(checked as boolean)} disabled={isSubmitting} />
-                                <label htmlFor="license" className="text-sm cursor-pointer">{translations.licenseOfficer}</label>
-                           </div>
-                           <div className="flex items-center space-x-2">
-                                <Checkbox id="test" checked={isTestOfficer} onCheckedChange={(checked) => setIsTestOfficer(checked as boolean)} disabled={isSubmitting} />
-                                <label htmlFor="test" className="text-sm cursor-pointer">{translations.testOfficer}</label>
-                           </div>
-                           <div className="flex items-center space-x-2">
-                                <Checkbox id="finance" checked={isFinance} onCheckedChange={(checked) => setIsFinance(checked as boolean)} disabled={isSubmitting} />
-                                <label htmlFor="finance" className="text-sm cursor-pointer">{translations.finance}</label>
-                           </div>
-                           <div className="flex items-center space-x-2">
-                                <Checkbox id="superAdmin" checked={isSuperAdmin} onCheckedChange={(checked) => setIsSuperAdmin(checked as boolean)} disabled={isSubmitting} />
-                                <label htmlFor="superAdmin" className="text-sm cursor-pointer">{translations.superAdmin}</label>
-                           </div>
+                           <div className="flex items-center space-x-2"><Checkbox id="tutor" checked={formData.is_tutor || false} onCheckedChange={(c) => handleChange('is_tutor', c)} disabled={isSubmitting} /><label htmlFor="tutor">{t('tutor')}</label></div>
+                           <div className="flex items-center space-x-2"><Checkbox id="license" checked={formData.is_license_officer || false} onCheckedChange={(c) => handleChange('is_license_officer', c)} disabled={isSubmitting} /><label htmlFor="license">{t('licenseOfficer')}</label></div>
+                           <div className="flex items-center space-x-2"><Checkbox id="test" checked={formData.is_test_officer || false} onCheckedChange={(c) => handleChange('is_test_officer', c)} disabled={isSubmitting} /><label htmlFor="test">{t('testOfficer')}</label></div>
+                           <div className="flex items-center space-x-2"><Checkbox id="finance" checked={formData.is_finance || false} onCheckedChange={(c) => handleChange('is_finance', c)} disabled={isSubmitting} /><label htmlFor="finance">{t('finance')}</label></div>
+                           <div className="flex items-center space-x-2"><Checkbox id="superAdmin" checked={formData.is_super_admin || false} onCheckedChange={(c) => handleChange('is_super_admin', c)} disabled={isSubmitting} /><label htmlFor="superAdmin">{t('superAdmin')}</label></div>
                         </div>
                     </div>
                 )}
@@ -284,83 +128,41 @@ const UserForm = () => {
           </Card>
 
           {userType === 'Driver' && (
-              <Card>
-                  <CardHeader><CardTitle>{translations.driverProfile}</CardTitle><CardDescription>{translations.driverProfileDescription}</CardDescription></CardHeader>
-                  <CardContent className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label htmlFor="nationalId">{translations.nationalId}</Label><Input id="nationalId" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder="19XXXXXXXXXX" disabled={isSubmitting} /></div>
-                      <div className="space-y-2"><Label htmlFor="licenseNumber">{translations.licenseNumber}</Label><Input id="licenseNumber" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="TZ123456" disabled={isSubmitting} /></div>
-                      <div className="space-y-2">
-                          <Label htmlFor="licenseCategory">{translations.licenseCategory}</Label>
-                          <Select value={licenseCategory} onValueChange={setLicenseCategory} disabled={isSubmitting}>
-                              <SelectTrigger><SelectValue placeholder={translations.selectCategory} /></SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="A">A - {translations.motorcycles}</SelectItem>
-                                  <SelectItem value="B">B - {translations.lightVehicles}</SelectItem>
-                                  <SelectItem value="C">C - {translations.mediumVehicles}</SelectItem>
-                                  <SelectItem value="D">D - {translations.heavyVehicles}</SelectItem>
-                                  <SelectItem value="E">E - {translations.articulatedVehicles}</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
-                      <div className="space-y-2"><Label htmlFor="experience">{translations.experienceYears}</Label><Input id="experience" type="number" value={experience} onChange={(e) => setExperience(e.target.value)} placeholder="5" disabled={isSubmitting} /></div>
-                      <div className="space-y-2"><Label htmlFor="region">{translations.region}</Label><Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Dar es Salaam" disabled={isSubmitting} /></div>
-                      <div className="space-y-2"><Label htmlFor="district">{translations.district}</Label><Input id="district" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Kinondoni" disabled={isSubmitting} /></div>
-                  </CardContent>
-              </Card>
+              <Card><CardHeader><CardTitle>{t('driverProfile')}</CardTitle></CardHeader><CardContent className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label htmlFor="nationalId">{t('nationalId')}</Label><Input id="nationalId" value={formData.national_id || ''} onChange={(e) => handleChange('national_id', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="licenseNumber">{t('licenseNumber')}</Label><Input id="licenseNumber" value={formData.license_number || ''} onChange={(e) => handleChange('license_number', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="licenseCategory">{t('licenseCategory')}</Label><Select value={formData.licenseCategory || ''} onValueChange={(v) => handleChange('licenseCategory', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{['A', 'B', 'C', 'D', 'E'].map(c => <SelectItem key={c} value={c}>{t(`class${c}`)}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-2"><Label htmlFor="experience">{t('experienceYears')}</Label><Input id="experience" type="number" value={formData.experience_years || ''} onChange={(e) => handleChange('experience_years', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="region">{t('region')}</Label><Select value={formData.region || ''} onValueChange={(v) => handleChange('region', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{tanzanianRegions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-2"><Label htmlFor="district">{t('district')}</Label><Input id="district" value={formData.district || ''} onChange={(e) => handleChange('district', e.target.value)} disabled={isSubmitting} /></div>
+              </CardContent></Card>
           )}
 
           {userType === 'Employer' && (
-              <Card>
-                  <CardHeader><CardTitle>{translations.employerProfile}</CardTitle><CardDescription>{translations.employerProfileDescription}</CardDescription></CardHeader>
-                  <CardContent className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label htmlFor="companyName">{translations.companyName}</Label><Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="MDV Vehicle Fleet Limited" disabled={isSubmitting} /></div>
-                      <div className="space-y-2">
-                          <Label htmlFor="companyType">{translations.companyType}</Label>
-                          <Select value={companyType} onValueChange={setCompanyType} disabled={isSubmitting}>
-                              <SelectTrigger><SelectValue placeholder={translations.selectType} /></SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="transportation">{translations.transportation}</SelectItem>
-                                  <SelectItem value="logistics">{translations.logistics}</SelectItem>
-                                  <SelectItem value="delivery">{translations.deliveryServices}</SelectItem>
-                                  <SelectItem value="other">{translations.other}</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
-                      <div className="space-y-2"><Label htmlFor="companyRegistration">{translations.companyRegistrationNumber}</Label><Input id="companyRegistration" value={companyRegistration} onChange={(e) => setCompanyRegistration(e.target.value)} placeholder="REG123456" disabled={isSubmitting} /></div>
-                      <div className="space-y-2"><Label htmlFor="website">{translations.website}</Label><Input id="website" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://example.com" disabled={isSubmitting} /></div>
-                      <div className="space-y-2 md:col-span-2"><Label htmlFor="address">{translations.address}</Label><Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} placeholder={translations.companyAddress} disabled={isSubmitting} /></div>
-                      <div className="space-y-2"><Label htmlFor="region">{translations.region}</Label><Input id="region" value={region} onChange={(e) => setRegion(e.target.value)} placeholder="Dar es Salaam" disabled={isSubmitting} /></div>
-                      <div className="space-y-2"><Label htmlFor="district">{translations.district}</Label><Input id="district" value={district} onChange={(e) => setDistrict(e.target.value)} placeholder="Kinondoni" disabled={isSubmitting} /></div>
-                      <div className="space-y-2">
-                          <Label htmlFor="verificationStatus">{translations.verificationStatus}</Label>
-                          <Select value={verificationStatus} onValueChange={setVerificationStatus} disabled={isSubmitting}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="unverified">{translations.unverified}</SelectItem>
-                                  <SelectItem value="pending">{translations.pending}</SelectItem>
-                                  <SelectItem value="verified">{translations.verified}</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      </div>
-                  </CardContent>
-              </Card>
+              <Card><CardHeader><CardTitle>{t('employerProfile')}</CardTitle></CardHeader><CardContent className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label htmlFor="companyName">{t('companyName')}</Label><Input id="companyName" value={formData.company_name || ''} onChange={(e) => handleChange('company_name', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="companyType">{t('companyType')}</Label><Select value={formData.company_type || ''} onValueChange={(v) => handleChange('company_type', v)}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="transportation">{t('transportation')}</SelectItem><SelectItem value="logistics">{t('logistics')}</SelectItem></SelectContent></Select></div>
+                  <div className="space-y-2"><Label htmlFor="companyRegistration">{t('companyRegistrationNumber')}</Label><Input id="companyRegistration" value={formData.company_registration || ''} onChange={(e) => handleChange('company_registration', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="website">{t('website')}</Label><Input id="website" type="url" value={formData.website || ''} onChange={(e) => handleChange('website', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="md:col-span-2 space-y-2"><Label htmlFor="address">{t('address')}</Label><Input id="address" value={formData.address || ''} onChange={(e) => handleChange('address', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="region">{t('region')}</Label><Select value={formData.region || ''} onValueChange={(v) => handleChange('region', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{tanzanianRegions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select></div>
+                  <div className="space-y-2"><Label htmlFor="district">{t('district')}</Label><Input id="district" value={formData.district || ''} onChange={(e) => handleChange('district', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="verificationStatus">{t('verificationStatus')}</Label><Select value={formData.verification_status || 'unverified'} onValueChange={(v) => handleChange('verification_status', v)}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="unverified">{t('unverified')}</SelectItem><SelectItem value="pending">{t('pending')}</SelectItem><SelectItem value="verified">{t('verified')}</SelectItem></SelectContent></Select></div>
+              </CardContent></Card>
           )}
 
           {userType === 'Admin' && (
-              <Card>
-                  <CardHeader><CardTitle>{translations.adminProfile}</CardTitle><CardDescription>{translations.adminProfileDescription}</CardDescription></CardHeader>
-                  <CardContent className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2"><Label htmlFor="department">{translations.department}</Label><Input id="department" value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="IT Department" disabled={isSubmitting} /></div>
-                      <div className="space-y-2"><Label htmlFor="position">{translations.position}</Label><Input id="position" value={position} onChange={(e) => setPosition(e.target.value)} placeholder="System Administrator" disabled={isSubmitting} /></div>
-                  </CardContent>
-              </Card>
+              <Card><CardHeader><CardTitle>{t('adminProfile')}</CardTitle></CardHeader><CardContent className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2"><Label htmlFor="department">{t('department')}</Label><Input id="department" value={formData.department || ''} onChange={(e) => handleChange('department', e.target.value)} disabled={isSubmitting} /></div>
+                  <div className="space-y-2"><Label htmlFor="position">{t('position')}</Label><Input id="position" value={formData.position || ''} onChange={(e) => handleChange('position', e.target.value)} disabled={isSubmitting} /></div>
+              </CardContent></Card>
           )}
 
-          <div className="flex justify-end gap-4 sticky bottom-0 bg-background p-4 border-t">
-            <Button type="button" variant="outline" onClick={() => navigate('/admin/users')} disabled={isSubmitting}>{translations.cancel}</Button>
+          <div className="flex justify-end gap-4 sticky bottom-0 bg-background p-4 border-t-2 rounded-b-lg">
+            <Button type="button" variant="outline" onClick={() => navigate('/admin/users')} disabled={isSubmitting}>{t('cancel')}</Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEdit ? translations.updateUser : translations.createUser}
+              {isEdit ? t('updateUser') : t('createUser')}
             </Button>
           </div>
         </form>

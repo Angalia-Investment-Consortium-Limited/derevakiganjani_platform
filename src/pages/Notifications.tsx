@@ -1,80 +1,78 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Bell, CheckCircle, AlertCircle, FileText, CreditCard, Calendar, ChevronRight } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/lib/firebase';
+import { collection, query, onSnapshot, doc, updateDoc, writeBatch, orderBy } from 'firebase/firestore';
+import { Bell, CheckCircle, AlertCircle, FileText, CreditCard, Calendar, ChevronRight, Home } from 'lucide-react';
 
-type NotificationType = 'payment' | 'test' | 'license' | 'info';
+// Matches the filter categories and maps to new DB types
+type NotificationCategory = 'payment' | 'test' | 'license' | 'info';
 
+// Matches the structure in Firestore
 interface Notification {
   id: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  date: string;
-  read: boolean;
+  type: string; // e.g., 'WELCOME', 'JOB_APPLICATION_STATUS'
+  title_en: string;
+  message_en: string;
+  title_sw: string;
+  message_sw: string;
+  createdAt: any; // Firestore Timestamp
+  isRead: boolean;
 }
 
 const Notifications = () => {
-  const { t } = useLanguage();
-  const [filter, setFilter] = useState<'all' | NotificationType>('all');
+  const { t, language } = useLanguage();
+  const { user } = useAuth();
+  const [filter, setFilter] = useState<'all' | NotificationCategory>('all');
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: '1',
-      type: 'test',
-      title: t('Test Completed'),
-      message: t('You passed the Category B test with 22/25 points. Certificate is ready.'),
-      date: '2025-01-15',
-      read: false,
-    },
-    {
-      id: '2',
-      type: 'payment',
-      title: t('Payment Confirmed'),
-      message: t('Your payment of TZS 50,000 for test category B has been confirmed.'),
-      date: '2025-01-15',
-      read: false,
-    },
-    {
-      id: '3',
-      type: 'license',
-      title: t('License Request Received'),
-      message: t('Your license renewal request (Ref: DRV-2025-XY123) is being processed.'),
-      date: '2025-01-14',
-      read: true,
-    },
-    {
-      id: '4',
-      type: 'info',
-      title: t('Profile Updated'),
-      message: t('Your profile information has been successfully updated.'),
-      date: '2025-01-13',
-      read: true,
-    },
-    {
-      id: '5',
-      type: 'test',
-      title: t('Test Available'),
-      message: t('You can now start your JiTesti test for Category B.'),
-      date: '2025-01-12',
-      read: true,
-    },
-    {
-      id: '6',
-      type: 'license',
-      title: t('License Approved'),
-      message: t('Your license renewal has been approved. Visit any SUMATRA office to collect.'),
-      date: '2025-01-10',
-      read: true,
-    },
-  ]);
+  useEffect(() => {
+    if (!user) {
+      setNotifications([]);
+      return;
+    }
 
-  const getIcon = (type: NotificationType) => {
-    switch (type) {
+    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
+    const q = query(notificationsRef, orderBy('createdAt', 'desc'));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const fetchedNotifications = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...(doc.data() as Omit<Notification, 'id'>),
+      }));
+      setNotifications(fetchedNotifications);
+    });
+
+    // Cleanup listener on component unmount
+    return () => unsubscribe();
+  }, [user]);
+
+  // Maps Firestore types to the filter categories
+  const getCategory = (type: string): NotificationCategory => {
+    const upperType = type.toUpperCase();
+    if (upperType.includes('PAYMENT')) return 'payment';
+    if (upperType.includes('TEST')) return 'test';
+    if (upperType.includes('LICENSE')) return 'license';
+    // Default for WELCOME, JOB_APPLICATION_STATUS, etc.
+    return 'info';
+  };
+
+  const getIcon = (category: NotificationCategory) => {
+    switch (category) {
       case 'payment':
         return <CreditCard className="h-5 w-5" />;
       case 'test':
@@ -86,8 +84,8 @@ const Notifications = () => {
     }
   };
 
-  const getStatusIcon = (type: NotificationType) => {
-    switch (type) {
+  const getStatusIcon = (category: NotificationCategory) => {
+    switch (category) {
       case 'payment':
         return <CheckCircle className="h-4 w-4 text-success" />;
       case 'test':
@@ -101,18 +99,35 @@ const Notifications = () => {
 
   const filteredNotifications = filter === 'all' 
     ? notifications 
-    : notifications.filter(n => n.type === filter);
+    : notifications.filter(n => getCategory(n.type) === filter);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+  const markAsRead = async (id: string) => {
+    if (!user) return;
+    const notifRef = doc(db, 'users', user.uid, 'notifications', id);
+    await updateDoc(notifRef, { isRead: true });
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    if (!user || unreadCount === 0) return;
+    const batch = writeBatch(db);
+    const notificationsToUpdate = notifications.filter(n => !n.isRead);
+    
+    notificationsToUpdate.forEach(n => {
+      const notifRef = doc(db, 'users', user.uid, 'notifications', n.id);
+      batch.update(notifRef, { isRead: true });
+    });
+
+    await batch.commit();
+  };
+
+  const getTitle = (notification: Notification) => {
+    return language === 'sw' ? notification.title_sw : notification.title_en;
+  };
+
+  const getMessage = (notification: Notification) => {
+    return language === 'sw' ? notification.message_sw : notification.message_en;
   };
 
   return (
@@ -120,6 +135,20 @@ const Notifications = () => {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
+          <Breadcrumb className="mb-4">
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink asChild>
+                  <Link to="/"><Home className="h-4 w-4" /></Link>
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{t('Notifications')}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+
           <div className="mb-6 flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
@@ -141,7 +170,7 @@ const Notifications = () => {
           <Card className="mb-6">
             <CardContent className="pt-6">
               <div className="flex gap-2 flex-wrap">
-                <Button
+                 <Button
                   variant={filter === 'all' ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilter('all')}
@@ -193,49 +222,52 @@ const Notifications = () => {
                 </CardContent>
               </Card>
             ) : (
-              filteredNotifications.map((notification) => (
-                <Card
-                  key={notification.id}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    !notification.read ? 'border-primary/50 bg-primary/5' : ''
-                  }`}
-                  onClick={() => markAsRead(notification.id)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex gap-4">
-                      <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        notification.type === 'payment' ? 'bg-success/10 text-success' :
-                        notification.type === 'test' ? 'bg-accent/10 text-accent' :
-                        notification.type === 'license' ? 'bg-secondary/10 text-secondary' :
-                        'bg-primary/10 text-primary'
-                      }`}>
-                        {getIcon(notification.type)}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3 className="font-semibold flex items-center gap-2">
-                            {notification.title}
-                            {!notification.read && (
-                              <span className="h-2 w-2 rounded-full bg-primary"></span>
-                            )}
-                          </h3>
-                          {getStatusIcon(notification.type)}
+              filteredNotifications.map((notification) => {
+                const category = getCategory(notification.type);
+                return (
+                  <Card
+                    key={notification.id}
+                    className={`cursor-pointer transition-all hover:shadow-md ${
+                      !notification.isRead ? 'border-primary/50 bg-primary/5' : ''
+                    }`}
+                    onClick={() => markAsRead(notification.id)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex gap-4">
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          category === 'payment' ? 'bg-success/10 text-success' :
+                          category === 'test' ? 'bg-accent/10 text-accent' :
+                          category === 'license' ? 'bg-secondary/10 text-secondary' :
+                          'bg-primary/10 text-primary'
+                        }`}>
+                          {getIcon(category)}
                         </div>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          {notification.message}
-                        </p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(notification.date).toLocaleDateString()}
-                          </span>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <h3 className="font-semibold flex items-center gap-2">
+                              {getTitle(notification)}
+                              {!notification.isRead && (
+                                <span className="h-2 w-2 rounded-full bg-primary"></span>
+                              )}
+                            </h3>
+                            {getStatusIcon(category)}
+                          </div>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            {getMessage(notification)}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">
+                              {notification.createdAt?.toDate().toLocaleDateString(language, { year: 'numeric', month: 'long', day: 'numeric' })}
+                            </span>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                )
+              })
             )}
           </div>
         </div>

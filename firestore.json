@@ -1,0 +1,18 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "job_applications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "job_id",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "applied_at",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ]
+}

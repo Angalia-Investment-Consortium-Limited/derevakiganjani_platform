@@ -6,7 +6,6 @@ import {
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
-  BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 
 const routeLabels: Record<string, string> = {
@@ -55,16 +54,18 @@ export function AdminBreadcrumbs() {
   return (
     <Breadcrumb>
       <BreadcrumbList>
-        {breadcrumbs.map((crumb) => (
+        {breadcrumbs.map((crumb, index) => (
           <BreadcrumbItem key={crumb.path}>
             {!crumb.isLast ? (
               <>
                 <BreadcrumbLink asChild>
                   <Link to={crumb.path}>{crumb.label}</Link>
                 </BreadcrumbLink>
-                <BreadcrumbSeparator>
-                  <ChevronRight className="w-4 h-4" />
-                </BreadcrumbSeparator>
+                {index < breadcrumbs.length - 1 && (
+                  <span className="flex items-center">
+                    <ChevronRight className="w-4 h-4" />
+                  </span>
+                )}
               </>
             ) : (
               <BreadcrumbPage>{crumb.label}</BreadcrumbPage>

@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { functions } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 
 export default function PaymentPage() {
   const { categoryCode } = useParams<{ categoryCode: string }>();
@@ -44,24 +46,16 @@ export default function PaymentPage() {
     setPaymentStatus('processing');
 
     try {
-      // Call Selcom payment initiation API
-      const response = await fetch('/api/method/derevahuduma_platform.api.selcom.initiate_selcom_payment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          category_code: categoryCode,
-          payment_method: paymentData.paymentMethod,
-          phone_number: paymentData.phoneNumber,
-        }),
+      const initiateSelcomPayment = httpsCallable(functions, 'initiateSelcomPayment');
+      const result: any = await initiateSelcomPayment({
+        category_code: categoryCode,
+        payment_method: paymentData.paymentMethod,
+        phone_number: paymentData.phoneNumber,
       });
 
-      const result = await response.json();
-
-      if (result.message.success) {
+      if (result.data.success) {
         setPaymentStatus('success');
-        setPaymentData(result.message);
+        setPaymentData(result.data);
 
         toast({
           title: t('paymentInitiated') || 'Payment Initiated',
@@ -70,10 +64,10 @@ export default function PaymentPage() {
 
         // Redirect to test taking after a delay
         setTimeout(() => {
-          navigate(`/jitesti/test/${categoryCode}?payment=${result.message.reference_number}`);
+          navigate(`/jitesti/test/${categoryCode}?payment=${result.data.referenceNumber}`);
         }, 3000);
       } else {
-        throw new Error(result.message.message);
+        throw new Error(result.data.message);
       }
     } catch (error: any) {
       setPaymentStatus('error');

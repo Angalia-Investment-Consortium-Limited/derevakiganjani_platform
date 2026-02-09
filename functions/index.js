@@ -89,17 +89,41 @@ exports.generateCertificateOnCourseCompletion = functions.firestore
 });
 
 exports.notifyOnApplicationStatusChange = functions.firestore
-  .document('job_applications/{appId}')
-  .onUpdate(async (change, context) => {
-    const newData = change.after.data();
-    const oldData = change.before.data();
-    if (newData.status !== oldData.status) {
-      const { driverId, jobId, status } = newData;
-      functions.logger.info(`Job application ${context.params.appId} status changed to ${status}.`);
-      console.log(`(Simulated) Notification sent to driver ${driverId} about job ${jobId}.`);
-    }
-    return null;
-});
+    .document('job_applications/{appId}')
+    .onUpdate(async (change, context) => {
+        const newData = change.after.data();
+        const oldData = change.before.data();
+
+        // Check if the status has actually changed
+        if (newData.status !== oldData.status) {
+            const { driverId, jobId, status } = newData;
+
+            if (!driverId || !jobId) {
+                functions.logger.error("Missing driverId or jobId in application update", context.params.appId);
+                return null;
+            }
+
+            // Get the job title for a more descriptive notification
+            const jobRef = db.collection('jobs').doc(jobId);
+            const jobDoc = await jobRef.get();
+            const jobTitle = jobDoc.exists ? jobDoc.data().title : 'a job';
+
+            const notification = {
+                type: 'JOB_APPLICATION_STATUS',
+                title: `Application for ${jobTitle}`,
+                message: `Your application status for the job "${jobTitle}" has been updated to: ${status}.`,
+                userId: driverId,
+                relatedDocId: context.params.appId, // Link to the application document
+                isRead: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            };
+
+            // Create the notification in the user's subcollection
+            await db.collection('users').doc(driverId).collection('notifications').add(notification);
+            functions.logger.info(`Notification sent to driver ${driverId} for job application ${context.params.appId}`);
+        }
+        return null;
+    });
 
 // --- RESTORED FUNCTIONS --- //
 

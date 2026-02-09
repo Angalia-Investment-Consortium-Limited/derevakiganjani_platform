@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { getAuth, updatePassword } from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import derevaLogo from '../../assets/logo.png';
 
 const ResetPassword = () => {
@@ -17,8 +18,9 @@ const ResetPassword = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const auth = getAuth();
-  const phone = location.state?.phone;
+  const functions = getFunctions();
+
+  const { phone, pinId, otp } = location.state || {};
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,25 +52,35 @@ const ResetPassword = () => {
       return;
     }
 
+    if (!phone || !pinId || !otp) {
+        toast({
+            title: t('error'),
+            description: 'Your password reset session is invalid or has expired. Please try again.',
+            variant: 'destructive',
+        });
+        navigate('/auth/forgot');
+        return;
+    }
+
     setIsLoading(true);
 
     try {
-        // This is a simplified example. In a real application, you would need a secure way
-        // to verify the user's identity before allowing a password reset.
-        // This could involve a token sent to their phone number or email.
-        const user = auth.currentUser;
-        if (user) {
-            await updatePassword(user, newPassword);
-            toast({
-                title: t('success'),
-                description: 'Password reset successfully! You can now login with your new password.',
-            });
-            setTimeout(() => {
-                navigate('/login');
-            }, 2000);
-        } else {
-            throw new Error("No user is currently signed in.");
-        }
+        const resetPasswordFunc = httpsCallable(functions, 'resetPassword');
+        await resetPasswordFunc({
+            mobile_no: phone,
+            pinId,
+            pin: otp,
+            newPassword,
+        });
+
+        toast({
+            title: t('success'),
+            description: 'Password reset successfully! You can now login with your new password.',
+        });
+        setTimeout(() => {
+            navigate('/auth/login');
+        }, 2000);
+
     } catch (error: any) {
       let errorMessage = 'Failed to reset password. Please try again.';
       if (error.message) {

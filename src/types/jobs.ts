@@ -3,25 +3,26 @@ import { Timestamp } from "firebase/firestore";
 export interface Job {
     id: string;
     employerId: string;
-    title: string;
-    jobType: 'full-time' | 'contract' | 'temporary' | 'part-time' | '';
-    positions: number;
-    vehicleType: 'car' | 'motorcycle' | 'bus' | 'truck' | 'other' | '';
-    licenseCategory: string[];
-    licenseRequired: string;
-    minExperience: number;
-    skills: string[];
+    job_title: string;
+    employment_type: 'full-time' | 'contract' | 'temporary' | 'part-time' | '';
+    positions?: number;
+    vehicleType?: 'car' | 'motorcycle' | 'bus' | 'truck' | 'other' | '';
+    licenseCategory?: string[];
+    required_license_class: string;
+    minExperience?: number;
+    required_skills: string[];
     region: string;
-    district: string;
-    salaryMin?: number;
-    salaryMax?: number;
+    district?: string;
+    salary_range?: string;
     benefits?: string[];
-    description: string;
-    deadline?: Timestamp | string;
+    job_description: string;
+    expire_date?: Timestamp | string;
     startDate?: Timestamp | string;
     status: 'Open' | 'Closed' | 'draft';
-    postedOn: Timestamp;
+    posted_date: Timestamp;
     applicationCount?: number;
+    employerName?: string; // from DB
+    company_name?: string; // for UI
 }
 
 export interface Application {
@@ -29,15 +30,11 @@ export interface Application {
     jobId: string;
     jobTitle: string;
     employerId: string;
-    driverId: string; // Corrected from applicantId
-    appliedOn: Timestamp; // Corrected from applicationDate
+    driverId: string; 
+    appliedOn: Timestamp; 
     status: 'New' | 'Viewed' | 'Shortlisted' | 'Interview' | 'Hired' | 'Rejected' | 'Pending';
-    
-    // Denormalized data from driver profile, included when application is created
     licenseCategory: string;
     driverExperience: number;
-
-    // Dynamically added in hooks
     driverName?: string; 
 }
 
