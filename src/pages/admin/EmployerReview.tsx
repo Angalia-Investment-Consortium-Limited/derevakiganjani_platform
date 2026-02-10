@@ -123,10 +123,10 @@ export default function EmployerReview() {
 
       <div className="mb-6 flex justify-between items-start">
         <div>
-            <h1 className="text-3xl font-bold">{employer.companyName}</h1>
+            <h1 className="text-3xl font-bold">{employer.company_name}</h1>
             <p className="text-muted-foreground">ID: <span className="font-mono">{employer.id}</span></p>
         </div>
-        <Badge className={`${STATUS_COLORS[employer.verificationStatus]} hover:${STATUS_COLORS[employer.verificationStatus]} text-base py-2 px-4`}>{employer.verificationStatus}</Badge>
+        <Badge className={`${STATUS_COLORS[employer.verificationStatus.toLowerCase()]} hover:${STATUS_COLORS[employer.verificationStatus.toLowerCase()]} text-base py-2 px-4`}>{employer.verificationStatus}</Badge>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -134,12 +134,12 @@ export default function EmployerReview() {
           <Card>
             <CardHeader><CardTitle>Company Information</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <InfoItem label='Company Name' value={employer.companyName} icon={<Building className="h-4 w-4" />} />
+              <InfoItem label='Company Name' value={employer.company_name} icon={<Building className="h-4 w-4" />} />
               <InfoItem label='Contact Person' value={employer.contactPerson} icon={<User className="h-4 w-4" />} />
-              <InfoItem label='Email Address' value={employer.email} icon={<Mail className="h-4 w-4" />} />
-              <InfoItem label='Phone Number' value={employer.companyPhone} icon={<Phone className="h-4 w-4" />} />
-              <InfoItem label='Full Address' value={employer.companyAddress} icon={<MapPin className="h-4 w-4" />} className="md:col-span-2" />
-              <InfoItem label='Submitted On' value={formatDate(employer.createdAt)} icon={<Calendar className="h-4 w-4" />} />
+              <InfoItem label='Email Address' value={employer.company_email} icon={<Mail className="h-4 w-4" />} />
+              <InfoItem label='Phone Number' value={employer.company_phone} icon={<Phone className="h-4 w-4" />} />
+              <InfoItem label='Full Address' value={`${employer.address.street}, ${employer.address.city}, ${employer.address.country}`} icon={<MapPin className="h-4 w-4" />} className="md:col-span-2" />
+              <InfoItem label='Submitted On' value={formatDate(employer.account_creation_date)} icon={<Calendar className="h-4 w-4" />} />
             </CardContent>
           </Card>
 
@@ -174,7 +174,7 @@ export default function EmployerReview() {
           <Card>
             <CardHeader><CardTitle>Take Action</CardTitle><CardDescription>Approve or reject this request.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
-                {employer.verificationStatus === 'pending' ? (
+                {employer.verificationStatus.toLowerCase() === 'pending' ? (
                   <div className="flex flex-col gap-3">
 
                     {/* Approve Action */}

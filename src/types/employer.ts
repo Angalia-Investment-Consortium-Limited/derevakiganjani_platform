@@ -2,11 +2,15 @@ import { Timestamp } from 'firebase/firestore';
 
 export interface Employer {
   id: string;
-  companyName: string;
-  companyAddress: string;
-  companyPhone: string;
+  company_name: string;
+  address: {
+    street: string;
+    city: string;
+    country: string;
+  };
+  company_phone: string;
   contactPerson: string;
-  email: string;
+  company_email: string;
   userId: string;
   verificationStatus: 'pending' | 'verified' | 'rejected';
   verificationDocuments: Array<{
@@ -14,6 +18,6 @@ export interface Employer {
     fileUrl: string;
     fileName: string;
   }>;
-  createdAt: Timestamp;
+  account_creation_date: Timestamp;
   remarks?: string; // Remarks from the admin during review
 }

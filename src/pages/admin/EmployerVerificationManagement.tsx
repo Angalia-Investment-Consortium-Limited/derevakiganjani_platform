@@ -57,12 +57,14 @@ export default function EmployerVerificationManagement() {
   const filteredEmployers = useMemo(() => {
     return allEmployers
       .filter(emp => 
-        statusFilter === 'all' || emp.verificationStatus === statusFilter
+        statusFilter === 'all' || emp.verificationStatus.toLowerCase() === statusFilter
       )
-      .filter(emp => 
-        emp.companyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        emp.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      .filter(emp => {
+        const searchTermLower = searchTerm.toLowerCase();
+        const companyMatch = emp.company_name && emp.company_name.toLowerCase().includes(searchTermLower);
+        const emailMatch = emp.company_email && emp.company_email.toLowerCase().includes(searchTermLower);
+        return companyMatch || emailMatch;
+      });
   }, [allEmployers, statusFilter, searchTerm]);
 
   const totalPages = Math.ceil(filteredEmployers.length / ITEMS_PER_PAGE);
@@ -79,9 +81,9 @@ export default function EmployerVerificationManagement() {
 
   const stats = useMemo(() => ({
     total: allEmployers.length,
-    pending: allEmployers.filter(e => e.verificationStatus === 'pending').length,
-    verified: allEmployers.filter(e => e.verificationStatus === 'verified').length,
-    rejected: allEmployers.filter(e => e.verificationStatus === 'rejected').length,
+    pending: allEmployers.filter(e => e.verificationStatus.toLowerCase() === 'pending').length,
+    verified: allEmployers.filter(e => e.verificationStatus.toLowerCase() === 'verified').length,
+    rejected: allEmployers.filter(e => e.verificationStatus.toLowerCase() === 'rejected').length,
   }), [allEmployers]);
 
   const handleRefresh = () => {
@@ -182,10 +184,10 @@ export default function EmployerVerificationManagement() {
                   ) : (
                     paginatedEmployers.map((employer) => (
                       <TableRow key={employer.id}>
-                        <TableCell className="font-medium">{employer.companyName}</TableCell>
+                        <TableCell className="font-medium">{employer.company_name}</TableCell>
                         <TableCell>{employer.contactPerson}</TableCell>
-                        <TableCell><Badge className={`${STATUS_COLORS[employer.verificationStatus]} hover:${STATUS_COLORS[employer.verificationStatus]}`}>{employer.verificationStatus}</Badge></TableCell>
-                        <TableCell>{formatDate(employer.createdAt)}</TableCell>
+                        <TableCell><Badge className={`${STATUS_COLORS[employer.verificationStatus.toLowerCase()]} hover:${STATUS_COLORS[employer.verificationStatus.toLowerCase()]}`}>{employer.verificationStatus}</Badge></TableCell>
+                        <TableCell>{formatDate(employer.account_creation_date)}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="outline" size="sm" onClick={() => navigate(`/admin/employer-review/${employer.id}`)}><Eye className="h-4 w-4 mr-2" />Review</Button>
                         </TableCell>
