@@ -1,0 +1,263 @@
+
+{
+  "test": {
+    "test_title_en": "Self-Assessment Test - VIP Drivers (Sample)",
+    "test_title_sw": "Mtihani wa Kujipima – Madereva wa Viongozi (VIP) (Sampuli)",
+    "description_sw": "Huu mtihani una jumla ya maswali 20. Una dakika 90 kujibu maswali yote. Unatakiwa kupata alama 75% kufaulu.",
+    "description_en": "This exam contains 20 questions. You have 90 minutes to answer all questions. You must score 75% to pass.",
+    "duration_minutes": 90,
+    "total_questions": 20,
+    "pass_mark_percentage": 75,
+    "max_retakes": 1,
+    "license_class": "VIP",
+    "status": "draft",
+    "questionIds": [
+      "vip_q_001", "vip_q_002", "vip_q_003", "vip_q_004", "vip_q_005", "vip_q_006", 
+      "vip_q_007", "vip_q_008", "vip_q_009", "vip_q_010", "vip_q_011", "vip_q_012",
+      "vip_q_048", "vip_q_061", "vip_q_065", "vip_q_068", "vip_q_073", "vip_q_074", 
+      "vip_q_075", "vip_q_083"
+    ]
+  },
+  "questions": [
+    {
+      "id": "vip_q_001",
+      "question_text_sw": "Mojawapo siyo tafsiri rahisi kuhusu mtu muhimu sana (VIP)",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Mwanajeshi", "is_correct": true },
+        { "text_sw": "Mwanasiasa wa ngazi ya juu", "is_correct": false },
+        { "text_sw": "Kiongoziwataasisiaukampunikubwa", "is_correct": false },
+        { "text_sw": "Msanii mashuhuri", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_002",
+      "question_text_sw": "Lengo la dereva kumhudumia kiongozi ni pamoja na",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Kumsafirishakwendamahalisahihi", "is_correct": false },
+        { "text_sw": "Kumfikisha kiongozi mahali kwa wakati sahihi", "is_correct": false },
+        { "text_sw": "Kumsafirishakwausalamanafaraja", "is_correct": false },
+        { "text_sw": "Majibu a. b. na c. ni sahihi", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_003",
+      "question_text_sw": "Dereva wa gari la kiongosi anapaswa kuwa",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Msiri", "is_correct": true },
+        { "text_sw": "Kuwadi", "is_correct": false },
+        { "text_sw": "Kipenzichaboss", "is_correct": false },
+        { "text_sw": "Majibu a. b. na c. ni sahihi", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_004",
+      "question_text_sw": "Dereva wa gari la kiongosi hapaswi kuwa na sifa ifuatayo",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Kujali watu wengine", "is_correct": false },
+        { "text_sw": "Woga kwa kiongozi wake", "is_correct": true },
+        { "text_sw": "Kujalisanamuda", "is_correct": false },
+        { "text_sw": "Mnyenyekevu", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_005",
+      "question_text_sw": "Tendo lipi halipendekezwi kuhusu nywele za Dereva wa kike?",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Kusuka", "is_correct": false },
+        { "text_sw": "Kuweka Rangi", "is_correct": false },
+        { "text_sw": "Kusukarasta", "is_correct": false },
+        { "text_sw": "Majibu a. b. na c. ni sahihi", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_006",
+      "question_text_sw": "Marashi yafuatayo yapendekezwa kutumika kuzuia harufu mbaya ya jasho la mwili",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Eau Fraiche", "is_correct": false },
+        { "text_sw": "Eau De T oilette", "is_correct": true },
+        { "text_sw": "EauDecologne", "is_correct": false },
+        { "text_sw": "Eau De Perfume", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_007",
+      "question_text_sw": "Marashi yafuatayo yapendekezwa kutumika kuzuia harufu mbaya ya nguo itokanayo na jasho la mwili",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Eau Fraiche", "is_correct": false },
+        { "text_sw": "Eau De T oilette", "is_correct": false },
+        { "text_sw": "EauDecologne", "is_correct": false },
+        { "text_sw": "Eau De Perfume", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_008",
+      "question_text_sw": "Marashi yafuatayo hayapendekezwi kutumika ukiwa ndani ya gari la kiongozi",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Eau Fraiche", "is_correct": false },
+        { "text_sw": "Eau De T oilette", "is_correct": false },
+        { "text_sw": "EauDecologne", "is_correct": false },
+        { "text_sw": "Eau De Perfume", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_009",
+      "question_text_sw": "Nyenzo ifuatayo husaidia sana kutoa harufu mbaya ya kinywa",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Mswaki", "is_correct": false },
+        { "text_sw": "Mouthwash", "is_correct": false },
+        { "text_sw": "Dentalfloss", "is_correct": false },
+        { "text_sw": "Majibu a. b. na c. ni sahihi", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_010",
+      "question_text_sw": "Sifa bainifu ya dereva mwenye nidhamu ya dhati ni pamoja na",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Uhuru wa kuhoji hali ya gari yenye mashaka", "is_correct": true },
+        { "text_sw": "Uhuru wa kupiga gumzo kuhusu maandalizi ya safari ya kiongozi", "is_correct": false },
+        { "text_sw": "Uhuruwakumuwahishakiongozikwakutumiakasiyajuuyagarilake", "is_correct": false },
+        { "text_sw": "Uhuru wa kujipendekeza", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_011",
+      "question_text_sw": "Inapendekezwa Dereva kuwa na mavazi ya rangi ifuatayo",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Bluu", "is_correct": false },
+        { "text_sw": "Nyeusi", "is_correct": false },
+        { "text_sw": "Fedha", "is_correct": false },
+        { "text_sw": "Majibu a. b. na c. ni sahihi", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_012",
+      "question_text_sw": "Inapendekezwa Dereva kutokuwa na kilemba/tai ya rangi ifuatayo",
+      "category_sw": "Sifa Bainifu za Dereva wa Gari la Kiongozi",
+      "image": null,
+      "options": [
+        { "text_sw": "Nyeupe", "is_correct": false },
+        { "text_sw": "Zambarau", "is_correct": false },
+        { "text_sw": "Pink", "is_correct": false },
+        { "text_sw": "Majibu a. b. na c. ni sahihi", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_048",
+      "question_text_sw": "Nini Kitatokea wakati wa ajali iwapo Headrest ya kiti cha Kiongozi haitapangwa vema kulingana na mwili wa kiongozi?",
+      "category_sw": "Lijue Gari la Kiongozi",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_048.png?alt=media",
+      "options": [
+        { "text_sw": "Shingo ya kiongozi kujeruhiwa", "is_correct": true },
+        { "text_sw": "Dereva kulipa fine ya fedha taslimu TZS 30,000", "is_correct": false },
+        { "text_sw": "Kisongochakiongozikupasuka", "is_correct": false },
+        { "text_sw": "Majibu a. b. na c. siyo sahihi", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_061",
+      "question_text_sw": "Wewe dereva wa gari ukiona alama hii unapata ujumbe gani?",
+      "category_sw": "Alama, Ishara, na Michoro ya Barabarani",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_061.png?alt=media",
+      "options": [
+        { "text_sw": "Onyo, chukua tahadhali mbele kuna kivuko cha wanyama pori", "is_correct": false },
+        { "text_sw": "Onyo, chukua tahadhali mbele kuna pori la wanyama pori", "is_correct": false },
+        { "text_sw": "Onyo, chukua tahadhali dhidi ya uwepo wa wanyama pori mbele", "is_correct": true },
+        { "text_sw": "Onyo, wape kipaumbele wanyama pori wanao vuka barabara", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_065",
+      "question_text_sw": "Alama hii inawafahamisha madereva wa magari sehemu maalum kwa",
+      "category_sw": "Alama, Ishara, na Michoro ya Barabarani",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_065.png?alt=media",
+      "options": [
+        { "text_sw": "Magari kupishana", "is_correct": false },
+        { "text_sw": "Gari ndogo tu kupishana na gari kubwa", "is_correct": false },
+        { "text_sw": "Garimojakutoakipaumbelekwagarilinalokujambeleyake", "is_correct": true },
+        { "text_sw": "Gari moja kupewa kipaumbele kwa gari linalokuja mbele yake", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_068",
+      "question_text_sw": "Unapaswa kufanya nini uonapo ujumbe huu;",
+      "category_sw": "Alama, Ishara, na Michoro ya Barabarani",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_068.png?alt=media",
+      "options": [
+        { "text_sw": "Zingatia onyo husika", "is_correct": true },
+        { "text_sw": "Pokea taarifa hiyo", "is_correct": false },
+        { "text_sw": "Chukuatahadhali", "is_correct": false },
+        { "text_sw": "Toa kipaumbele", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_073",
+      "question_text_sw": "Alama hii inawakilisha nini?",
+      "category_sw": "Alama, Ishara, na Michoro ya Barabarani",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_073.png?alt=media",
+      "options": [
+        { "text_sw": "Barabara ya magari yaendayo kasi", "is_correct": true },
+        { "text_sw": "Kiwanja cha ndege", "is_correct": false },
+        { "text_sw": "Eneolamakaziyawatu", "is_correct": false },
+        { "text_sw": "Njia ya gari moshi", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_074",
+      "question_text_sw": "Alama hii ina maana gani?",
+      "category_sw": "Alama, Ishara, na Michoro ya Barabarani",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_074.png?alt=media",
+      "options": [
+        { "text_sw": "Kuna kizuizi mbele", "is_correct": false },
+        { "text_sw": "Onyo mbele kuna tuta la kupunguza mwendo", "is_correct": false },
+        { "text_sw": "Mwishowabarabarayenyekipaumbele", "is_correct": false },
+        { "text_sw": "“No entry”", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_075",
+      "question_text_sw": "Alama hii inatoa tahadhali gani kwa madereva?",
+      "category_sw": "Alama, Ishara, na Michoro ya Barabarani",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_075.png?alt=media",
+      "options": [
+        { "text_sw": "Ujenzi wa daraja", "is_correct": false },
+        { "text_sw": "Ujenzi wa fly over", "is_correct": false },
+        { "text_sw": "Ujenzi wa reli", "is_correct": false },
+        { "text_sw": "Ujenzi wa barabara", "is_correct": true }
+      ]
+    },
+    {
+      "id": "vip_q_083",
+      "question_text_sw": "Katika alama hii, Wewe Dereva wa gari la kiongozi unapaswa....",
+      "category_sw": "Alama, Ishara, na Michoro ya Barabarani",
+      "image": "https://firebasestorage.googleapis.com/v0/b/dereva-kiganjani.appspot.com/o/question_images%2Fvip_q_083.png?alt=media",
+      "options": [
+        { "text_sw": "Kushusha au kupakia abiria tu iwapo kiongozi hayumo ndani ya gari", "is_correct": false },
+        { "text_sw": "Kuegesha gari lako hapa", "is_correct": false },
+        { "text_sw": "Jiaandae kuchepuka", "is_correct": false },
+        { "text_sw": "Kutopitisha gari lako njia hii", "is_correct": true }
+      ]
+    }
+  ]
+}
