@@ -7,6 +7,7 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from 'firebase/auth';
 import type { User as FirebaseUser } from 'firebase/auth';
 import {
@@ -127,6 +128,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     const userCredential = await createUserWithEmailAndPassword(auth, email!, password);
     const firebaseUser = userCredential.user;
+    
+    await sendEmailVerification(firebaseUser);
 
     // 1. Create 'users' document
     const userDocRef = doc(db, 'users', firebaseUser.uid);

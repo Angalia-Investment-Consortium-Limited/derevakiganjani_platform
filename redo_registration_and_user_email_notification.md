@@ -68,3 +68,6 @@ Here is the step-by-step plan to address the issues:
 - [ ] Implement the logic to update the user's password in the database.
 - [ ] Test the entire forgot/reset password flow.
 - **Status:** Not Started
+
+## Note on UI
+"dont create any ui since all the UI's already exist, let me know if need so only create new ui if it doesn't exist and use the other components and pages and eist laoyouts for guidance as used in ohter similar pages or user pages"
