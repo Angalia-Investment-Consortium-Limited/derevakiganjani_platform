@@ -14,11 +14,13 @@ export interface LicenseApplication {
   email: string;
   fullName: string;
   fullNameNormalized: string;
-  licenseCategory: string;
+  categories: string[];
   phoneNumber: string;
   region: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   submittedOn: Timestamp;
   userId: string;
   remarks?: string;
+  adminNotes?: string;
+  applicantAdvice?: string;
 }

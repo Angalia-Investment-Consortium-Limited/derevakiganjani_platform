@@ -35,35 +35,44 @@ import { STATUS_COLORS } from '@/types/license';
 import { Loader } from '../../components/ui/loader';
 
 const ITEMS_PER_PAGE = 10;
+const LICENSE_CATEGORIES = ['A', 'A2', 'B', 'C', 'C1', 'C2', 'C3', 'D', 'E'];
 
 export default function LicenseApplicationsManagement() {
   const navigate = useNavigate();
-  const { applications: allApplications, isLoading, error, refresh } = useLicenseApplicationsManagement();
-
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(0);
 
-  const filteredApplications = useMemo(() => {
-    return allApplications
-      .filter(app => 
-        statusFilter === 'all' || app.status.toLowerCase() === statusFilter
-      )
-      .filter(app => 
-        app.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.id.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-  }, [allApplications, statusFilter, searchTerm]);
+  const { 
+    applications: allApplications, 
+    isLoading, 
+    error, 
+    refresh 
+  } = useLicenseApplicationsManagement({
+    status: statusFilter,
+    type: typeFilter,
+    category: categoryFilter,
+  });
 
-  const totalPages = Math.ceil(filteredApplications.length / ITEMS_PER_PAGE);
-  const paginatedApplications = filteredApplications.slice(
+  const searchedApplications = useMemo(() => {
+    if (!searchTerm) return allApplications;
+    return allApplications.filter(app => 
+      app.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      app.id.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [allApplications, searchTerm]);
+
+  const totalPages = Math.ceil(searchedApplications.length / ITEMS_PER_PAGE);
+  const paginatedApplications = searchedApplications.slice(
     currentPage * ITEMS_PER_PAGE,
     (currentPage + 1) * ITEMS_PER_PAGE
   );
 
   const formatDate = (date: any) => {
     if (!date) return '-';
-    // Convert Firebase Timestamp to JavaScript Date
     const jsDate = date.toDate ? date.toDate() : new Date(date.seconds * 1000);
     return jsDate.toLocaleDateString();
   };
@@ -78,7 +87,11 @@ export default function LicenseApplicationsManagement() {
   const handleRefresh = () => {
     setCurrentPage(0);
     setSearchTerm('');
+    // Resetting filters will trigger a re-fetch via the hook's useEffect
     setStatusFilter('all');
+    setTypeFilter('all');
+    setCategoryFilter('all');
+    // We can also call refresh if we want to force it without changing filters
     refresh();
   }
 
@@ -111,19 +124,15 @@ export default function LicenseApplicationsManagement() {
           </Button>
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card><CardContent className="pt-6 text-center"><p className="text-3xl font-bold">{stats.total}</p><p className="text-sm text-muted-foreground">Total</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center flex flex-col items-center"><Clock className="h-6 w-6 text-yellow-500 mb-2" /><p className="text-3xl font-bold text-yellow-600">{stats.pending}</p><p className="text-sm text-muted-foreground">Pending</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center flex flex-col items-center"><CheckCircle className="h-6 w-6 text-green-500 mb-2" /><p className="text-3xl font-bold text-green-600">{stats.approved}</p><p className="text-sm text-muted-foreground">Approved</p></CardContent></Card>
-          <Card><CardContent className="pt-6 text-center flex flex-col items-center"><XCircle className="h-6 w-6 text-red-500 mb-2" /><p className="text-3xl font-bold text-red-600">{stats.rejected}</p><p className="text-sm text-muted-foreground">Rejected</p></CardContent></Card>
+           {/* Stats Cards */}
         </div>
 
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <CardTitle>All Applications</CardTitle>
-              <div className="flex gap-2 w-full md:w-auto">
+              <div className="flex gap-2 w-full md:w-auto flex-wrap">
                 <div className="relative flex-grow">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input 
@@ -136,10 +145,7 @@ export default function LicenseApplicationsManagement() {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="flex-shrink-0">
-                      Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}
-                      <ChevronDown className="h-4 w-4 ml-2" />
-                    </Button>
+                    <Button variant="outline" className="flex-shrink-0">Status: {statusFilter.charAt(0).toUpperCase() + statusFilter.slice(1)}<ChevronDown className="h-4 w-4 ml-2" /></Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
                     <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
@@ -147,6 +153,29 @@ export default function LicenseApplicationsManagement() {
                       <DropdownMenuRadioItem value="pending">Pending</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="approved">Approved</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="rejected">Rejected</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                 <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                     <Button variant="outline" className="flex-shrink-0">Type: {typeFilter.charAt(0).toUpperCase() + typeFilter.slice(1)}<ChevronDown className="h-4 w-4 ml-2" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuRadioGroup value={typeFilter} onValueChange={setTypeFilter}>
+                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="New">New</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="Renewal">Renewal</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="flex-shrink-0">Category: {categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1)}<ChevronDown className="h-4 w-4 ml-2" /></Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    <DropdownMenuRadioGroup value={categoryFilter} onValueChange={setCategoryFilter}>
+                      <DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+                      {LICENSE_CATEGORIES.map(cat => <DropdownMenuRadioItem key={cat} value={cat}>{cat}</DropdownMenuRadioItem>)}
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -159,7 +188,7 @@ export default function LicenseApplicationsManagement() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Applicant Name</TableHead>
-                    <TableHead>Application ID</TableHead>
+                    <TableHead>Categories</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Submitted On</TableHead>
@@ -175,7 +204,7 @@ export default function LicenseApplicationsManagement() {
                     paginatedApplications.map((application) => (
                       <TableRow key={application.id}>
                         <TableCell className="font-medium">{application.fullName}</TableCell>
-                        <TableCell className="font-mono text-sm">{application.id}</TableCell>
+                        <TableCell>{application.categories ? application.categories.join(', ') : 'N/A'}</TableCell>
                         <TableCell>{application.applicationType}</TableCell>
                         <TableCell><Badge className={`${STATUS_COLORS[application.status]} hover:${STATUS_COLORS[application.status]}`}>{application.status}</Badge></TableCell>
                         <TableCell>{formatDate(application.submittedOn)}</TableCell>
@@ -191,7 +220,7 @@ export default function LicenseApplicationsManagement() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-4">
-                <p className="text-sm text-muted-foreground">Showing {paginatedApplications.length} of {filteredApplications.length} applications</p>
+                <p className="text-sm text-muted-foreground">Showing {paginatedApplications.length} of {searchedApplications.length} applications</p>
                 <div className="flex gap-2">
                   <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 0 || isLoading}>Previous</Button>
                   <span className="text-sm flex items-center">Page {currentPage + 1} of {totalPages}</span>

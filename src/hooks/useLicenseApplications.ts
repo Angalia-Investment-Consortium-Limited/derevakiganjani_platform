@@ -1,13 +1,27 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs, doc, getDoc, updateDoc, where, orderBy, Timestamp } from 'firebase/firestore';
+import {
+  collection,
+  query,
+  getDocs,
+  doc,
+  getDoc,
+  updateDoc,
+  where,
+  orderBy,
+  QueryConstraint
+} from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
-// Assuming a type definition exists for LicenseApplication
-// If not, we will create it in `@/types/license-application.ts`
 import type { LicenseApplication } from '@/types/license-application';
 
-export const useLicenseApplicationsManagement = () => {
+interface ApplicationFilters {
+  status?: string;
+  type?: string;
+  category?: string;
+}
+
+export const useLicenseApplicationsManagement = (filters: ApplicationFilters) => {
   const [applications, setApplications] = useState<LicenseApplication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +30,18 @@ export const useLicenseApplicationsManagement = () => {
   const fetchApplications = useCallback(async () => {
     setIsLoading(true);
     try {
-      const q = query(collection(db, 'license_applications'), orderBy('submittedOn', 'desc'));
+      const constraints: QueryConstraint[] = [orderBy('submittedOn', 'desc')];
+      if (filters.status && filters.status !== 'all') {
+        constraints.push(where('status', '==', filters.status.charAt(0).toUpperCase() + filters.status.slice(1)));
+      }
+      if (filters.type && filters.type !== 'all') {
+        constraints.push(where('applicationType', '==', filters.type));
+      }
+      if (filters.category && filters.category !== 'all') {
+        constraints.push(where('categories', 'array-contains', filters.category));
+      }
+      
+      const q = query(collection(db, 'license_applications'), ...constraints);
       const querySnapshot = await getDocs(q);
       const apps = querySnapshot.docs.map(doc => ({
         id: doc.id,
@@ -29,7 +54,7 @@ export const useLicenseApplicationsManagement = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, filters.status, filters.type, filters.category]);
 
   useEffect(() => {
     fetchApplications();
@@ -63,18 +88,26 @@ export const useLicenseApplicationReview = (applicationId: string) => {
     }
   }, [applicationId, toast]);
 
-  const updateApplicationStatus = async (status: 'Approved' | 'Rejected', remarks?: string) => {
-    if (!applicationId) return;
+  const updateApplicationStatus = async (
+    status: 'Approved' | 'Rejected',
+    data: { applicantAdvice?: string; adminNotes?: string }
+  ) => {
+    if (!applicationId) {
+        throw new Error('Application ID not found.');
+    }
     try {
       const docRef = doc(db, 'license_applications', applicationId);
-      await updateDoc(docRef, {
+      const updatePayload = {
         status,
-        ...(remarks && { remarks }), // Add remarks if provided
-      });
-      toast({ title: 'Success', description: `Application has been ${status.toLowerCase()}.` });
-      fetchApplication(); // Refresh data
+        applicantAdvice: data.applicantAdvice || '',
+        adminNotes: data.adminNotes || '',
+        remarks: data.applicantAdvice || '', // Backward compatibility
+      };
+      await updateDoc(docRef, updatePayload);
+      fetchApplication(); // Refresh data after successful update
     } catch (err: any) {
-      toast({ title: 'Error', description: `Failed to update application: ${err.message}`, variant: 'destructive' });
+      // Re-throw the error to be caught by the component
+      throw new Error(err.message || 'Failed to update application.');
     }
   };
 

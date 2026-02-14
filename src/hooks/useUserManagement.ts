@@ -13,6 +13,7 @@ const roleCollectionMap: Record<string, string> = {
   driver: 'driver_profiles',
   employer: 'employer_profiles',
   admin: 'admins',
+  superadmin: 'admins',
 };
 
 export const useUserManagement = () => {
@@ -36,7 +37,8 @@ export const useUserManagement = () => {
 
     // Role filter
     if (roleFilter !== 'all') {
-      q = query(q, where('roles', 'array-contains', roleFilter));
+      const capitalizedRole = roleFilter.charAt(0).toUpperCase() + roleFilter.slice(1);
+      q = query(q, where('roles', 'array-contains', capitalizedRole));
     }
 
     // Status filter
@@ -51,7 +53,8 @@ export const useUserManagement = () => {
     if (isFetching.current) return;
     isFetching.current = true;
     setIsLoading(true);
-    setError(null);
+    // Reset error state on new fetch
+    setError(null); 
 
     const fetchPage = async () => {
       try {
@@ -76,7 +79,7 @@ export const useUserManagement = () => {
 
         const usersData = await Promise.all(querySnapshot.docs.map(async (userDoc) => {
           const userData = { ...userDoc.data(), id: userDoc.id, uid: userDoc.id } as User;
-          const role = userData.roles?.[0] as UserRole;
+          const role = userData.roles?.[0]?.toLowerCase() as UserRole;
           let profileData: AdminProfile | EmployerProfile | DriverProfile | null = null;
 
           if (role && roleCollectionMap[role]) {
@@ -105,6 +108,9 @@ export const useUserManagement = () => {
       } catch (err: any) {
         console.error("Error fetching users:", err);
         setError(err.message || 'Failed to fetch users');
+        // Clear data on error to prevent inconsistent state
+        setUsers([]); 
+        setTotal(0);
       } finally {
         setIsLoading(false);
         isFetching.current = false;
@@ -120,6 +126,12 @@ export const useUserManagement = () => {
     pageCursors.current = [null];
     setRefreshKey(k => k + 1);
   }, []);
+
+  // Add reset functionality when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+    pageCursors.current = [null];
+  }, [roleFilter, statusFilter, searchQuery]);
 
   const toggleUserStatus = async (userId: string, newStatus: boolean) => {
     setToggling(true);
@@ -141,18 +153,21 @@ export const useUserManagement = () => {
       const batch = writeBatch(db);
       
       const userRef = doc(db, 'users', userId);
-      batch.delete(userRef);
-
       const userDoc = await getDoc(userRef);
       const userData = userDoc.data() as User | undefined;
-      const userRole = userData?.user_type?.toLowerCase(); // This might still be an issue
+      
+      // Must delete main user doc first
+      batch.delete(userRef);
 
-      if (userRole && roleCollectionMap[userRole]) {
-        const profileCollection = roleCollectionMap[userRole];
-        const profileRef = doc(db, profileCollection, userId);
-        const profileDoc = await getDoc(profileRef);
-        if(profileDoc.exists()) {
-            batch.delete(profileRef);
+      if (userData && userData.roles) {
+        const userRole = userData.roles[0]?.toLowerCase();
+        if (userRole && roleCollectionMap[userRole]) {
+          const profileCollection = roleCollectionMap[userRole];
+          const profileRef = doc(db, profileCollection, userId);
+          const profileDoc = await getDoc(profileRef);
+          if(profileDoc.exists()) {
+              batch.delete(profileRef);
+          }
         }
       }
       
@@ -190,6 +205,7 @@ export const useUserManagement = () => {
   };
 };
 
+
 export const useUser = (userId: string | null) => {
   const [user, setUser] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -211,7 +227,7 @@ export const useUser = (userId: string | null) => {
       }
 
       const userData = { id: userSnap.id, ...userSnap.data() } as User;
-      const role = userData.roles?.[0] as UserRole; // Use roles array
+      const role = userData.roles?.[0]?.toLowerCase() as UserRole;
       let profileData = {};
 
       if (role && roleCollectionMap[role]) {

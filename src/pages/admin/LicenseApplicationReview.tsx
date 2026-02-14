@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   FileText, 
@@ -45,18 +45,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 // Hooks
 import { useToast } from '@/hooks/use-toast';
 import { useLicenseApplicationReview } from '@/hooks/useLicenseApplications';
 
 // Helper Component
-const InfoItem = ({ label, value, icon, className }: { label: string; value: string; icon?: React.ReactNode; className?: string }) => (
+const InfoItem = ({ label, value, icon, className }: { label: string; value: string | string[]; icon?: React.ReactNode; className?: string }) => (
     <div className={`flex gap-3 ${className}`}>
         {icon && <div className="mt-1 text-muted-foreground">{icon}</div>}
         <div>
             <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="font-medium">{value || '-'}</p>
+            <p className="font-medium">{Array.isArray(value) ? value.join(', ') : (value || '-')}</p>
         </div>
     </div>
 );
@@ -67,17 +68,24 @@ export default function LicenseApplicationReview() {
   const navigate = useNavigate();
   const { toast } = useToast();
   
-  // Use the hook to fetch application data
   const { application, isLoading, error, updateApplicationStatus } = useLicenseApplicationReview(id!);
   
-  const [remarks, setRemarks] = useState('');
+  const [applicantAdvice, setApplicantAdvice] = useState('');
+  const [adminNotes, setAdminNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  useEffect(() => {
+    if (application) {
+      setApplicantAdvice(application.applicantAdvice || application.remarks || '');
+      setAdminNotes(application.adminNotes || '');
+    }
+  }, [application]);
+
   const handleUpdate = async (status: 'Approved' | 'Rejected') => {
-    if (status === 'Rejected' && !remarks.trim()) {
+    if (status === 'Rejected' && !applicantAdvice.trim()) {
         toast({
-            title: 'Remarks required',
-            description: 'Please provide a reason for rejecting the application.',
+            title: 'Advice required',
+            description: 'Please provide advice for the applicant before rejecting.',
             variant: 'destructive',
         });
         return;
@@ -85,7 +93,7 @@ export default function LicenseApplicationReview() {
 
     setIsUpdating(true);
     try {
-      await updateApplicationStatus(status, remarks);
+      await updateApplicationStatus(status, { applicantAdvice, adminNotes });
       toast({ title: 'Success', description: `Application has been ${status}.` });
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to update status.', variant: 'destructive' });
@@ -104,7 +112,6 @@ export default function LicenseApplicationReview() {
     });
   };
 
-  // Main Loading State
   if (isLoading && !application) {
     return (
       <AdminLayout>
@@ -113,20 +120,31 @@ export default function LicenseApplicationReview() {
     );
   }
 
-  // Error State
   if (error || !application) {
     return (
       <AdminLayout>
-        <Button variant="ghost" onClick={() => navigate('/admin/license-applications')} className="mb-4"><ArrowLeft className="h-4 w-4 mr-2" />Back to List</Button>
         <Card className="border-destructive"><CardContent className="pt-6 text-center py-8"><p className="text-destructive">{error || 'Application not found.'}</p></CardContent></Card>
       </AdminLayout>
     );
   }
 
-  // Main component render
   return (
     <AdminLayout>
-      <Button variant="ghost" onClick={() => navigate('/admin/license-applications')} className="mb-6"><ArrowLeft className="h-4 w-4 mr-2" />Back to List</Button>
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild><Link to='/admin'>Admin</Link></BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild><Link to='/admin/license-applications'>License Applications</Link></BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Review</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
 
       <div className="mb-6 flex justify-between items-start">
         <div>
@@ -147,7 +165,7 @@ export default function LicenseApplicationReview() {
                   <InfoItem label='Email Address' value={application.email} icon={<Mail className="h-4 w-4" />} />
                   <InfoItem label='Submitted On' value={formatDate(application.submittedOn)} icon={<Calendar className="h-4 w-4" />} />
                   <InfoItem label='Application Type' value={application.applicationType} icon={<FileText className="h-4 w-4" />} className="md:col-span-2" />
-                  <InfoItem label='License Category' value={application.licenseCategory} icon={<Building className="h-4 w-4" />} />
+                  <InfoItem label='License Categories' value={application.categories} icon={<Building className="h-4 w-4" />} />
                   <InfoItem label='District' value={application.district} icon={<MapPin className="h-4 w-4" />} />
                 </div>
             </CardContent>
@@ -171,25 +189,37 @@ export default function LicenseApplicationReview() {
             </Card>
           )}
 
-          {application.remarks && (
+          {(application.applicantAdvice || application.remarks) && (
              <Card>
-              <CardHeader><CardTitle>Reviewer Remarks</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Advice for Applicant</CardTitle></CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{application.remarks}</p>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{application.applicantAdvice || application.remarks}</p>
               </CardContent>
             </Card>
           )}
         </div>
 
-        {/* Action Panel */}
         <div className="space-y-6">
+          <Card>
+            <CardHeader><CardTitle>Internal Admin Notes</CardTitle><CardDescription>Notes are only visible to other admins.</CardDescription></CardHeader>
+            <CardContent>
+              <Textarea 
+                id="adminNotes" 
+                placeholder='e.g., "Verified documents with registry."' 
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                rows={4}
+                disabled={application.status !== 'Pending'}
+              />
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle>Take Action</CardTitle><CardDescription>Approve or reject this application.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
                 {application.status === 'Pending' ? (
                   <div className="flex flex-col gap-3">
 
-                    {/* Approve Action */}
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button disabled={isUpdating}><CheckCircle className="h-4 w-4 mr-2" />Approve</Button>
@@ -210,7 +240,6 @@ export default function LicenseApplicationReview() {
                       </AlertDialogContent>
                     </AlertDialog>
 
-                    {/* Reject Action */}
                     <Dialog>
                       <DialogTrigger asChild>
                         <Button variant="destructive" disabled={isUpdating}><XCircle className="h-4 w-4 mr-2" />Reject</Button>
@@ -219,16 +248,16 @@ export default function LicenseApplicationReview() {
                         <DialogHeader>
                           <DialogTitle>Reject Application</DialogTitle>
                           <DialogDescription>
-                            Please provide remarks for rejecting this application. This will be visible to the applicant.
+                            Provide advice for the applicant. This will be visible to them.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
-                          <Label htmlFor="remarks">Rejection Remarks</Label>
+                          <Label htmlFor="applicantAdvice">Advice for Applicant</Label>
                           <Textarea 
-                            id="remarks" 
-                            placeholder='e.g., "Incomplete documents provided."'
-                            value={remarks}
-                            onChange={(e) => setRemarks(e.target.value)}
+                            id="applicantAdvice" 
+                            placeholder='e.g., "Incomplete documents provided."' 
+                            value={applicantAdvice}
+                            onChange={(e) => setApplicantAdvice(e.target.value)}
                             rows={4}
                           />
                         </div>

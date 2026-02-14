@@ -1,4 +1,5 @@
 // Elimika Module Types
+import type { Timestamp } from "firebase/firestore";
 
 export interface Course {
   name: string;
@@ -18,9 +19,9 @@ export interface Course {
   price?: number;
   is_free: number;
   created_by?: string;
-  published_date?: string;
-  creation?: string;
-  modified?: string;
+  published_date?: Timestamp;
+  created?: Timestamp;
+  modified?: Timestamp;
 }
 
 export interface Lesson {

@@ -254,16 +254,19 @@ This collection stores information about license applications submitted by users
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `applicationType`| String | The type of license application (e.g., "LATRA Exam"). |
+| `adminNotes` | String | (Optional) Internal notes about the application, visible only to admins. |
+| `applicantAdvice` | String | (Optional) Feedback or advice for the applicant, potentially visible to them after review. |
+| `applicationType`| String | The type of license application (e.g., "New", "Renewal"). |
+| `categories` | Array | An array of license category codes being applied for (e.g., `['C1', 'E']`). |
 | `district` | String | The district where the applicant resides. |
-| `documents` | Array | An array of document objects, each containing `documentType`, `fileName`, and `fileUrl`. |
+| `documents` | Array | An array of objects, where `fileUrl` is a download URL from Firebase Storage. |
 | `email` | String | The applicant's email address. |
 | `fullName` | String | The applicant's full name. |
 | `fullNameNormalized` | String | The applicant's full name in lowercase for searching. |
-| `licenseCategory` | String | The category of license being applied for (e.g., "A"). |
 | `phoneNumber` | String | The applicant's phone number. |
 | `region` | String | The region where the applicant resides. |
-| `status` | String | The current status of the application (e.g., "rejected"). |
+| `remarks` | String | (Optional) Stores a copy of `applicantAdvice` for backward compatibility. |
+| `status` | String | The current status of the application (e.g., "Pending", "Approved", "Rejected"). |
 | `submittedOn` | Timestamp | The date and time the application was submitted. |
 | `userId` | String | The ID of the user who submitted the application. |
 

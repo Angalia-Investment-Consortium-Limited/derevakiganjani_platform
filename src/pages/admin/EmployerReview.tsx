@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft,
   Building,
   Phone,
   Mail,
@@ -44,6 +43,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+
 
 // Hook & Toast
 import { useToast } from '@/hooks/use-toast';
@@ -69,7 +70,6 @@ const InfoItem = ({ label, value, icon, className }: { label: string; value: str
 
 export default function EmployerReview() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const { toast } = useToast();
   
   const { employer, isLoading, error, updateEmployerStatus } = useEmployerReview(id!);
@@ -111,7 +111,17 @@ export default function EmployerReview() {
   if (error || !employer) {
     return (
       <AdminLayout>
-        <Button variant="ghost" onClick={() => navigate('/admin/employer-verification')} className="mb-4"><ArrowLeft className="h-4 w-4 mr-2" />Back to List</Button>
+        <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+                <BreadcrumbItem>
+                    <BreadcrumbLink asChild><Link to="/admin">Admin</Link></BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbLink asChild><Link to="/admin/employer-verification">Employer Verification</Link></BreadcrumbLink>
+                </BreadcrumbItem>
+            </BreadcrumbList>
+        </Breadcrumb>
         <Card className="border-destructive"><CardContent className="pt-6 text-center py-8"><p className="text-destructive">{error || 'Employer not found.'}</p></CardContent></Card>
       </AdminLayout>
     );
@@ -119,9 +129,23 @@ export default function EmployerReview() {
 
   return (
     <AdminLayout>
-      <Button variant="ghost" onClick={() => navigate('/admin/employer-verification')} className="mb-6"><ArrowLeft className="h-4 w-4 mr-2" />Back to Verification List</Button>
+        <Breadcrumb className="mb-6">
+            <BreadcrumbList>
+                <BreadcrumbItem>
+                    <BreadcrumbLink asChild><Link to="/admin">Admin</Link></BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbLink asChild><Link to="/admin/employer-verification">Employer Verification</Link></BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                    <BreadcrumbPage>Review</BreadcrumbPage>
+                </BreadcrumbItem>
+            </BreadcrumbList>
+        </Breadcrumb>
 
-      <div className="mb-6 flex justify-between items-start">
+      <div className="flex justify-between items-start">
         <div>
             <h1 className="text-3xl font-bold">{employer.company_name}</h1>
             <p className="text-muted-foreground">ID: <span className="font-mono">{employer.id}</span></p>
@@ -129,7 +153,7 @@ export default function EmployerReview() {
         <Badge className={`${STATUS_COLORS[employer.verificationStatus.toLowerCase()]} hover:${STATUS_COLORS[employer.verificationStatus.toLowerCase()]} text-base py-2 px-4`}>{employer.verificationStatus}</Badge>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         <div className="lg:col-span-2 space-y-6">
           <Card>
             <CardHeader><CardTitle>Company Information</CardTitle></CardHeader>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Plus, Bell, Globe, User, LogOut, Clock, Settings } from 'lucide-react';
+import { Search, Bell, Globe, User, LogOut, Clock, Settings } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { CommandPalette } from './CommandPalette';
+import { QuickCreate } from './QuickCreate';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -74,29 +75,7 @@ export function AdminTopBar() {
 
         <div className="flex items-center gap-2">
           {/* Quick Create Menu */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <Plus className="w-5 h-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Quick Create</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate('/admin/courses')}>
-                <Plus className="w-4 h-4 mr-2" />
-                Course Manager
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/job-posts')}>
-                <Plus className="w-4 h-4 mr-2" />
-                Job Post Management
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate('/admin/questions')}>
-                <Plus className="w-4 h-4 mr-2" />
-                Question Bank Manager
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <QuickCreate />
 
           {/* Recent Items */}
           <Sheet>

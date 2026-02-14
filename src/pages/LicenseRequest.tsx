@@ -9,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { FileText, RefreshCw, GraduationCap, Search, ArrowRight, CheckCircle, Clock, AlertCircle, TrendingUp } from 'lucide-react';
 import { getDocumentCount, getDocuments, licenseApplicationsCollection } from '@/lib/firebase';
 import type { Filter } from '@/lib/firebase';
-import type { LicenseApplication } from '@/types/license';
+import type { LicenseApplication } from '@/types/license-application';
 import { STATUS_COLORS } from '@/types/license';
 import { useEffect, useState } from 'react';
 import {
@@ -251,7 +251,7 @@ const LicenseRequest = () => {
                         <div>
                           <p className="font-medium">{app.fullName}</p>
                           <p className="text-sm text-muted-foreground">
-                            {app.applicationType} - {language === 'sw' ? 'Aina' : 'Category'} {app.licenseCategory}
+                            {app.applicationType} - {language === 'sw' ? 'Aina' : 'Category'} {app.categories.join(', ')}
                           </p>
                         </div>
                       </div>

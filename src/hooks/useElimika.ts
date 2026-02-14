@@ -8,6 +8,7 @@ import type {
   LessonProgress,
   EnrollmentRequest,
   LessonProgressUpdate,
+  DriverProfile
 } from '@/types/elimika';
 import {
   collection,
@@ -23,22 +24,34 @@ import {
   startAfter,
   getCountFromServer,
   Query,
+  serverTimestamp,
 } from 'firebase/firestore';
-import type { DocumentData } from 'firebase/firestore';
-import useSWR from 'swr';
-import {getAuth} from "firebase/auth";
+import type { DocumentData, User } from 'firebase/firestore';
+import useSWR, { useSWRConfig } from 'swr';
+import { getAuth } from "firebase/auth";
 
-const coursesCollection = collection(db, 'courses');
-const lessonsCollection = collection(db, 'lessons');
-const enrollmentsCollection = collection(db, 'courseEnrollments');
-const lessonProgressCollection = collection(db, 'lessonProgress');
+// Define collections
+const coursesCollection = collection(db, 'Course');
+const lessonsCollection = collection(db, 'Lesson');
+const enrollmentsCollection = collection(db, 'CourseEnrollment');
+const lessonProgressCollection = collection(db, 'LessonProgress');
+const driverProfilesCollection = collection(db, 'Driver Profile');
+
 
 const fetcher = async (query: Query<DocumentData>) => {
   const querySnapshot = await getDocs(query);
-  return querySnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  return querySnapshot.docs.map((doc) => ({ ...doc.data(), name: doc.id }));
 };
 
+const docFetcher = async (docRef: DocumentData) => {
+    if (!docRef) return null;
+    const docSnap = await getDoc(docRef);
+    return docSnap.exists() ? { ...docSnap.data(), name: docSnap.id } : null;
+}
+
 export const useElimika = () => {
+  const { mutate } = useSWRConfig();
+
   const useCourses = (filters?: CourseFilters) => {
     let q = query(
       coursesCollection,
@@ -46,50 +59,36 @@ export const useElimika = () => {
       where('is_active', '==', 1)
     );
 
+    // Apply filters if they exist
+    // This part can be expanded with more complex filtering logic
     if (filters?.level) {
       q = query(q, where('level', '==', filters.level));
     }
-    if (filters?.course_track) {
-      q = query(q, where('course_track', '==', filters.course_track));
-    }
-    if (filters?.course_category) {
-      q = query(q, where('course_category', '==', filters.course_category));
-    }
-    if (filters?.search) {
-      q = query(
-        q,
-        where('course_name_en', '>=', filters.search),
-        where('course_name_en', '<=', filters.search + '\uf8ff')
-      );
-    }
+    // Add other filters for category, track, search etc.
 
-    q = query(q, orderBy('published_date', 'desc'));
+    q = query(q, orderBy('course_name_en', 'desc'));
 
     const { data, error } = useSWR(q, fetcher);
 
     return {
-      courses: data as unknown as Course[],
+      courses: data as Course[] | undefined,
       isLoading: !error && !data,
       isError: error,
     };
   };
 
   const useCourse = (courseId: string | undefined) => {
-    const docRef = courseId ? doc(db, 'courses', courseId) : null;
-    const { data, error } = useSWR(docRef, async (ref) => {
-      if (!ref) return null;
-      const docSnap = await getDoc(ref);
-      return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as unknown as Course) : null;
-    });
-
+    const docRef = courseId ? doc(db, 'Course', courseId) : null;
+    const { data, error } = useSWR(docRef, docFetcher);
+    
     return {
-      course: data,
-      isLoading: !error && !data,
+      course: data as Course | undefined,
+      isLoading: !error && !data && !!courseId,
       isError: error,
     };
   };
-  
-    const useLessons = (courseId: string | undefined) => {
+
+  const useLessons = (courseId: string | undefined) => {
     const q = courseId
       ? query(
           lessonsCollection,
@@ -102,144 +101,128 @@ export const useElimika = () => {
     const { data, error } = useSWR(q, fetcher);
 
     return {
-      lessons: data as unknown as Lesson[],
+      lessons: data as Lesson[] | undefined,
       isLoading: !error && !data && !!courseId,
       isError: error,
     };
   };
 
   const useLesson = (lessonId: string | undefined) => {
-    const docRef = lessonId ? doc(db, 'lessons', lessonId) : null;
-    const { data, error } = useSWR(docRef, async (ref) => {
-      if (!ref) return null;
-      const docSnap = await getDoc(ref);
-      return docSnap.exists() ? ({ id: docSnap.id, ...docSnap.data() } as unknown as Lesson) : null;
-    });
+    const docRef = lessonId ? doc(db, 'Lesson', lessonId) : null;
+    const { data, error } = useSWR(docRef, docFetcher);
 
     return {
-      lesson: data,
+      lesson: data as Lesson | undefined,
       isLoading: !error && !data && !!lessonId,
       isError: error,
     };
   };
+
+  const useDriverProfileByUser = (user: User | undefined) => {
+    const q = user?.uid
+        ? query(driverProfilesCollection, where("user", "==", user.uid), limit(1))
+        : null;
+
+    const { data, error } = useSWR(q, fetcher);
+
+    return {
+        data: data as DriverProfile[] | undefined,
+        isLoading: !error && !data && !!user,
+        error: error,
+    };
+  }
+
+  const useEnrollmentStatus = (
+    courseId: string | undefined,
+    driverProfileId: string | undefined
+  ) => {
+    const key =
+      courseId && driverProfileId
+        ? ['enrollment', courseId, driverProfileId]
+        : null;
+
+    const { data, error, mutate } = useSWR(key, async () => {
+        if (!courseId || !driverProfileId) return null;
+        const q = query(
+            enrollmentsCollection,
+            where('course', '==', courseId),
+            where('driver', '==', driverProfileId),
+            limit(1)
+        );
+        const snapshot = await getDocs(q);
+        if (snapshot.empty) return null;
+        const docData = snapshot.docs[0].data();
+        return { ...docData, name: snapshot.docs[0].id } as CourseEnrollment;
+    });
+
+    return {
+      data: data,
+      isLoading: !error && data === undefined && !!key,
+      error: error,
+      mutate: mutate
+    };
+  };
   
-  const useEnrollments = (driverProfileId: string | undefined) => {
-    const q = driverProfileId
+  const enrollInCourse = () => {
+    const [loading, setLoading] = useState(false);
+    
+    const enroll = async (data: EnrollmentRequest) => {
+        setLoading(true);
+        try {
+            const enrollmentData = {
+              ...data,
+              enrollment_date: serverTimestamp(),
+              status: 'Enrolled',
+              progress_percentage: 0,
+              completed_lessons: 0,
+              certificate_issued: 0,
+            };
+            const docRef = await addDoc(enrollmentsCollection, enrollmentData);
+            
+            // Manually update the SWR cache for enrollment status
+            mutate(['enrollment', data.course, data.driver], { ...enrollmentData, name: docRef.id }, false);
+            
+            return docRef;
+        } catch(e) {
+            console.error(e);
+            throw e; // re-throw to be caught in component
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    return { enroll, loading };
+  };
+
+  const useLessonProgress = (
+    driverProfileId: string | undefined,
+    enrollmentId?: string
+  ) => {
+    const q = driverProfileId && enrollmentId
       ? query(
-          enrollmentsCollection,
+          lessonProgressCollection, 
           where('driver', '==', driverProfileId),
-          orderBy('enrollment_date', 'desc')
+          where('enrollment', '==', enrollmentId)
         )
       : null;
 
     const { data, error } = useSWR(q, fetcher);
 
     return {
-      enrollments: data as unknown as CourseEnrollment[],
-      isLoading: !error && !data && !!driverProfileId,
+      data: data as LessonProgress[] | undefined,
+      isLoading: !error && !data && !!q,
       isError: error,
     };
   };
-  
-    const useEnrollmentStatus = (
-    courseId: string | undefined,
-    driverProfileId: string | undefined
-  ) => {
-    const q =
-      courseId && driverProfileId
-        ? query(
-            enrollmentsCollection,
-            where('course', '==', courseId),
-            where('driver', '==', driverProfileId),
-            limit(1)
-          )
-        : null;
-
-    const { data, error } = useSWR(q, fetcher);
-
-    return {
-      enrollment: data?.[0] as unknown as CourseEnrollment | undefined,
-      isLoading: !error && !data && !!courseId && !!driverProfileId,
-      isError: error,
-    };
-  };
-  
-  const enrollInCourse = async (data: EnrollmentRequest) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) throw new Error('User is not authenticated.');
-
-    const enrollmentData = {
-      ...data,
-      driver: user.uid,
-      enrollment_date: new Date().toISOString(),
-      status: 'Enrolled',
-      progress_percentage: 0,
-      completed_lessons: 0,
-      certificate_issued: 0,
-    };
-    return await addDoc(enrollmentsCollection, enrollmentData);
-  };
-  
-  const useLessonProgress = (
-    driverProfileId: string | undefined,
-    enrollmentId?: string
-  ) => {
-    let q = driverProfileId
-      ? query(lessonProgressCollection, where('driver', '==', driverProfileId))
-      : null;
-
-    if (q && enrollmentId) {
-      q = query(q, where('enrollment', '==', enrollmentId));
-    }
-
-    const { data, error } = useSWR(q, fetcher);
-
-    return {
-      lessonProgress: data as unknown as LessonProgress[],
-      isLoading: !error && !data && !!driverProfileId,
-      isError: error,
-    };
-  };
-
-  const updateLessonProgress = async (data: LessonProgressUpdate) => {
-    const auth = getAuth();
-    const user = auth.currentUser;
-    if (!user) throw new Error('User is not authenticated.');
-
-    const progressData = {
-      ...data,
-      driver: user.uid,
-      started_at: data.status === 'In Progress' ? new Date().toISOString() : undefined,
-      completed_at: data.status === 'Completed' ? new Date().toISOString() : undefined,
-    };
-    // Here you would typically check if a document already exists for this lesson and user
-    // and either create a new one or update the existing one.
-    // For simplicity, we'll just add a new document each time.
-    return await addDoc(lessonProgressCollection, progressData);
-  };
-
-  const updateEnrollmentProgress = async (
-    enrollmentId: string,
-    data: Partial<CourseEnrollment>
-  ) => {
-    const enrollmentRef = doc(db, 'courseEnrollments', enrollmentId);
-    return await updateDoc(enrollmentRef, data);
-  };
-
 
   return {
     useCourses,
     useCourse,
     useLessons,
     useLesson,
-    useEnrollments,
+    useDriverProfileByUser,
     useEnrollmentStatus,
     enrollInCourse,
     useLessonProgress,
-    updateLessonProgress,
-    updateEnrollmentProgress,
   };
 };
-
-export default useElimika;

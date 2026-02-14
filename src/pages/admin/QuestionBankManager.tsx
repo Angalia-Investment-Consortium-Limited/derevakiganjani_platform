@@ -1,74 +1,170 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit, Trash2, Image, Video, Loader2, AlertCircle } from "lucide-react";
-import { useFrappeGetDocList, useFrappeDocTypeEventListener } from "frappe-react-sdk";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator
+} from "@/components/ui/dropdown-menu";
+import { Plus, Search, Edit, Trash2, Image, Video, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 import type { TestQuestion } from "@/types/management";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { 
+  collection, 
+  onSnapshot, 
+  query, 
+  where, 
+  orderBy, 
+  doc, 
+  deleteDoc, 
+  writeBatch 
+} from "firebase/firestore";
 
 const QuestionBankManager = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [questions, setQuestions] = useState<TestQuestion[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [questionToDelete, setQuestionToDelete] = useState<string | null>(null);
+  const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
-  // Build filters for Frappe query
-  const filters = useMemo(() => {
-    const f: any[] = [];
-    
+  useEffect(() => {
+    setIsLoading(true);
+    let q = query(collection(db, "Test Question"), orderBy("modified", "desc"));
+
     if (categoryFilter !== "all") {
-      f.push(['category', '=', categoryFilter]);
+      q = query(q, where("category", "==", categoryFilter));
     }
-    
     if (statusFilter !== "all") {
-      f.push(['is_active', '=', statusFilter === 'published' ? 1 : 0]);
+      q = query(q, where("is_active", "==", statusFilter === 'published' ? 1 : 0));
     }
-    
-    return f;
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const questionsData = snapshot.docs.map(doc => ({ ...doc.data(), name: doc.id } as TestQuestion));
+      setQuestions(questionsData);
+      setIsLoading(false);
+    }, (err) => {
+      console.error(err);
+      setError(err);
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, [categoryFilter, statusFilter]);
-
-  // Fetch questions from Frappe
-  const { data: questions, isLoading, error, mutate } = useFrappeGetDocList<TestQuestion>('Test Question', {
-    fields: [
-      'name',
-      'question_text_en',
-      'question_text_sw',
-      'category',
-      'question_type',
-      'image',
-      'video_url',
-      'is_active',
-      'difficulty'
-    ],
-    filters,
-    orderBy: {
-      field: 'modified',
-      order: 'desc'
-    }
-  });
-
-  // Real-time updates
-  useFrappeDocTypeEventListener('Test Question', () => {
-    mutate();
-  });
 
   // Filter questions by search query
   const filteredQuestions = useMemo(() => {
-    if (!questions) return [];
-    
     return questions.filter(question => {
+      const lowerCaseQuery = searchQuery.toLowerCase();
       const matchesSearch = 
-        question.question_text_en.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        question.question_text_sw.toLowerCase().includes(searchQuery.toLowerCase());
+        (question.question_text_en || '').toLowerCase().includes(lowerCaseQuery) ||
+        (question.question_text_sw || '').toLowerCase().includes(lowerCaseQuery);
       return matchesSearch;
     });
   }, [questions, searchQuery]);
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedQuestions(filteredQuestions.map(q => q.name));
+    } else {
+      setSelectedQuestions([]);
+    }
+  };
+
+  const handleRowSelect = (questionName: string, checked: boolean) => {
+    if (checked) {
+      setSelectedQuestions(prev => [...prev, questionName]);
+    } else {
+      setSelectedQuestions(prev => prev.filter(name => name !== questionName));
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!questionToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteDoc(doc(db, "Test Question", questionToDelete));
+      toast({
+        title: "Question Deleted",
+        description: "The question has been successfully deleted.",
+      });
+      setQuestionToDelete(null);
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: "Could not delete the question. Please try again.",
+      });
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
+  const handleBulkAction = async (action: 'publish' | 'unpublish' | 'delete') => {
+    setIsBulkProcessing(true);
+    const batch = writeBatch(db);
+
+    try {
+      selectedQuestions.forEach(id => {
+        const docRef = doc(db, "Test Question", id);
+        if (action === "delete") {
+          batch.delete(docRef);
+        } else {
+          const newStatus = action === "publish" ? 1 : 0;
+          batch.update(docRef, { is_active: newStatus });
+        }
+      });
+
+      await batch.commit();
+
+      toast({
+        title: `Bulk ${action} successful`,
+        description: `Successfully performed ${action} on ${selectedQuestions.length} questions.`,
+      });
+      setSelectedQuestions([]);
+
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: `Bulk ${action} failed`,
+        description: "An error occurred while processing the bulk action.",
+      });
+    } finally {
+      setIsBulkProcessing(false);
+    }
+  };
+
+  const numSelected = selectedQuestions.length;
 
   return (
     <AdminLayout>
@@ -80,16 +176,40 @@ const QuestionBankManager = () => {
         <Card>
           <CardHeader>
             <div className="flex flex-col md:flex-row justify-between gap-4">
-              <div className="flex flex-col md:flex-row gap-4 flex-1">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search questions..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+              <div className="flex items-center gap-4 flex-1">
+                {numSelected > 0 ? (
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium">
+                      {numSelected} selected
+                    </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" disabled={isBulkProcessing}>
+                          {isBulkProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Bulk Actions <ChevronDown className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleBulkAction('publish')}>Publish Selected</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleBulkAction('unpublish')}>Unpublish Selected</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive" onClick={() => handleBulkAction('delete')}>Delete Selected</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                ) : (
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search questions..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-full md:w-[150px]">
                     <SelectValue placeholder="Category" />
@@ -113,11 +233,11 @@ const QuestionBankManager = () => {
                     <SelectItem value="draft">Draft</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button onClick={() => navigate("/admin/question/new")}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Create Question
+                </Button>
               </div>
-              <Button onClick={() => navigate("/admin/question/new")}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Question
-              </Button>
             </div>
           </CardHeader>
           <CardContent>
@@ -151,6 +271,13 @@ const QuestionBankManager = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>
+                      <Checkbox
+                        checked={numSelected > 0 && numSelected === filteredQuestions.length}
+                        onCheckedChange={(checked) => handleSelectAll(!!checked)}
+                        aria-label="Select all"
+                      />
+                    </TableHead>
                     <TableHead>Question Text</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Type</TableHead>
@@ -162,7 +289,17 @@ const QuestionBankManager = () => {
                 </TableHeader>
                 <TableBody>
                   {filteredQuestions.map((question) => (
-                    <TableRow key={question.name}>
+                    <TableRow 
+                      key={question.name} 
+                      data-state={selectedQuestions.includes(question.name) && "selected"}
+                    >
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedQuestions.includes(question.name)}
+                          onCheckedChange={(checked) => handleRowSelect(question.name, !!checked)}
+                          aria-label={`Select question ${question.name}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium max-w-md">
                         <div className="truncate">{question.question_text_en}</div>
                         <div className="text-sm text-muted-foreground truncate">{question.question_text_sw}</div>
@@ -193,7 +330,7 @@ const QuestionBankManager = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        {question.difficulty && (
+                        {question.difficulty ? (
                           <Badge variant={
                             question.difficulty === 'Easy' ? 'default' :
                             question.difficulty === 'Medium' ? 'secondary' :
@@ -201,6 +338,8 @@ const QuestionBankManager = () => {
                           }>
                             {question.difficulty}
                           </Badge>
+                        ) : (
+                          <Badge variant="destructive">Unknown</Badge>
                         )}
                       </TableCell>
                       <TableCell>
@@ -217,7 +356,14 @@ const QuestionBankManager = () => {
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button size="sm" variant="ghost">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => {
+                              setQuestionToDelete(question.name);
+                              setShowDeleteDialog(true);
+                            }}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
@@ -229,6 +375,25 @@ const QuestionBankManager = () => {
             )}
           </CardContent>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the question
+              and its associated data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 };
