@@ -1,9 +1,10 @@
+
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import DerevaLogo from "../../public/logo.png"
+const DerevaLogo = "/logo.png";
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -37,19 +38,24 @@ export const Header = () => {
   };
 
   const getDashboardRoute = () => {
-    switch (user?.user_type) {
+    const userRole = user?.roles?.[0];
+    switch (userRole) {
       case 'Employer':
         return '/employer/dashboard';
       case 'Admin':
       case 'Staff':
+      case 'SuperAdmin':
         return '/admin';
+      case 'Driver':
+        return '/dashboard';
       default:
         return '/dashboard';
     }
   };
 
   const isAdmin = () => {
-    return user?.user_type === 'Admin' || user?.user_type === 'Staff';
+    const userRole = user?.roles?.[0];
+    return userRole === 'Admin' || userRole === 'Staff' || userRole === 'SuperAdmin';
   };
 
   const navItems = [
@@ -130,24 +136,33 @@ export const Header = () => {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate(getDashboardRoute())}>
-                    <User className="mr-2 h-4 w-4" />
-                    {t('dashboard')}
-                  </DropdownMenuItem>
+                  {!isAdmin() && (
+                    <DropdownMenuItem onClick={() => navigate(getDashboardRoute())}>
+                      <User className="mr-2 h-4 w-4" />
+                      {t('dashboard')}
+                    </DropdownMenuItem>
+                  )}
                   {isAdmin() && (
                     <DropdownMenuItem onClick={() => navigate('/admin')}>
                       <Shield className="mr-2 h-4 w-4" />
                       Admin Portal
                     </DropdownMenuItem>
                   )}
+                   {user?.roles?.[0] === 'Driver' && (
+                    <DropdownMenuItem disabled>
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Kiganjani Driver CV</span>
+                      <span className="ml-auto text-xs text-muted-foreground">Coming Soon</span>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     {t('myProfile')}
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate('/settings')}>
+                  {/* <DropdownMenuItem onClick={() => navigate('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
-                  </DropdownMenuItem>
+                  </DropdownMenuItem> */}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                     <LogOut className="mr-2 h-4 w-4" />
@@ -159,7 +174,7 @@ export const Header = () => {
           ) : (
             <div className="hidden md:flex gap-2">
               <Button variant="ghost" onClick={() => navigate('/register')}>
-                {t('createAccount')}
+                {t('Create Account')}
               </Button>
               <Button onClick={() => navigate('/ingia')}>
                 {t('login')}
@@ -178,7 +193,7 @@ export const Header = () => {
             className="md:hidden"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}\
           </Button>
         </div>
       </div>

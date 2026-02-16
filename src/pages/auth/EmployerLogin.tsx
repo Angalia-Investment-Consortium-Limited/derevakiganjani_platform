@@ -20,9 +20,9 @@ const EmployerLogin = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
-  const { login } = useAuth();
+  const { login, logout, sendCurrentUserEmailVerification } = useAuth();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) {
       toast({ title: t('error'), description: 'Please enter email and password', variant: 'destructive' });
@@ -31,9 +31,34 @@ const EmployerLogin = () => {
 
     setIsLoading(true);
     try {
-      await login(email, password);
-      toast({ title: t('success'), description: t('Welcome back!') });
-      navigate('/auth/redirect');
+      const userCredential = await login(email, password);
+      if (userCredential.user && !userCredential.user.emailVerified) {
+        toast({
+          title: 'Email Not Verified',
+          description: 'Please verify your email before logging in.',
+          variant: 'destructive',
+          action: (
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                try {
+                  await sendCurrentUserEmailVerification();
+                  toast({ title: 'Verification Email Sent', description: 'A new verification email has been sent to your address.' });
+                } catch (error) {
+                  toast({ title: 'Error', description: 'Failed to send verification email.', variant: 'destructive' });
+                }
+                await logout();
+              }}
+            >
+              Resend Email
+            </Button>
+          ),
+        });
+        await logout();
+      } else {
+        toast({ title: t('success'), description: t('Welcome back!') });
+        navigate('/auth/redirect');
+      }
     } catch (error: any) {
       toast({ title: t('error'), description: error.message || 'Login failed', variant: 'destructive' });
     } finally {
@@ -57,7 +82,7 @@ const EmployerLogin = () => {
                   <TabsTrigger value="phone">Phone</TabsTrigger>
                 </TabsList>
                 <TabsContent value="email">
-                  <form onSubmit={handleLogin} className="space-y-4 pt-4">
+                  <form onSubmit={handlePasswordLogin} className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
                       <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -79,7 +104,7 @@ const EmployerLogin = () => {
               Don't have an account? <Link to="/register" className="underline">Register</Link>
             </div>
             <div className="mt-2 text-center text-sm">
-                <Link to="/forgot-password" className="underline">Forgot Password?</Link>
+                <Link to="/auth/forgot" className="underline">Forgot Password?</Link>
             </div>
           </CardContent>
         </Card>

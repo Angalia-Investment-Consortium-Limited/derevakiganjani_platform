@@ -146,7 +146,7 @@ const ResetPassword = () => {
             </Button>
 
             <div className="text-center text-sm">
-              <Link to="/login" className="text-muted-foreground hover:text-primary">
+              <Link to="/ingia" className="text-muted-foreground hover:text-primary">
                 {t('backToLogin')}
               </Link>
             </div>

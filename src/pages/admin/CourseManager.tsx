@@ -18,7 +18,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Plus, Search, Edit, Trash2, Eye, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 import type { Course } from "@/types/elimika";
-import type { Timestamp } from "firebase/firestore";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   AlertDialog,
@@ -111,9 +110,13 @@ const CourseManager = () => {
   };
 
   // Format date
-  const formatDate = (timestamp?: Timestamp) => {
-    if (!timestamp) return "N/A";
-    return timestamp.toDate().toLocaleDateString();
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return "N/A";
+    }
+    return date.toLocaleDateString();
   };
 
   const handleDelete = async () => {
@@ -157,7 +160,7 @@ const CourseManager = () => {
 
       toast({
         title: `Bulk ${action} successful`,
-        description: `Successfully performed ${action} on ${selectedCourses.length} courses.`,
+        description: `Successfully performed ${action} on ${selectedCourses.length} courses.`
       });
       setSelectedCourses([]);
 

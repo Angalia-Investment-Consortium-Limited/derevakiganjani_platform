@@ -68,19 +68,19 @@ const Register = () => {
       (userType === 'employer' && (!companyName || !contactPerson || !phone)) ||
       !password || !confirmPassword
     ) {
-      toast({ title: t('error'), description: t('fillAllRequired'), variant: 'destructive' });
+      toast({ title: t('error'), description: t('Fill All Required'), variant: 'destructive' });
       return false;
     }
     if (password !== confirmPassword) {
-      toast({ title: t('error'), description: t('passwordMismatch'), variant: 'destructive' });
+      toast({ title: t('error'), description: t('Password Mismatch'), variant: 'destructive' });
       return false;
     }
     if (password.length < 8) {
-      toast({ title: t('error'), description: t('passwordTooShort'), variant: 'destructive' });
+      toast({ title: t('error'), description: t('Password Too Short'), variant: 'destructive' });
       return false;
     }
     if (!agreeTerms) {
-      toast({ title: t('error'), description: t('agreeToTerms'), variant: 'destructive' });
+      toast({ title: t('error'), description: t('Agree To Terms'), variant: 'destructive' });
       return false;
     }
     return true;
@@ -125,7 +125,7 @@ const Register = () => {
           }
         });
       } else {
-        navigate('/login', { replace: true });
+        navigate('/ingia', { replace: true });
       }
 
     } catch (error: any) {
@@ -169,13 +169,13 @@ const Register = () => {
               <div className="flex justify-center">
                 <img src={derevaLogo} alt="Dereva Kiganjani" className="h-[140px] w-auto mx-auto" />
               </div>
-              <CardTitle className="text-2xl text-center">{t('createAccount')}</CardTitle>
-              <CardDescription className="text-center">{t('registerSubtitle')}</CardDescription>
+              <CardTitle className="text-2xl text-center">{t('Create Account')}</CardTitle>
+              <CardDescription className="text-center">{t('Register')}</CardDescription>
             </CardHeader>
             <CardContent>
                 <form onSubmit={(e) => { e.preventDefault(); handleRegister(); }} className="space-y-6">
                   <div className="space-y-3">
-                        <Label>{t('accountType')}</Label>
+                        <Label>{t('Account Type')}</Label>
                         <div className="grid grid-cols-2 gap-4">
                           <button
                             type="button"
@@ -186,7 +186,7 @@ const Register = () => {
                           >
                             <User className="h-8 w-8 mb-2" />
                             <span className="font-semibold">{t('driver')}</span>
-                            <span className="text-xs text-muted-foreground text-center mt-1">{t('driverAccountDesc')}</span>
+                            <span className="text-xs text-muted-foreground text-center mt-1">{t('Driver Account')}</span>
                           </button>
                           <button
                             type="button"
@@ -197,7 +197,7 @@ const Register = () => {
                           >
                             <Building2 className="h-8 w-8 mb-2" />
                             <span className="font-semibold">{t('employer')}</span>
-                            <span className="text-xs text-muted-foreground text-center mt-1">{t('employerAccountDesc')}</span>
+                            <span className="text-xs text-muted-foreground text-center mt-1">{t('Employer Account')}</span>
                           </button>
                         </div>
                       </div>
@@ -206,20 +206,20 @@ const Register = () => {
                         {userType === 'driver' ? (
                           <>
                             <div className="space-y-2">
-                              <Label htmlFor="fullName">{t('fullName')} <span className="text-destructive">*</span></Label>
-                              <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t('enterFullName')} required />
+                              <Label htmlFor="fullName">{t('Name')} <span className="text-destructive">*</span></Label>
+                              <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder={t('Enter FullName')} required />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="phone">{t('phoneNumber')} <span className="text-destructive">*</span></Label>
+                              <Label htmlFor="phone">{t('Phone Number')} <span className="text-destructive">*</span></Label>
                               <Input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="255712345678" required />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="email">{t('email')} <span className="text-destructive">*</span></Label>
-                              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('enterEmail')} required />
+                              <Label htmlFor="email">{t('Email')} <span className="text-destructive">*</span></Label>
+                              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('Enter Email')} required />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="nationalId">{t('nationalIdNumber')} ({t('optional')})</Label>
-                              <Input id="nationalId" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder={t('enterNationalId')} />
+                              <Label htmlFor="nationalId">{t('National ID Number')} ({t('optional')})</Label>
+                              <Input id="nationalId" value={nationalId} onChange={(e) => setNationalId(e.target.value)} placeholder={t('Enter National ID')} />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="preferredLanguage">
@@ -241,11 +241,11 @@ const Register = () => {
                         ) : (
                           <>
                             <div className="space-y-2">
-                              <Label htmlFor="companyName">{t('companyName')} <span className="text-destructive">*</span></Label>
-                              <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t('enterCompanyName')} required />
+                              <Label htmlFor="companyName">{t('Company Name')} <span className="text-destructive">*</span></Label>
+                              <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t('EnterCompanyName')} required />
                             </div>
                             <div className="space-y-2">
-                              <Label htmlFor="contactPerson">{t('contactPerson')} <span className="text-destructive">*</span></Label>
+                              <Label htmlFor="contactPerson">{t('ContactvPerson')} <span className="text-destructive">*</span></Label>
                               <Input id="contactPerson" value={contactPerson} onChange={(e) => setContactPerson(e.target.value)} placeholder={t('enterContactPerson')} required />
                             </div>
                             <div className="space-y-2">
@@ -272,21 +272,21 @@ const Register = () => {
                         )}
 
                         <div className="space-y-2">
-                          <Label htmlFor="password">{t('password')} <span className="text-destructive">*</span></Label>
-                          <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('enterPassword')} required />
+                          <Label htmlFor="password">{t('Password')} <span className="text-destructive">*</span></Label>
+                          <PasswordInput id="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t('Enter Password')} required />
                           <p className="text-xs text-muted-foreground">{t('passwordHelper')}</p>
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="confirmPassword">{t('confirmPassword')} <span className="text-destructive">*</span></Label>
-                          <PasswordInput id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder={t('confirmPasswordPlaceholder')} required />
+                          <Label htmlFor="confirmPassword">{t('Confirm Password')} <span className="text-destructive">*</span></Label>
+                          <PasswordInput id="confirmPassword" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder={t('Confirm Password Placeholder')} required />
                         </div>
                       </div>
 
                       <div className="flex items-start space-x-2">
                         <Checkbox id="terms" checked={agreeTerms} onCheckedChange={(checked) => setAgreeTerms(checked as boolean)} />
                         <label htmlFor="terms" className="text-sm text-muted-foreground leading-none">
-                          {t('agreeToTermsText')}{' '}
-                          <Link to="/legal/terms" className="text-primary hover:underline">{t('termsAndConditions')}</Link>
+                          {t('I agree to ')}{' '}
+                          <Link to="/legal/terms" className="text-primary hover:underline">{t('Terms and Conditions')}</Link>
                         </label>
                       </div>
 
@@ -297,7 +297,7 @@ const Register = () => {
 
                   <div className="text-center text-sm">
                     <span className="text-muted-foreground">{t('alreadyHaveAccount')} </span>
-                    <Link to="/login" className="text-primary hover:underline font-medium">{t('loginHere')}</Link>
+                    <Link to="/ingia" className="text-primary hover:underline font-medium">{t('Login Here')}</Link>
                   </div>
                 </form>
             </CardContent>

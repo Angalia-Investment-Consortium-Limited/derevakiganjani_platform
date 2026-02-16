@@ -83,14 +83,13 @@
     --sidebar-border: 0 0% 20%;
     --sidebar-ring: 117 72% 45%;
   }
+}
 
+@layer base {
   * {
-    border-color: hsl(var(--border));
+    @apply border-border;
   }
-
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: Inter, sans-serif;
+    @apply bg-background text-foreground;
   }
 }

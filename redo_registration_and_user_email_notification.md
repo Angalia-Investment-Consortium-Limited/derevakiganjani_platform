@@ -1,10 +1,16 @@
-# Redo Registration and User Email Notification
+# Registration & User Notification Overhaul: Firebase Authentication
 
-## 1. Involved Routes
+## 1. Objective
+
+This document outlines the migration of all user authentication and notification features to **Firebase Authentication**. The goal is to create a secure, streamlined, and reliable user management system by deprecating custom logic and third-party services like Beem.
+
+## 2. Affected Routes
+
+The following routes will be updated to use Firebase Authentication:
+
 ```jsx
 <Route path="/ingia" element={<Login />} />
 <Route path="/register" element={<Register />} />
-<Route path="/auth/register" element={<Register />} />
 <Route path="/auth/login" element={<Login />} />
 <Route path="/auth/admin-login" element={<AdminLogin />} />
 <Route path="/auth/driver-login" element={<DriverLogin />} />
@@ -14,60 +20,61 @@
 <Route path="/auth/redirect" element={<AuthRedirect />} />
 ```
 
-## Priority Activity: Investigate Duplicate Registration Routes
+## 3. Deprecation of Custom Logic
 
-The following two routes point to the same `Register` component:
+- **Beem SMS for OTP:** The existing integration with Beem for OTP-based sign-in will be completely removed.
+- **Custom Password Reset:** The current, non-functional password reset flow will be replaced.
+- **Manual Email Notifications:** All user email notifications for authentication events will be handled by Firebase.
 
-```jsx
-<Route path="/register" element={<Register />} />  
-<Route path="/auth/register" element={<Register />} />
-```
+## 4. Action Plan: Firebase Implementation
 
-- **Focus on `/register`:** This is the primary registration route to focus on.
-- **Investigate `/auth/register`:** Find out where this route is being used in the application.
+This plan details the steps to migrate each feature to Firebase Authentication. The existing UI components will be reused and connected to the new Firebase-powered backend.
 
-## Firebase Collection Implementation
+### Step 1: User Registration & Email Verification
 
-For the Firebase collection implementation, refer to the `firestore_schema.md` file.
+- [ ] **Implement `createUserWithEmailAndPassword`:**
+    - In the `Register` component, replace the current registration logic with a call to Firebase's `createUserWithEmailAndPassword` function.
+- [ ] **Trigger Email Verification:**
+    - Upon successful user creation, call `sendEmailVerification` to send a verification link to the user's email.
+- [ ] **Update Firestore User Profile:**
+    - After registration, create a user document in the `users` collection in Firestore with their role and other relevant information.
+- [ ] **UI Feedback:**
+    - Display a message to the user prompting them to check their email to verify their account.
 
-## Current Problems
+### Step 2: User Login
 
-*   **Email Notification:** Registered users do not receive an email notification.
-*   **OTP Issues:** OTP with Beem doesn't work for signing in with OTP.
-*   **Password Reset:** The reset password flow is not set up.
-*   **Forgot Password:** The forgot password flow is not set up.
+- [ ] **Implement `signInWithEmailAndPassword`:**
+    - In the `Login` component, use `signInWithEmailAndPassword` to authenticate users.
+- [ ] **Handle Unverified Emails:**
+    - If a user tries to log in without a verified email, display a message and provide an option to resend the verification email.
 
-## Action Plan & Progress
+### Step 3: Password Reset
 
-Here is the step-by-step plan to address the issues:
+- [ ] **Implement `sendPasswordResetEmail`:**
+    - In the `ForgotPassword` component, use `sendPasswordResetEmail` to send a password reset link to the user's email.
+- [ ] **UI Confirmation:**
+    - Provide clear feedback to the user that a password reset email has been sent.
 
-### 1. Investigate Duplicate Registration Routes
-- [ ] Find where `/auth/register` is used in the codebase.
-- [ ] Determine if it's safe to remove one of the duplicate routes.
-- [ ] If so, remove the unnecessary route and update any links pointing to it.
-- **Status:** Not Started
+### Step 4: OTP Sign-In (Firebase Phone Authentication)
 
-### 2. Fix User Email Notification
-- [ ] Examine the registration code to identify where the email notification should be triggered.
-- [ ] Check the email sending service integration and its configuration.
-- [ ] Implement the email sending logic to send a welcome email upon successful registration.
-- [ ] Test the email notification functionality.
-- **Status:** Not Started
+- [ ] **Set Up Firebase Phone Authentication:**
+    - Enable Phone Number sign-in in the Firebase console.
+- [ ] **Implement `RecaptchaVerifier`:**
+    - Set up `RecaptchaVerifier` to protect against abuse.
+- [ ] **Implement `signInWithPhoneNumber`:**
+    - In the OTP sign-in component, use `signInWithPhoneNumber` to send a verification code to the user's phone.
+- [ ] **Confirm OTP:**
+    - Once the user enters the code, use the `confirm` method on the confirmation result object to complete the sign-in process.
 
-### 3. Fix OTP with Beem
-- [ ] Review the Beem API integration for sending OTPs.
-- [ ] Debug the "sign in with OTP" functionality to identify the point of failure.
-- [ ] Correct the code to ensure OTPs are sent and verified correctly.
-- [ ] Test the "sign in with OTP" flow.
-- **Status:** Not Started
+### Step 5: Clean Up & Finalize
 
-### 4. Implement Forgot/Reset Password Flow
-- [ ] Create the UI for the "Forgot Password" and "Reset Password" pages.
-- [ ] Implement the logic to send a password reset link to the user's email.
-- [ ] Create a secure backend endpoint to handle password reset requests.
-- [ ] Implement the logic to update the user's password in the database.
-- [ ] Test the entire forgot/reset password flow.
-- **Status:** Not Started
-
-## Note on UI
-"dont create any ui since all the UI's already exist, let me know if need so only create new ui if it doesn't exist and use the other components and pages and eist laoyouts for guidance as used in ohter similar pages or user pages"
+- [ ] **Remove Beem SDK:**
+    - Uninstall the Beem SDK and remove all related code.
+- [ ] **Remove Old Logic:**
+    - Delete any unused custom authentication functions and components.
+- [ ] **Testing:**
+    - Thoroughly test all authentication flows:
+        - Registration and email verification.
+        - Login (with verified and unverified email).
+        - Password reset.
+        - OTP/Phone sign-in.

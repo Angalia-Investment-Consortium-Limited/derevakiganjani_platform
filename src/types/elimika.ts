@@ -1,113 +1,71 @@
-// Elimika Module Types
-import type { Timestamp } from "firebase/firestore";
+
+import type { Timestamp } from 'firebase/firestore';
 
 export interface Course {
-  name: string;
-  course_name_en: string;
-  course_name_sw: string;
-  description_en?: string;
-  description_sw?: string;
-  course_track: 'beginner' | 'professional';
-  course_category: 'pikipiki' | 'basic' | 'vip' | 'psv' | 'hgv';
-  level?: 'Basic' | 'Intermediate' | 'Advanced';
-  duration_hours?: number;
-  total_lessons?: number;
-  thumbnail?: string;
-  thumbnail_emoji?: string;
-  status: 'Draft' | 'Published' | 'Archived';
-  is_active: number;
-  price?: number;
-  is_free: number;
-  created_by?: string;
-  published_date?: Timestamp;
-  created?: Timestamp;
-  modified?: Timestamp;
-}
-
-export interface Lesson {
-  name: string;
-  lesson_title_en: string;
-  lesson_title_sw: string;
-  course: string;
-  lesson_order: number;
-  content_type: 'text' | 'pdf' | 'image' | 'video';
-  duration_minutes?: number;
-  content_text_en?: string;
-  content_text_sw?: string;
-  content_file?: string;
-  video_url?: string;
-  video_type?: 'public' | 'private' | 'unlisted';
-  summary_en?: string;
-  summary_sw?: string;
-  is_locked: number;
-  unlock_after_lesson?: string;
-  is_active: number;
-  creation?: string;
-  modified?: string;
-}
-
-export interface CourseEnrollment {
-  name: string;
-  driver: string;
-  course: string;
-  enrollment_date: string;
-  status: 'Enrolled' | 'In Progress' | 'Completed' | 'Dropped';
-  progress_percentage: number;
-  completed_lessons: number;
-  total_lessons?: number;
-  completion_date?: string;
-  certificate_issued: number;
-  last_accessed?: string;
-  creation?: string;
-  modified?: string;
-}
-
-export interface LessonProgress {
-  name: string;
-  lesson: string;
-  driver: string;
-  enrollment?: string;
-  status: 'Not Started' | 'In Progress' | 'Completed';
-  started_at?: string;
-  completed_at?: string;
-  time_spent_minutes?: number;
-  creation?: string;
-  modified?: string;
-}
-
-export interface CourseCertificate {
-  name: string;
-  driver: string;
-  course: string;
-  enrollment: string;
-  issue_date: string;
-  certificate_number: string;
-  course_track?: string;
-  course_category?: string;
-  final_score?: number;
-  certificate_file?: string;
-  creation?: string;
-  modified?: string;
-}
-
-// Filter types for course search
-export interface CourseFilters {
-  level?: 'Basic' | 'Intermediate' | 'Advanced';
-  course_track?: 'beginner' | 'professional';
-  course_category?: 'pikipiki' | 'basic' | 'vip' | 'psv' | 'hgv';
-  search?: string;
-}
-
-// Enrollment request
-export interface EnrollmentRequest {
-  course: string;
-  driver: string;
-}
-
-// Lesson progress update
-export interface LessonProgressUpdate {
-  lesson: string;
-  driver: string;
-  enrollment?: string;
-  status: 'In Progress' | 'Completed';
-}
+    name: string; // Document ID
+    course_name_en: string;
+    course_name_sw: string;
+    course_track: string;
+    description_en: string;
+    description_sw: string;
+    duration_hours: number;
+    is_active: 1 | 0;
+    is_free: 1 | 0;
+    level: 'Beginner' | 'Intermediate' | 'Advanced';
+    modified: string; 
+    price: number;
+    status: 'Published' | 'Draft';
+    total_lessons: number;
+    // Omitted fields: total_quizzes, total_duration for brevity
+  }
+  
+  export interface Lesson {
+    name: string; // Document ID
+    course_id: string;
+    title_en: string;
+    title_sw: string;
+    content_en: string;
+    content_sw: string;
+    video_url?: string;
+    lesson_number: number;
+    created_at: Timestamp;
+    updated_at: Timestamp;
+  }
+  
+  export interface Quiz {
+    name: string; // Document ID
+    course_id: string;
+    lesson_id: string;
+    title_en: string;
+    title_sw: string;
+    questions: Question[];
+    passing_score: number;
+    created_at: Timestamp;
+    updated_at: Timestamp;
+  }
+  
+  export interface Question {
+    question_id: string;
+    question_text_en: string;
+    question_text_sw: string;
+    question_type: 'multiple-choice' | 'true-false';
+    options: AnswerOption[];
+    correct_answer: string | string[];
+  }
+  
+  export interface AnswerOption {
+    option_id: string;
+    option_text_en: string;
+    option_text_sw: string;
+  }
+  
+  export interface CourseEnrollment {
+    enrollment_id: string; // Document ID
+    user_id: string;
+    course_id: string;
+    enrollment_date: Timestamp;
+    status: 'in-progress' | 'completed';
+    progress: number; // Percentage
+    // Omitted: completed_lessons, completed_quizzes for brevity
+  }
+  

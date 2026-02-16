@@ -25,7 +25,6 @@ import type {
   EmployerProfile,
   AdminProfile,
 } from '@/types/auth';
-import { useOTP } from '@/hooks/useOTP';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
@@ -41,10 +40,10 @@ interface AuthContextType {
   logout: () => Promise<void>;
   register: (data: RegisterData) => Promise<any>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
+  sendCurrentUserEmailVerification: () => Promise<void>;
   updateUser: (data: Partial<User>) => Promise<void>;
   updateProfile: (data: Partial<DriverProfile | EmployerProfile | AdminProfile>) => Promise<void>;
   refreshProfile: () => Promise<void>;
-  otp: ReturnType<typeof useOTP>;
 }
 
 
@@ -56,7 +55,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [profile, setProfile] = useState<DriverProfile | EmployerProfile | AdminProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(true);
-  const otp = useOTP();
+  
+  const actionCodeSettings = {
+    url: 'https://derevakiganjani.mdvfleet.co.tz/ingia',
+  };
 
   const fetchUserProfile = useCallback(async (firebaseUser: FirebaseUser) => {
     setProfileLoading(true);
@@ -120,8 +122,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
   
   const sendPasswordReset = (email: string) => {
-    return sendPasswordResetEmail(auth, email);
+    return sendPasswordResetEmail(auth, email, actionCodeSettings);
   };
+
+  const sendCurrentUserEmailVerification = () => {
+    if (auth.currentUser) {
+        return sendEmailVerification(auth.currentUser, actionCodeSettings);
+    }
+    return Promise.reject(new Error("No user found to send verification email."));
+  }
 
   const register = async (data: RegisterData) => {
     const { email, password, role, phone_number, ...profileData } = data;
@@ -129,7 +138,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const userCredential = await createUserWithEmailAndPassword(auth, email!, password);
     const firebaseUser = userCredential.user;
     
-    await sendEmailVerification(firebaseUser);
+    await sendEmailVerification(firebaseUser, actionCodeSettings);
 
     // 1. Create 'users' document
     const userDocRef = doc(db, 'users', firebaseUser.uid);
@@ -242,11 +251,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     register,
     sendPasswordResetEmail: sendPasswordReset,
+    sendCurrentUserEmailVerification,
     updateUser,
     updateProfile,
     refreshProfile,
     loading: isLoading,
-    otp,
   };
 
   return (
