@@ -270,5 +270,23 @@ This collection stores information about license applications submitted by users
 | `submittedOn` | Timestamp | The date and time the application was submitted. |
 | `userId` | String | The ID of the user who submitted the application. |
 
+---
+
+### `test_attempts`
+This collection logs each attempt a user makes on a test.
+
+**Document ID:** A unique ID for the test attempt.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `answers` | Map | A map of the user's answers to the test questions. |
+| `categoryId` | String | The ID of the test category. |
+| `categoryTitle` | String | The title of the test category. |
+| `durationInMinutes` | Number | The duration of the test in minutes. |
+| `passMark` | Number | The score required to pass the test. |
+| `score` | Null/Number | The user's score on the test. Null if the test is not yet graded. |
+| `startTime` | Timestamp | The time the user started the test. |
+| `status` | String | The status of the test attempt (e.g., "started", "completed"). |
+| `userId` | String | The ID of the user who took the test. |
 
 *This document will be updated as more collections are added or modified.*

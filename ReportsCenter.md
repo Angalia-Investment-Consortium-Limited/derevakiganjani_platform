@@ -1,3 +1,44 @@
+# Reports Center
+
+The `ReportsCenter` component is a comprehensive dashboard for viewing and exporting various reports and analytics related to the platform's services.
+
+## Features
+
+- **Date and Region Filtering**: Allows users to filter report data by a specific date range and geographical region.
+- **Tabbed Navigation**: Organizes reports into logical categories for easy access:
+  - **Overview**: Provides a high-level summary of key metrics across all services, including license requests, test results, course completions, and revenue.
+  - **Licenses**: Offers a detailed breakdown of license applications, including new vs. renewals, and their current status (approved, rejected, pending).
+  - **JiTesti (Tests)**: Displays in-depth analytics on test performance, such as attempt numbers, pass rates, and average scores, both overall and by category.
+  - **Elimika (Courses)**: Tracks learner engagement with courses, showing enrollment numbers, completion rates, and progress.
+  - **Recruitment (Jobs)**: Summarizes the job board's activity, including the number of job posts, applications, and hiring statuses.
+  - **Finance**: Presents a financial overview, detailing revenue generated from each service.
+- **Data Export**: Enables users to export the data from any report section into either CSV or PDF format for offline analysis or record-keeping.
+- **Quick Stats**: The Overview tab includes a "Quick Stats" section that provides at-a-glance numbers for important operational metrics like active drivers, pending approvals, and active job posts.
+- **Multilingual Support**: The component is designed to be displayed in multiple languages, ensuring accessibility for a diverse user base.
+
+## Components Used
+
+The `ReportsCenter` leverages several UI components from the project's design system to create a consistent and intuitive user interface:
+
+- `AdminLayout`: Provides the standard administrative dashboard layout.
+- `Card`, `CardContent`, `CardHeader`, `CardTitle`: Used to structure and display report sections.
+- `Button`: For actions like applying filters and exporting data.
+- `Input`, `Label`: For date selection fields.
+- `Select`: For region selection dropdowns.
+- `Tabs`, `TabsContent`, `TabsList`, `TabsTrigger`: To create the tabbed navigation for different report categories.
+- `Table`, `TableBody`, `TableCell`, `TableHead`, `TableHeader`, `TableRow`: To display tabular data within the reports.
+- `useToast`: To provide feedback to the user when an action, like exporting a report, is initiated.
+- `useLanguage`: To manage the display of text in the user's selected language.
+
+## UI Issues
+
+- **Missing Breadcrumbs**: The `AdminBreadcrumbs` component is not implemented, which makes it difficult for users to navigate back to the main admin dashboard.
+- **Missing Text**: Several UI elements are missing text, including labels, and other descriptive text, which makes it difficult for users to understand the purpose of each field.
+- **Incorrect Styling**: The styling of the page is inconsistent with the design, with some elements having the wrong color, size, or spacing.
+
+## Shared Code
+
+```javascript
 import { useState } from 'react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,9 +48,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Download, DollarSign, Award, GraduationCap, FileCheck } from 'lucide-react';
+import { Download, FileText, BarChart3, DollarSign, Award, Briefcase, GraduationCap, FileCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 
 const ReportsCenter = () => {
   const { toast } = useToast();
@@ -54,8 +94,7 @@ const ReportsCenter = () => {
 
   return (
     <AdminLayout>
-      <AdminBreadcrumbs />
-      <div className="space-y-6 mt-4">
+      <div className="space-y-6">
           {/* Header */}
           <div>
             <h1 className="text-3xl font-bold">Reports & Export Center</h1>
@@ -78,7 +117,7 @@ const ReportsCenter = () => {
                   <Label>Region</Label>
                   <Select defaultValue="all">
                     <SelectTrigger>
-                      <SelectValue placeholder="All Regions"/>
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Regions</SelectItem>
@@ -467,7 +506,7 @@ const ReportsCenter = () => {
                       <p className="text-sm text-muted-foreground">Elimika</p>
                       <p className="text-3xl font-bold">KSh 1.03M</p>
                     </div>
-                  </CardContent>
+                  </CardContent>.
                 </Card>
                 <Card>
                   <CardContent className="pt-6">
