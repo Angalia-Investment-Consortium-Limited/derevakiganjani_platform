@@ -10,10 +10,10 @@ const PAGE_SIZE = 10;
 
 // A mapping from the user-facing role filter to the collection name
 const roleCollectionMap: Record<string, string> = {
-  driver: 'driver_profiles',
-  employer: 'employer_profiles',
-  admin: 'admins',
-  superadmin: 'admins',
+  Driver: 'driver_profiles',
+  Employer: 'employer_profiles',
+  Admin: 'admins',
+  SuperAdmin: 'admins',
 };
 
 export const useUserManagement = () => {
@@ -79,7 +79,7 @@ export const useUserManagement = () => {
 
         const usersData = await Promise.all(querySnapshot.docs.map(async (userDoc) => {
           const userData = { ...userDoc.data(), id: userDoc.id, uid: userDoc.id } as User;
-          const role = userData.roles?.[0]?.toLowerCase() as UserRole;
+          const role = userData.roles?.[0] as UserRole;
           let profileData: AdminProfile | EmployerProfile | DriverProfile | null = null;
 
           if (role && roleCollectionMap[role]) {
@@ -160,7 +160,7 @@ export const useUserManagement = () => {
       batch.delete(userRef);
 
       if (userData && userData.roles) {
-        const userRole = userData.roles[0]?.toLowerCase();
+        const userRole = userData.roles[0];
         if (userRole && roleCollectionMap[userRole]) {
           const profileCollection = roleCollectionMap[userRole];
           const profileRef = doc(db, profileCollection, userId);
@@ -227,7 +227,7 @@ export const useUser = (userId: string | null) => {
       }
 
       const userData = { id: userSnap.id, ...userSnap.data() } as User;
-      const role = userData.roles?.[0]?.toLowerCase() as UserRole;
+      const role = userData.roles?.[0] as UserRole;
       let profileData = {};
 
       if (role && roleCollectionMap[role]) {

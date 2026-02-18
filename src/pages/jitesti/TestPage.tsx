@@ -53,57 +53,89 @@ const fetchTestAttempt = async (attemptId: string): Promise<TestAttempt | null> 
 };
 
 const fetchTestQuestions = async (lookupId: string | undefined): Promise<Question[]> => {
-    if (!lookupId) return [];
+    console.log("Starting fetchTestQuestions with lookupId:", lookupId);
+    if (!lookupId) {
+        console.log("lookupId is undefined, returning empty array.");
+        return [];
+    }
 
     const testsRef = collection(db, 'tests');
     const categoriesRef = collection(db, 'jitesti-categories');
     let testQuerySnapshot;
 
     // --- Strategy 1: Assume lookupId is the correct courseId (new structure) ---
+    console.log("Executing Strategy 1: Querying 'tests' where 'courseId' ==", lookupId);
     const s1_query = query(testsRef, where('courseId', '==', lookupId));
     testQuerySnapshot = await getDocs(s1_query);
+    console.log("Strategy 1 result: empty?", testQuerySnapshot.empty);
 
     // --- Strategy 2: If S1 fails, assume lookupId is a jitesti-category doc ID (legacy structure) ---
     if (testQuerySnapshot.empty) {
+        console.log("Strategy 1 failed. Executing Strategy 2: Looking up category directly.");
         try {
             const categoryDocRef = doc(db, 'jitesti-categories', lookupId);
             const categoryDocSnap = await getDoc(categoryDocRef);
             if (categoryDocSnap.exists()) {
+                console.log("Strategy 2: Found category doc:", categoryDocSnap.id);
                 const categoryData = categoryDocSnap.data();
                 if (categoryData?.category_code) {
+                    console.log("Strategy 2: Found category_code:", categoryData.category_code);
                     const s2_query = query(testsRef, where('courseId', '==', categoryData.category_code));
                     testQuerySnapshot = await getDocs(s2_query);
+                    console.log("Strategy 2 result: empty?", testQuerySnapshot.empty);
+                } else {
+                    console.log("Strategy 2: Category doc found, but it has no 'category_code' field.");
                 }
+            } else {
+                 console.log("Strategy 2: No category document found with ID:", lookupId);
             }
-        } catch (e) { /* This will fail if lookupId is not a valid doc ID, that's fine */ }
+        } catch (e) {
+            console.error("Strategy 2 failed with an error:", e);
+        }
     }
     
     // --- Strategy 3: If S2 fails, assume lookupId is the test TITLE (very old legacy) ---
     if (testQuerySnapshot.empty) {
+        console.log("Strategy 2 failed. Executing Strategy 3: Looking up category by name_en.");
         const s3_categoryQuery = query(categoriesRef, where('name_en', '==', lookupId));
         const s3_categorySnapshot = await getDocs(s3_categoryQuery);
+        console.log("Strategy 3 category query result: empty?", s3_categorySnapshot.empty);
 
         if (!s3_categorySnapshot.empty) {
             const categoryData = s3_categorySnapshot.docs[0].data();
+            console.log("Strategy 3: Found category by name_en:", categoryData);
             if (categoryData?.category_code) {
+                console.log("Strategy 3: Found category_code:", categoryData.category_code);
                 const s3_testQuery = query(testsRef, where('courseId', '==', categoryData.category_code));
                 testQuerySnapshot = await getDocs(s3_testQuery);
+                console.log("Strategy 3 result: empty?", testQuerySnapshot.empty);
+            } else {
+                 console.log("Strategy 3: Category doc found, but it has no 'category_code' field.");
             }
         }
     }
 
     if (!testQuerySnapshot || testQuerySnapshot.empty) {
+        console.error("All strategies failed. Test definition not found.");
         throw new Error("Test definition not found.");
     }
 
     const testDocSnap = testQuerySnapshot.docs[0];
+    console.log("Found test document:", testDocSnap.id, testDocSnap.data());
     const { questionIds } = testDocSnap.data() as TestDoc;
 
-    if (!questionIds || questionIds.length === 0) return [];
+    if (!questionIds || questionIds.length === 0) {
+        console.warn("Test document found, but it has no questionIds.");
+        return [];
+    }
+    
+    console.log("Found questionIds:", questionIds);
 
     const questionsRef = collection(db, 'Test Question');
     const questionsQuery = query(questionsRef, where(documentId(), 'in', questionIds));
     const questionsSnapshot = await getDocs(questionsQuery);
+    
+    console.log("Queried 'Test Question' collection. Found docs:", questionsSnapshot.size);
     
     const questionsMap = new Map<string, Question>();
     questionsSnapshot.forEach(doc => {
@@ -129,14 +161,16 @@ const fetchTestQuestions = async (lookupId: string | undefined): Promise<Questio
 
         const question: Question = {
             id: doc.id,
-            text: data.questionTextSw || data.questionTextEn || data.text || "Question text is missing.",
+            text: data.question_text_sw || data.questionTextSw || data.questionTextEn || data.text || "Question text is missing.",
             options: sortedOptions,
             correctAnswerIndex: correctIndex,
         };
         questionsMap.set(doc.id, question);
     });
 
-    return questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
+    const finalQuestions = questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
+    console.log("Final mapped questions:", finalQuestions);
+    return finalQuestions;
 };
 
 // --- Helper to format time ---
@@ -238,7 +272,7 @@ const TestPage: React.FC = () => {
     // --- Render Logic ---
     if (isLoadingAttempt) return <div className="container mx-auto p-4">Loading your test...</div>;
     if (attemptError || !testAttempt) return <div className="container mx-auto p-4 text-red-500">Error loading the test. It might be invalid or expired.</div>;
-    if (!user || user.uid !== testAttempt.userId) return <div className="container mx-auto p-4 text-red-500">You are not authorized to take this test.</div>;
+    if (!user || user.uid !== testAttempt.userId) return <div className="container mx-auto p-4 text-red-500">You are not authorized to take this.</div>;
     
     // -- View: Test Completed --
     if (testAttempt.status === 'completed') {

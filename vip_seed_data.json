@@ -1,0 +1,50 @@
+{
+  "test": {
+    "id": "TEST_VIP_01",
+    "courseId": "VIP",
+    "title": "VIP Driver Test",
+    "pass_mark_percentage": 90
+  },
+  "questions": [
+    {
+      "id": "vip_q_001",
+      "question_text_sw": "Wakati wa kuendesha gari la VIP, ni muhimu zaidi kuzingatia nini?",
+      "options": [
+        { "text_sw": "Kufika kwa haraka", "is_correct": false },
+        { "text_sw": "Usalama na faragha ya abiria", "is_correct": true },
+        { "text_sw": "Sheria za barabarani pekee", "is_correct": false },
+        { "text_sw": "Kutumia njia za mkato", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_002",
+      "question_text_sw": "Ikiwa unakutana na msafara wa viongozi, unapaswa kufanya nini?",
+      "options": [
+        { "text_sw": "Kujaribu kuupita", "is_correct": false },
+        { "text_sw": "Kupunguza mwendo na kutoa njia", "is_correct": true },
+        { "text_sw": "Kupiga honi kuonyesha heshima", "is_correct": false },
+        { "text_sw": "Kuendelea na mwendo wako wa kawaida", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_003",
+      "question_text_sw": "Ni ipi njia bora ya mawasiliano kati ya dereva wa VIP na mlinzi?",
+      "options": [
+        { "text_sw": "Kupiga kelele", "is_correct": false },
+        { "text_sw": "Kutumia ishara za mikono zilizokubaliwa", "is_correct": true },
+        { "text_sw": "Kutuma ujumbe mfupi (SMS)", "is_correct": false },
+        { "text_sw": "Kutegemea abiria apitishe ujumbe", "is_correct": false }
+      ]
+    },
+    {
+      "id": "vip_q_004",
+      "question_text_sw": "Kabla ya kuanza safari na mteja wa VIP, ni jambo gani la kwanza unapaswa kukagua?",
+      "options": [
+        { "text_sw": "Kiasi cha mafuta pekee", "is_correct": false },
+        { "text_sw": "Usalama wa gari, ikiwemo matairi na breki", "is_correct": true },
+        { "text_sw": "Barabara zitakazotumika tu", "is_correct": false },
+        { "text_sw": "Hali ya hewa", "is_correct": false }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('./serviceAccountKey.json');
+const serviceAccount = require('../serviceAccountKey.json');
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -60,13 +60,13 @@ const permissions = [
 
 const roles = [
   {
-    id: 'superadmin',
+    id: 'SuperAdmin',
     name: 'Super Admin',
     description: 'Has all permissions and can manage the entire system.',
     permissions: permissions.map(p => p.id), // All permissions
   },
   {
-    id: 'driver',
+    id: 'Driver',
     name: 'Driver',
     description: 'Users who are looking for jobs and taking courses.',
     permissions: [
@@ -81,7 +81,7 @@ const roles = [
     ],
   },
   {
-    id: 'employer',
+    id: 'Employer',
     name: 'Employer',
     description: 'Users who are posting jobs and hiring drivers.',
     permissions: [
@@ -94,7 +94,7 @@ const roles = [
     ],
   },
   {
-    id: 'tutor',
+    id: 'Tutor',
     name: 'Tutor',
     description: 'Manages courses and learning materials.',
     permissions: [
@@ -110,7 +110,7 @@ const roles = [
     ],
   },
   {
-    id: 'license_officer',
+    id: 'LicenseOfficer',
     name: 'License Officer',
     description: 'Manages license applications and issuance.',
     permissions: [
@@ -120,7 +120,7 @@ const roles = [
     ],
   },
   {
-    id: 'test_officer',
+    id: 'TestOfficer',
     name: 'Test Officer',
     description: 'Manages tests, quizzes, and results.',
     permissions: [
@@ -130,7 +130,7 @@ const roles = [
     ],
   },
   {
-    id: 'finance',
+    id: 'Finance',
     name: 'Finance',
     description: 'Manages all financial transactions, reports, and refunds.',
     permissions: [

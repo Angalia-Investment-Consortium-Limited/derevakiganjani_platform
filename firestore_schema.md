@@ -194,6 +194,27 @@ This collection holds individual questions that can be used in tests.
 
 ---
 
+### `Test Question`
+This collection holds individual questions that can be used in tests.
+
+**Document ID:** A unique ID for the question. (e.g., `vip_q_001`).
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `category` | String | The category of the question (e.g., "VIP"). |
+| `correctAnswer` | String | The key for the correct option (e.g., "A"). |
+| `difficulty` | String | The difficulty of the question (e.g., "Unknown"). |
+| `id` | String | The unique ID of the question. |
+| `image` | Null/String | A URL to an image for the question. |
+| `is_active` | Number | A flag indicating if the question is active (1 for true, 0 for false). |
+| `modified` | Timestamp | The timestamp of the last modification. |
+| `options` | Map | A map of options for the question. |
+| `question_text_sw` | String | The main text of the question in Swahili. |
+| `question_type` | String | The type of question (e.g., "MCQ"). |
+| `video_url` | Null/String | A URL to a video for the question. |
+
+---
+
 ### `lessons`
 This collection stores individual lessons for the "Elimika" e-learning platform.
 
@@ -288,5 +309,33 @@ This collection logs each attempt a user makes on a test.
 | `startTime` | Timestamp | The time the user started the test. |
 | `status` | String | The status of the test attempt (e.g., "started", "completed"). |
 | `userId` | String | The ID of the user who took the test. |
+
+---
+
+### `permissions`
+This collection defines the permissions for various actions within the system.
+
+**Document ID:** A string representing the permission (e.g., `courses:create`).
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `description` | String | A human-readable description of what the permission allows. |
+| `id` | String | The unique identifier for the permission, matching the document ID. |
+| `name` | String | A user-friendly name for the permission (e.g., "Create Courses"). |
+
+---
+
+### `roles`
+This collection defines the roles that can be assigned to users, each with a specific set of permissions.
+
+**Document ID:** A unique ID for the role (e.g., `admin`, `driver`).
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `description` | String | A human-readable description of the role. |
+| `id` | String | The unique identifier for the role, matching the document ID. |
+| `name` | String | The name of the role (e.g., "Administrator", "Driver"). |
+| `permissions` | Array | A list of permission IDs (strings) that are granted to this role. |
+
 
 *This document will be updated as more collections are added or modified.*
