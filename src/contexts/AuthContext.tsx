@@ -138,7 +138,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const userCredential = await createUserWithEmailAndPassword(auth, email!, password);
     const firebaseUser = userCredential.user;
     
-    await sendEmailVerification(firebaseUser, actionCodeSettings);
+    try {
+      await sendEmailVerification(firebaseUser, actionCodeSettings);
+      console.log("Verification email sent successfully.");
+    } catch (error) {
+        console.error("Error sending verification email:", error);
+        // Re-throw the error to ensure the registration process fails gracefully
+        // and the user is notified.
+        throw new Error("Failed to send verification email.");
+    }
 
     // 1. Create 'users' document
     const userDocRef = doc(db, 'users', firebaseUser.uid);

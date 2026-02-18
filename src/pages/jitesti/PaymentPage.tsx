@@ -1,206 +1,154 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useJiTesti } from '@/hooks/useJiTesti';
-import PaymentForm from '@/components/jitesti/PaymentForm';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Loader2, AlertCircle, CheckCircle } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { functions } from '@/lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '@/components/ui/use-toast';
+import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
-export default function PaymentPage() {
-  const { categoryCode } = useParams<{ categoryCode: string }>();
-  const { t, language } = useLanguage();
+// Component's Type Definition
+type JitestiCategory = {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  durationInMinutes: number;
+  passMark: number;
+};
+
+// Fetch function with correct Firestore field mapping
+const fetchCategory = async (categoryId: string): Promise<JitestiCategory | null> => {
+    if (!categoryId) return null;
+    const docRef = doc(db, 'jitesti-categories', categoryId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+            id: docSnap.id,
+            title: data.name_en || 'Untitled Test',       // Map from name_en
+            description: data.description_en || '', // Map from description_en
+            price: data.price || 0,
+            durationInMinutes: data.duration_minutes || 0, // Map from duration_minutes
+            passMark: data.pass_mark || 0,             // Map from pass_mark
+        };
+    }
+    return null;
+};
+
+const PaymentPage: React.FC = () => {
+  const { categoryId = '' } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth(); // Get the authenticated user
   const { toast } = useToast();
-  const { useCategoriesList } = useJiTesti();
 
-  // Get categories to find the selected one
-  const { data: categories, isLoading: categoriesLoading } = useCategoriesList();
+  const { data: category, isLoading, error } = useQuery<JitestiCategory | null>({ 
+    queryKey: ['jitesti-category', categoryId], 
+    queryFn: () => fetchCategory(categoryId),
+    enabled: !!categoryId, 
+  });
 
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle');
-  const [paymentData, setPaymentData] = useState<any>(null);
-
-  // Find the selected category
-  const category = categories?.find(cat => cat.category_code === categoryCode);
-
-  useEffect(() => {
-    if (!categoriesLoading && !category) {
-      toast({
-        title: t('error') || 'Error',
-        description: t('categoryNotFound') || 'Test category not found',
-        variant: 'destructive',
-      });
-      navigate('/jitesti');
-    }
-  }, [categories, category, categoriesLoading, navigate, toast, t]);
-
-  const handlePaymentSubmit = async (paymentData: any) => {
-    setIsProcessing(true);
-    setPaymentStatus('processing');
-
-    try {
-      const initiateSelcomPayment = httpsCallable(functions, 'initiateSelcomPayment');
-      const result: any = await initiateSelcomPayment({
-        category_code: categoryCode,
-        payment_method: paymentData.paymentMethod,
-        phone_number: paymentData.phoneNumber,
-      });
-
-      if (result.data.success) {
-        setPaymentStatus('success');
-        setPaymentData(result.data);
-
-        toast({
-          title: t('paymentInitiated') || 'Payment Initiated',
-          description: t('paymentInstructions') || 'Please complete the payment on your mobile device.',
-        });
-
-        // Redirect to test taking after a delay
-        setTimeout(() => {
-          navigate(`/jitesti/test/${categoryCode}?payment=${result.data.referenceNumber}`);
-        }, 3000);
-      } else {
-        throw new Error(result.data.message);
+  const createTestAttemptMutation = useMutation({
+    mutationFn: async () => {
+      if (!user || !category) {
+        throw new Error("You must be logged in and a category must be selected to start a test.");
       }
-    } catch (error: any) {
-      setPaymentStatus('error');
+
+      const testAttemptData = {
+        userId: user.uid,
+        categoryId: categoryId,
+        categoryTitle: category.title, // This will now be correctly populated
+        durationInMinutes: category.durationInMinutes,
+        passMark: category.passMark,
+        startTime: serverTimestamp(),
+        status: 'started',
+        score: null,
+        answers: {},
+      };
+
+      const docRef = await addDoc(collection(db, 'test_attempts'), testAttemptData);
+      return docRef.id;
+    },
+    onSuccess: (testAttemptId) => {
+      navigate(`/jitesti/test/${testAttemptId}`);
+    },
+    onError: (err) => {
+      // Use a more specific error type if available, otherwise fallback to a generic message
+      const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
       toast({
-        title: t('paymentFailed') || 'Payment Failed',
-        description: error.message || t('tryAgain') || 'Please try again.',
-        variant: 'destructive',
+        title: "Error Starting Test",
+        description: errorMessage,
+        variant: "destructive",
       });
-    } finally {
-      setIsProcessing(false);
-    }
+    },
+  });
+
+  const handleStartTest = () => {
+    createTestAttemptMutation.mutate();
   };
 
-  if (categoriesLoading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  if (!category) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>{t('error') || 'Error'}</AlertTitle>
-            <AlertDescription>
-              {t('categoryNotFound') || 'Test category not found'}
-            </AlertDescription>
-          </Alert>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  const categoryName = language === 'sw' ? category.name_sw : category.name_en;
-
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />
-
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Page Header */}
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-bold mb-2">
-              {t('completePayment') || 'Complete Payment'}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('payForTest') || 'Pay for'} {categoryName}
+    <div className="min-h-screen flex flex-col bg-background">
+    <Header/>
+    <main className="flex-grow container mx-auto px-4 py-8">
+            <Breadcrumb className="mb-6">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink href="/">Home</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                <BreadcrumbLink href="/jitesti">Jitesti Categories</BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator />
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Payment Confirmation</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+    <div className="container mx-auto py-10 flex items-center justify-center">
+       <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Confirm Your Test</CardTitle>
+            <CardDescription>You are about to start the following test.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             {isLoading && <p>Loading details...</p>}
+             {error && <p className="text-red-500">Could not load test details.</p>}
+             {category && (
+                <div className="space-y-4">
+                    <h2 className="text-2xl font-bold">{category.title}</h2>
+                    <p className="text-muted-foreground">{category.description}</p>
+                    <div className="border-t pt-4 mt-4">
+                        <p className="flex justify-between"><span>Duration:</span> <strong>{category.durationInMinutes} minutes</strong></p>
+                        <p className="flex justify-between mt-2 text-xl"><span>Price:</span> <strong>TZS {category.price.toLocaleString()}</strong></p>
+                    </div>
+                </div>
+             )}
+          </CardContent>
+          <CardFooter className="flex-col space-y-4">
+            <p className="text-xs text-muted-foreground text-center">
+                This is a simulated payment. No real transaction will be made.
             </p>
-          </div>
-
-          {/* Test Details Card */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                {categoryName}
-              </CardTitle>
-              <CardDescription>
-                {language === 'sw' ? category.description_sw : category.description_en}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">{t('duration') || 'Duration'}:</span> {category.duration_minutes} {t('minutes') || 'min'}
-                </div>
-                <div>
-                  <span className="font-medium">{t('questions') || 'Questions'}:</span> {category.total_questions}
-                </div>
-                <div>
-                  <span className="font-medium">{t('passMark') || 'Pass Mark'}:</span> {category.pass_mark}%
-                </div>
-                <div className="text-lg font-bold text-green-600">
-                  {t('amount') || 'Amount'}: {category.price.toLocaleString()} TZS
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Form */}
-          <PaymentForm
-            category={category}
-            onSubmit={handlePaymentSubmit}
-            isProcessing={isProcessing}
-          />
-
-          {/* Action Buttons */}
-          <div className="flex gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/jitesti')}
-              className="flex-1"
-              disabled={isProcessing}
+            <Button 
+                className="w-full" 
+                disabled={!category || createTestAttemptMutation.isPending}
+                onClick={handleStartTest}
             >
-              {t('back') || 'Back'}
+                {createTestAttemptMutation.isPending ? 'Starting Test...' : 'Proceed to Test (Simulated)'}
             </Button>
-          </div>
-
-          {/* Status Messages */}
-          {paymentStatus === 'success' && (
-            <Alert className="mt-4">
-              <CheckCircle className="h-4 w-4" />
-              <AlertTitle>{t('paymentSubmitted') || 'Payment Submitted'}</AlertTitle>
-              <AlertDescription>
-                {t('paymentVerification') || 'Your payment is being verified. You will be redirected to start your test shortly.'}
-              </AlertDescription>
-            </Alert>
-          )}
-
-          {paymentStatus === 'error' && (
-            <Alert variant="destructive" className="mt-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>{t('paymentFailed') || 'Payment Failed'}</AlertTitle>
-              <AlertDescription>
-                {t('tryAgain') || 'Please try again or contact support if the problem persists.'}
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-      </main>
-
-      <Footer />
+          </CardFooter>
+       </Card>
+    </div>
+    </main>
+    <Footer />
     </div>
   );
-}
+};
+
+export default PaymentPage;

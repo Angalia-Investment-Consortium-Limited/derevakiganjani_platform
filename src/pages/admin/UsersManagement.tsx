@@ -90,7 +90,7 @@ const UsersManagement = () => {
     } catch (err: any) {
       toast({
         title: t('error'),
-        description: err?.message || t('failedToUpdateUserStatus'),
+        description: err?.message || t('Failed To Update User Status'),
         variant: 'destructive',
       });
     }
@@ -108,8 +108,8 @@ const UsersManagement = () => {
       await deleteUser(userToDelete.id);
       
       toast({
-        title: t('userDeleted'),
-        description: `${userToDelete.name} ${t('hasBeenDeleted')}`,
+        title: t('User Deleted'),
+        description: `${userToDelete.name} ${t('Has Been Deleted')}`,
       });
       
       setDeleteDialogOpen(false);
@@ -118,7 +118,7 @@ const UsersManagement = () => {
     } catch (err: any) {
       toast({
         title: t('error'),
-        description: err?.message || t('failedToDeleteUser'),
+        description: err?.message || t('Failed To Delete User'),
         variant: 'destructive',
       });
     }
@@ -126,8 +126,8 @@ const UsersManagement = () => {
 
   const handleExport = () => {
     toast({
-      title: t('exportStarted'),
-      description: t('exportingUserData'),
+      title: t('Export Started'),
+      description: t('Exporting User Data'),
     });
   };
 
@@ -154,9 +154,9 @@ const UsersManagement = () => {
             <CardContent className="pt-6">
               <div className="text-center py-8">
                 <p className="text-destructive mb-4">
-                  {t('failedToLoadUsers')}: {error}
+                  {t('Failed To Load Users')}: {error}
                 </p>
-                <Button onClick={refresh}>{t('retry')}</Button>
+                <Button onClick={refresh}>{t('Retry')}</Button>
               </div>
             </CardContent>
           </Card>
@@ -170,26 +170,26 @@ const UsersManagement = () => {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-bold">{t('usersManagement')}</h1>
-            <p className="text-muted-foreground mt-1">{t('manageUsersDescription')}</p>
+            <h1 className="text-3xl font-bold">{t('Users Management')}</h1>
+            <p className="text-muted-foreground mt-1">{t('Manage Users Description')}</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
-              {t('export')}
+              {t('Export')}
             </Button>
             <Button onClick={() => navigate('/admin/users/new')}>
               <Plus className="h-4 w-4 mr-2" />
-              {t('addUser')}
+              {t('Add User')}
             </Button>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>{t('allUsers')}</CardTitle>
+            <CardTitle>{t('All Users')}</CardTitle>
             <CardDescription>
-              {t('viewAndManageAllUsers', { total: total.toString() })}
+              {t('View And Manage All Users', { total: total.toString() })}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -197,7 +197,7 @@ const UsersManagement = () => {
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder={t('searchByNamePhoneEmail')}
+                  placeholder={t('Search By Name Phone Email')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
@@ -205,13 +205,13 @@ const UsersManagement = () => {
               </div>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder={t('filterByRole')} />
+                  <SelectValue placeholder={t('Filter By Role')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('allRoles')}</SelectItem>
-                  <SelectItem value="driver">{t('driver')}</SelectItem>
-                  <SelectItem value="employer">{t('employer')}</SelectItem>
-                  <SelectItem value="admin">{t('admin')}</SelectItem>
+                  <SelectItem value="all">{t('All Roles')}</SelectItem>
+                  <SelectItem value="driver">{t('Driver')}</SelectItem>
+                  <SelectItem value="employer">{t('Employer')}</SelectItem>
+                  <SelectItem value="admin">{t('Admin')}</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -219,9 +219,9 @@ const UsersManagement = () => {
                   <SelectValue placeholder={t('filterByStatus')} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">{t('allStatuses')}</SelectItem>
-                  <SelectItem value="active">{t('active')}</SelectItem>
-                  <SelectItem value="suspended">{t('suspended')}</SelectItem>
+                  <SelectItem value="all">{t('All Statuses')}</SelectItem>
+                  <SelectItem value="active">{t('Active')}</SelectItem>
+                  <SelectItem value="suspended">{t('Suspended')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -232,10 +232,10 @@ const UsersManagement = () => {
                   <TableRow>
                     <TableHead>{t('name')}</TableHead>
                     <TableHead>{t('phone')}</TableHead>
-                    <TableHead>{t('email')}</TableHead>
+                    <TableHead>{t('Email')}</TableHead>
                     <TableHead>{t('role')}</TableHead>
                     <TableHead>{t('status')}</TableHead>
-                    <TableHead>{t('createdOn')}</TableHead>
+                    <TableHead>{t('Created On')}</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -255,7 +255,7 @@ const UsersManagement = () => {
                   ) : users.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                        {t('noUsersFound')}
+                        {t('No Users Found')}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -314,7 +314,7 @@ const UsersManagement = () => {
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {t('showing', { count: users.length.toString(), total: total.toString() })}
+                  {t('Showing', { count: users.length.toString(), total: total.toString() })}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -348,13 +348,13 @@ const UsersManagement = () => {
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
+            <AlertDialogTitle>{t('Are You Sure')}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t('deleteUserConfirmation', { name: userToDelete?.name || '' })}
+              {t('Delete User Confirmation', { name: userToDelete?.name || '' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>{t('cancel')}</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>{t('Cancel')}</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteConfirm}
               disabled={deleting}
@@ -363,10 +363,10 @@ const UsersManagement = () => {
               {deleting ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {t('deleting')}...
+                  {t('Deleting')}...
                 </>
               ) : (
-                t('delete')
+                t('Delete')
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -19,7 +19,9 @@ import {
   Download,
   Shield,
   Cog,
-  Star
+  Star,
+  LucideGraduationCap,
+  TableConfig
 } from 'lucide-react';
 import {
   Sidebar,
@@ -62,8 +64,10 @@ const navigationGroups = [
     label: 'JiTesti (Testing)',
     items: [
       { title: 'Question Bank', icon: GraduationCap, href: '/admin/questions', badge: null },
+      { title: 'Test Categories', icon: TableConfig, href:'/admin/jitesti/categories', badge: null},
       { title: 'Test Results', icon: BarChart3, href: '/admin/test-config', badge: null },
       { title: 'Test Config', icon: Settings2, href: '/admin/test-config', badge: null }
+     
     ]
   },
   {

@@ -11,7 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { User, Building2, Languages, Loader2 } from 'lucide-react';
+import { User, Building2, Languages, Loader2, MailCheck } from 'lucide-react';
 import derevaLogo from '../../assets/logo.png';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -21,6 +21,8 @@ type UserType = 'driver' | 'employer';
 
 const Register = () => {
   const [userType, setUserType] = useState<UserType>('driver');
+  const [registrationComplete, setRegistrationComplete] = useState(false);
+  const [isResending, setIsResending] = useState(false);
 
   // Common fields
   const [phone, setPhone] = useState('');
@@ -46,7 +48,7 @@ const Register = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t, language: uiLanguage } = useLanguage();
-  const { currentUser, register } = useAuth();
+  const { currentUser, register, sendCurrentUserEmailVerification, logout } = useAuth();
 
   // Sync preferred language with UI language on mount
   useEffect(() => {
@@ -55,9 +57,9 @@ const Register = () => {
     }
   }, [uiLanguage]);
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated and email is verified
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.emailVerified) {
       navigate('/dashboard', { replace: true });
     }
   }, [currentUser, navigate]);
@@ -117,16 +119,7 @@ const Register = () => {
         description: 'Account created successfully! Please check your email to verify your account before logging in.'
       });
 
-      if (userType === 'employer') {
-        navigate('/employer/pending-verification', {
-          replace: true,
-          state: {
-            message: 'Your employer account has been created. Please check your email to verify your account. You will receive a separate email once your account is approved.'
-          }
-        });
-      } else {
-        navigate('/ingia', { replace: true });
-      }
+      setRegistrationComplete(true);
 
     } catch (error: any) {
       let errorMessage = 'Registration failed. Please try again.';
@@ -146,7 +139,60 @@ const Register = () => {
       setIsLoading(false);
     }
   };
+
+  const handleResendEmail = async () => {
+    setIsResending(true);
+    try {
+      await sendCurrentUserEmailVerification();
+      toast({
+        title: "Verification Email Sent",
+        description: "A new verification email has been sent. Please check your inbox and spam folder.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to send verification email. Please try again in a few moments.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
   
+  if (registrationComplete) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-8 flex items-center justify-center">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center space-y-4">
+                <MailCheck className="mx-auto h-12 w-12 text-green-500" />
+                <CardTitle className="text-2xl">Please Verify Your Email</CardTitle>
+                <CardDescription>
+                    An email has been sent to your address. Please click the link in the email to complete your registration.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="text-sm text-center text-muted-foreground">
+                    If you don't see the email, please check your spam folder.
+                </p>
+                <Button onClick={handleResendEmail} disabled={isResending} className="w-full">
+                    {isResending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Resend Verification Email
+                </Button>
+                <div className="text-center">
+                  <Link to="/ingia" onClick={() => logout()} className="text-sm text-primary hover:underline">
+                    Back to Login
+                  </Link>
+                </div>
+            </CardContent>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

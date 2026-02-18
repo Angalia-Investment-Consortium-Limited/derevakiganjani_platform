@@ -1,11 +1,73 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow read and write access to all documents for any authenticated user.
-    // This is for development purposes and should be secured before production.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // Helper function to check for Admin role
+    function isAdmin() {
+      return exists(/admins/$(request.auth.uid));
+    }
+
+    // Drivers can read categories, Admins can do anything
+    match /jitesti-categories/{categoryId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin();
+    }
+
+    // Drivers can't read tests directly (prevents fetching answers), Admins can manage
+    match /tests/{testId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Drivers can't read question answers directly, Admins can manage
+    match /questions/{questionId} {
+      allow write: if isAdmin();
+      // Allow reading only the question text and options, not the answer
+      allow read: if request.auth != null && !("correctAnswerIndex" in resource.data);
+    }
+
+    // Rules for creating and managing payments
+    match /payments/{paymentId} {
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
+      // Allow creation with 'Pending' status
+      allow create: if request.auth.uid == request.resource.data.userId
+                      && request.resource.data.status == 'Pending';
+      // Allow update to 'Completed' ONLY if a selcom transaction ID is provided
+      // This is our primary webhook-less security check.
+      allow update: if request.auth.uid == resource.data.userId
+                      && resource.data.status == 'Pending'
+                      && request.resource.data.status == 'Completed'
+                      && request.resource.data.selcomTransactionId != null;
+    }
+
+    // The core rules for test attempts
+    match /test_attempts/{attemptId} {
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
+
+      // Allow creation if linked to a COMPLETED payment
+      allow create: if request.auth.uid == request.resource.data.userId
+                      && request.resource.data.status == 'not-started'
+                      && get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.status == 'Completed';
+      
+      // Allow updates only while 'in-progress' and before expiry
+      allow update: if request.auth.uid == resource.data.userId
+                      && resource.data.status == 'in-progress'
+                      && request.time < resource.data.expiresAt
+                      // Prevent changing immutable fields
+                      && request.resource.data.userId == resource.data.userId
+                      && request.resource.data.testId == resource.data.testId
+                      // Score can only be written once when moving to 'completed'
+                      && (request.resource.data.score == null || resource.data.score == null);
+
+      // Prevent any further modification once completed
+      allow update: if false; 
+    }
+
+    // Certificate access rules
+    match /certificates/{certId} {
+      allow read: if request.auth.uid == resource.data.userId || isAdmin();
+      // Certificates are created by the client, but only if the linked test_attempt was passed
+      allow create: if request.auth.uid == request.resource.data.userId
+                      && get(/databases/$(database)/documents/test_attempts/$(request.resource.data.attemptId)).data.pass == true;
     }
   }
 }

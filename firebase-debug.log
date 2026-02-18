@@ -1,0 +1,129 @@
+[debug] [2026-02-17T16:32:12.044Z] ----------------------------------------------------------------------
+[debug] [2026-02-17T16:32:12.047Z] Command:       /nix/store/ws50yvm6vzlzf7jzz6n7xh4szddrack1-nodejs-20.19.1/bin/node /nix/store/gm9mcvzb17vv8cla08khrg29vxn3sq4r-firebase-tools-15.1.0/lib/node_modules/firebase-tools/lib/bin/firebase.js deploy --only hosting --debug
+[debug] [2026-02-17T16:32:12.048Z] CLI Version:   15.1.0
+[debug] [2026-02-17T16:32:12.048Z] Platform:      linux
+[debug] [2026-02-17T16:32:12.048Z] Node Version:  v20.19.1
+[debug] [2026-02-17T16:32:12.048Z] Time:          Tue Feb 17 2026 16:32:12 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-02-17T16:32:12.049Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-02-17T16:32:14.235Z] Checked if tokens are valid: false, expires at: 1771341564239
+[debug] [2026-02-17T16:32:14.237Z] Checked if tokens are valid: false, expires at: 1771341564239
+[debug] [2026-02-17T16:32:14.238Z] > refreshing access token with scopes: []
+[debug] [2026-02-17T16:32:14.241Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-02-17T16:32:14.242Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-17T16:32:14.363Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-02-17T16:32:14.364Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-02-17T16:32:14.385Z] >>> [apiv2][query] GET https://monospace-pa.googleapis.com/v1/workspaces/derevakiganjani-95236462 [none]
+[debug] [2026-02-17T16:32:15.096Z] <<< [apiv2][status] GET https://monospace-pa.googleapis.com/v1/workspaces/derevakiganjani-95236462 200
+[debug] [2026-02-17T16:32:15.097Z] <<< [apiv2][body] GET https://monospace-pa.googleapis.com/v1/workspaces/derevakiganjani-95236462 {"workspaceId":"derevakiganjani-95236462","name":"derevakiganjani","workspaceRedirectUrl":"firebase-derevakiganjani-1769298209139.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev","status":"WORKSPACE_STATUS_RUNNING","lastAccessDatetime":"2026-02-17T10:30:32.128511Z","workspaceTemplate":"WORKSPACE_TEMPLATE_BLANK_WEB","owner":"SELF","serviceAccountEmail":"msp-2708444697688814961@monospace-per-ws-sa-2.iam.gserviceaccount.com","gitRepoUrl":"https://github.com/Angalia-Investment-Consortium-Limited/derevakiganjani_platform","enableNix":true,"ownerEmail":"brian2xa@gmail.com","workstationAccessToken":"eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJodHRwczovL2Nsb3VkLmdvb2dsZS5jb20vd29ya3N0YXRpb25zIiwiYXVkIjoiZmlyZWJhc2UtZGVyZXZha2lnYW5qYW5pLTE3NjkyOTgyMDkxMzkuY2x1c3Rlci1pa3NsaDRyZHNuYnFzdnU1bnczdjRkcWpqMi5jbG91ZHdvcmtzdGF0aW9ucy5kZXYiLCJpYXQiOjE3NzEzNDU5MzQsImV4cCI6MTc3MTQzMjMzNH0.D_yEOoU8DuAe7D3NEngyQKlqJDsdE7v-wiDj0ouJ-A5dukteXfl_KY-NEXhhwGX6aodEOLDUBsjGOQUMI5cweinr4gG5pTtOlpxfP575UK2NbnskMpVimC-xNm7ra-8JvBQAnRauDxNt9DrsDxpYKrzPppA6g57NRAyHNUB9klkibIhB_wicfnADQiyVctU4ITsfaNrO_j604qkU17Lzlzlb3WCnJzE5pd1BWc6jx463IKiHGuA2Pb6k9TeuqPGVIH90zcG587e34Zh-NDz0aprZW0VPVRJ7Bd-m8gFxDA4OHtmZhfargKEBpL_lPQrbR_1G8XyNLWLxRSmsqSqJ8A","firebaseProjectId":"derevakiganjani"}
+[debug] [2026-02-17T16:32:15.101Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2026-02-17T16:32:15.102Z] > authorizing via signed-in user (brian2xa@gmail.com)
+[debug] [2026-02-17T16:32:15.102Z] [iam] checking project derevakiganjani for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-02-17T16:32:15.103Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:15.106Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:15.108Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions [none]
+[debug] [2026-02-17T16:32:15.108Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions x-goog-quota-user=projects/derevakiganjani
+[debug] [2026-02-17T16:32:15.109Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-17T16:32:15.267Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions 200
+[debug] [2026-02-17T16:32:15.269Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-02-17T16:32:15.274Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:15.274Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:15.277Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/derevakiganjani [none]
+[debug] [2026-02-17T16:32:15.509Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/derevakiganjani 200
+[debug] [2026-02-17T16:32:15.510Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/derevakiganjani {"projectId":"derevakiganjani","projectNumber":"916725946911","displayName":"derevakiganjani","name":"projects/derevakiganjani","resources":{"hostingSite":"derevakiganjani"},"state":"ACTIVE","etag":"1_e90a482a-a8de-488c-8323-f02d694183ef"}
+[info] 
+[info] === Deploying to 'derevakiganjani'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-02-17T16:32:15.539Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:15.539Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:15.539Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions [none]
+[debug] [2026-02-17T16:32:15.540Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase--project-idx"}}
+[debug] [2026-02-17T16:32:17.091Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions 200
+[debug] [2026-02-17T16:32:17.091Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions {"name":"projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase--project-idx"}}
+[info] i  hosting[derevakiganjani]: beginning deploy... 
+[info] i  hosting[derevakiganjani]: found 15 files in dist 
+[debug] [2026-02-17T16:32:17.148Z] [hosting] uploading with 200 concurrency
+[debug] [2026-02-17T16:32:19.007Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:19.007Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:19.021Z] [hosting] hash cache [ZGlzdA] stored for 15 files
+[debug] [2026-02-17T16:32:19.026Z] [hosting][hash queue][FINAL] {"max":1850,"min":59,"avg":947.8,"active":0,"complete":15,"success":15,"errored":0,"retried":0,"total":15,"elapsed":1876}
+[debug] [2026-02-17T16:32:19.027Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543:populateFiles [none]
+[debug] [2026-02-17T16:32:19.028Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543:populateFiles {"files":{"/vite.svg":"7ec9c8a9811a8079f229d974045de07d24c24528c9c9f8d247233aaea7a9e831","/index.html":"cfcf1e5a164f2487eec6a74990f88a1d619e72ca2e37c7ad821a93495db72d0a","/.vite/manifest.json":"da142f0f4140eabe84df9e3a4e74f08634e2071ee16e1245c0542794ba710f5d","/assets/index-Cy5afvFx.css":"ae57c4edaae5abfb6bbe66816d85233effd4333dd2a2f778d782a8372b73230f","/assets/logo-DQrYtaup.png":"e8390831d5b44b1e0c4489a7dc4ba7c689482073169f8e0d1ed4feb458d9c61f","/logo.png":"e8390831d5b44b1e0c4489a7dc4ba7c689482073169f8e0d1ed4feb458d9c61f","/assets/18-DHxrzO-7.jpg":"b18b59427659df2ddfc32daa3e8399de97922dbc66d7ee186d1ace5cccb8b5af","/assets/index-DMHVInbk.js":"9ffe6cb8c29e7bdb874483577ed80026319dc24cf8eb55b1706c2a38cf522b08","/assets/1-QBrop3GW.jpg":"228cbc2b62782d98156595b0c6741c97fa983273890519d31071a1a51c36b2e9","/assets/20-XyvcA0Hw.jpg":"1cef8f9d6e1b2af621e69a8f5412376b49aa4847b042fc21330661d50e1ea50a","/assets/35-C8QjWFVy.jpg":"6b6e7e9394f8666f80c7e3f2fb1136c0efe882f63294d986695a64f3c0244a3a","/assets/22-Bl1sFxk2.jpg":"119946541994b5d11cb7b55488a5d179e92002015a55091c0abe48f026044334","/assets/10-IHOW4F6J.jpg":"1449dc06afcd2f2b58ce7030181b861b1815cfaa07013ba91bc043b03c780bfe","/assets/15-Dh32cPJ8.jpg":"171cfa2cb94410efea9d0b670095e3fca32af1066378f6afab6b2eac69ccb687","/assets/5-B769R-ul.jpg":"4504582cb287fb7f188b587e767ad09857958763787cd85e75c941edb219e450"}}
+[info] i  hosting: adding files to version [0/15] (0%) 
+[debug] [2026-02-17T16:32:20.165Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543:populateFiles 200
+[debug] [2026-02-17T16:32:20.166Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543:populateFiles {"uploadRequiredHashes":["da142f0f4140eabe84df9e3a4e74f08634e2071ee16e1245c0542794ba710f5d","cfcf1e5a164f2487eec6a74990f88a1d619e72ca2e37c7ad821a93495db72d0a","ae57c4edaae5abfb6bbe66816d85233effd4333dd2a2f778d782a8372b73230f","9ffe6cb8c29e7bdb874483577ed80026319dc24cf8eb55b1706c2a38cf522b08"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files"}
+[debug] [2026-02-17T16:32:20.168Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.169Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.169Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.171Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.171Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.171Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.172Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.173Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:20.175Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/da142f0f4140eabe84df9e3a4e74f08634e2071ee16e1245c0542794ba710f5d [none]
+[debug] [2026-02-17T16:32:20.177Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/da142f0f4140eabe84df9e3a4e74f08634e2071ee16e1245c0542794ba710f5d [stream]
+[debug] [2026-02-17T16:32:20.182Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/cfcf1e5a164f2487eec6a74990f88a1d619e72ca2e37c7ad821a93495db72d0a [none]
+[debug] [2026-02-17T16:32:20.182Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/cfcf1e5a164f2487eec6a74990f88a1d619e72ca2e37c7ad821a93495db72d0a [stream]
+[debug] [2026-02-17T16:32:20.184Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/ae57c4edaae5abfb6bbe66816d85233effd4333dd2a2f778d782a8372b73230f [none]
+[debug] [2026-02-17T16:32:20.184Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/ae57c4edaae5abfb6bbe66816d85233effd4333dd2a2f778d782a8372b73230f [stream]
+[debug] [2026-02-17T16:32:20.187Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/9ffe6cb8c29e7bdb874483577ed80026319dc24cf8eb55b1706c2a38cf522b08 [none]
+[debug] [2026-02-17T16:32:20.187Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/9ffe6cb8c29e7bdb874483577ed80026319dc24cf8eb55b1706c2a38cf522b08 [stream]
+[debug] [2026-02-17T16:32:20.189Z] [hosting][populate queue][FINAL] {"max":1168,"min":1168,"avg":1168,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":1182}
+[debug] [2026-02-17T16:32:20.190Z] [hosting] uploads queued: 4
+[debug] [2026-02-17T16:32:21.140Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/cfcf1e5a164f2487eec6a74990f88a1d619e72ca2e37c7ad821a93495db72d0a 200
+[debug] [2026-02-17T16:32:21.141Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/cfcf1e5a164f2487eec6a74990f88a1d619e72ca2e37c7ad821a93495db72d0a [stream]
+[info] i  hosting: uploading new files [1/4] (25%) 
+[debug] [2026-02-17T16:32:21.380Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/ae57c4edaae5abfb6bbe66816d85233effd4333dd2a2f778d782a8372b73230f 200
+[debug] [2026-02-17T16:32:21.380Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/ae57c4edaae5abfb6bbe66816d85233effd4333dd2a2f778d782a8372b73230f [stream]
+[debug] [2026-02-17T16:32:21.435Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/da142f0f4140eabe84df9e3a4e74f08634e2071ee16e1245c0542794ba710f5d 200
+[debug] [2026-02-17T16:32:21.436Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/da142f0f4140eabe84df9e3a4e74f08634e2071ee16e1245c0542794ba710f5d [stream]
+[debug] [2026-02-17T16:32:21.985Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/9ffe6cb8c29e7bdb874483577ed80026319dc24cf8eb55b1706c2a38cf522b08 200
+[debug] [2026-02-17T16:32:21.986Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/derevakiganjani/versions/96b857ac6f775543/files/9ffe6cb8c29e7bdb874483577ed80026319dc24cf8eb55b1706c2a38cf522b08 [stream]
+[debug] [2026-02-17T16:32:21.989Z] [hosting][upload queue][FINAL] {"max":1816,"min":972,"avg":1316.75,"active":0,"complete":4,"success":4,"errored":0,"retried":0,"total":4,"elapsed":1823}
+[info] i  hosting: upload complete 
+[info] ✔  hosting[derevakiganjani]: file upload complete 
+[debug] [2026-02-17T16:32:21.992Z] [hosting] deploy completed after 4888ms
+[debug] [2026-02-17T16:32:21.992Z] [
+  {
+    "config": {
+      "public": "dist",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "derevakiganjani"
+    },
+    "version": "projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543"
+  }
+]
+[info] i  hosting[derevakiganjani]: finalizing version... 
+[debug] [2026-02-17T16:32:21.998Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:21.998Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:22.000Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions/96b857ac6f775543 updateMask=status%2Cconfig
+[debug] [2026-02-17T16:32:22.000Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions/96b857ac6f775543 {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]}}
+[debug] [2026-02-17T16:32:23.375Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions/96b857ac6f775543 200
+[debug] [2026-02-17T16:32:23.376Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/versions/96b857ac6f775543 {"name":"projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase--project-idx"},"createTime":"2026-02-17T16:32:16.008685Z","createUser":{"email":"brian2xa@gmail.com"},"finalizeTime":"2026-02-17T16:32:23.252403Z","finalizeUser":{"email":"brian2xa@gmail.com"}}
+[debug] [2026-02-17T16:32:23.376Z] [hosting] finalized version for derevakiganjani:[object Object]
+[info] ✔  hosting[derevakiganjani]: version finalized 
+[info] i  hosting[derevakiganjani]: releasing new version... 
+[debug] [2026-02-17T16:32:23.377Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:23.377Z] Checked if tokens are valid: true, expires at: 1771349533366
+[debug] [2026-02-17T16:32:23.377Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/channels/live/releases versionName=projects%2F916725946911%2Fsites%2Fderevakiganjani%2Fversions%2F96b857ac6f775543
+[debug] [2026-02-17T16:32:23.378Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/channels/live/releases {}
+[debug] [2026-02-17T16:32:25.229Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/channels/live/releases 200
+[debug] [2026-02-17T16:32:25.229Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/derevakiganjani/channels/live/releases {"name":"projects/916725946911/sites/derevakiganjani/channels/live/releases/1771345944126000","version":{"name":"projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase--project-idx"},"createTime":"2026-02-17T16:32:16.008685Z","createUser":{"email":"brian2xa@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFZbrh4eeWzaFXzUlHLvdB4oCGAQUZ4vFwfDf5qOp0KJ-hpoIy"},"finalizeTime":"2026-02-17T16:32:23.252403Z","finalizeUser":{"email":"brian2xa@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFZbrh4eeWzaFXzUlHLvdB4oCGAQUZ4vFwfDf5qOp0KJ-hpoIy"}},"type":"DEPLOY","releaseTime":"2026-02-17T16:32:24.126Z","releaseUser":{"email":"brian2xa@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFZbrh4eeWzaFXzUlHLvdB4oCGAQUZ4vFwfDf5qOp0KJ-hpoIy"}}
+[debug] [2026-02-17T16:32:25.229Z] [hosting] release: {"name":"projects/916725946911/sites/derevakiganjani/channels/live/releases/1771345944126000","version":{"name":"projects/916725946911/sites/derevakiganjani/versions/96b857ac6f775543","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase--project-idx"},"createTime":"2026-02-17T16:32:16.008685Z","createUser":{"email":"brian2xa@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFZbrh4eeWzaFXzUlHLvdB4oCGAQUZ4vFwfDf5qOp0KJ-hpoIy"},"finalizeTime":"2026-02-17T16:32:23.252403Z","finalizeUser":{"email":"brian2xa@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFZbrh4eeWzaFXzUlHLvdB4oCGAQUZ4vFwfDf5qOp0KJ-hpoIy"}},"type":"DEPLOY","releaseTime":"2026-02-17T16:32:24.126Z","releaseUser":{"email":"brian2xa@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIFZbrh4eeWzaFXzUlHLvdB4oCGAQUZ4vFwfDf5qOp0KJ-hpoIy"}}
+[info] ✔  hosting[derevakiganjani]: release complete 
+[info] 
+[info] ✔  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/derevakiganjani/overview
+[info] Hosting URL: https://derevakiganjani.web.app

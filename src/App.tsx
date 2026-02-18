@@ -93,15 +93,17 @@ import EmployerReview from "./pages/admin/EmployerReview";
 import JobManagement from "./pages/admin/JobManagement";
 import TestCategories from "./pages/jitesti/TestCategories";
 import PaymentPage from "./pages/jitesti/PaymentPage";
-import TestTaking from "./pages/jitesti/TestTaking";
+import TestPage from "./pages/jitesti/TestPage";
 import WhatsAppPrivacyPolicy from "./pages/WhatsAppPrivacyPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import JobDetailDriver from "./pages/ajira/JobDetailDriver";
+import JitestiCategoryManager from "./pages/admin/JitestiCategoryManager";
+import JitestiTestManager from "./pages/admin/JitestiTestManager";
 
 const queryClient = new QueryClient();
 
 const App = () => (
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
+    <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <LanguageProvider>
           <AuthProvider>
@@ -440,21 +442,30 @@ const App = () => (
             } />
             
             {/* JiTesti Routes */}
-
+            <Route path="/admin/jitesti/categories" element={
+              <AdminRoleBasedRoute>
+                <JitestiCategoryManager />
+              </AdminRoleBasedRoute>
+            } />
+            <Route path="/admin/jitesti/tests" element={
+              <AdminRoleBasedRoute>
+                <JitestiTestManager />
+              </AdminRoleBasedRoute>
+            } />
             
              <Route path="/jitesti" element={
               <ProtectedRoute>
                 <TestCategories />
               </ProtectedRoute>
             } />
-            <Route path="/jitesti/payment/:categoryCode" element={
+            <Route path="/jitesti/payment/:categoryId" element={
               <ProtectedRoute>
                 <PaymentPage />
               </ProtectedRoute>
             } />
-            <Route path="/jitesti/test/:categoryCode" element={
+            <Route path="/jitesti/test/:testAttemptId" element={
               <ProtectedRoute>
-                <TestTaking />
+                <TestPage />
               </ProtectedRoute>
             } /> 
             

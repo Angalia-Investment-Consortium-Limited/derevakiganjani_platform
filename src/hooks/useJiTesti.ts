@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/firebase';
 import {
@@ -11,6 +12,7 @@ import {
   updateDoc,
   serverTimestamp,
   arrayUnion,
+  documentId,
 } from 'firebase/firestore';
 import type {
   DocumentData,
@@ -142,67 +144,70 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     setLoading(true);
     setError(null);
     try {
-      // 1. Fetch Test Details from the correct collection
-      const testDocRef = doc(db, 'jitesti-categories', categoryId);
-      const testDocSnap = await getDoc(testDocRef);
-      if (!testDocSnap.exists()) throw new Error("Test category not found");
-      const testData = testDocSnap.data() as TestCategory;
+        // 1. Fetch Category Details from `jitesti-categories`
+        const categoryDocRef = doc(db, 'jitesti-categories', categoryId);
+        const categoryDocSnap = await getDoc(categoryDocRef);
+        if (!categoryDocSnap.exists()) throw new Error("Test category not found.");
+        const categoryData = categoryDocSnap.data() as TestCategory;
 
-      // 2. Fetch Questions
-      const questionsQuery = query(collection(db, 'questions'), where('categoryId', '==', categoryId), where('isActive', '==', true));
-      const questionsSnapshot = await getDocs(questionsQuery);
-      const questions = questionsSnapshot.docs.map(d => {
-          const data = d.data() as DocumentData;
-          return {
-            id: d.id,
-            question_text_en: data.question_text_en,
-            question_text_sw: data.question_text_sw,
-            question_type: data.question_type,
-            image: data.image,
-            video_url: data.video_url,
-            option_a_en: data.option_a_en,
-            option_a_sw: data.option_a_sw,
-            option_b_en: data.option_b_en,
-            option_b_sw: data.option_b_sw,
-            option_c_en: data.option_c_en,
-            option_c_sw: data.option_c_sw,
-            option_d_en: data.option_d_en,
-            option_d_sw: data.option_d_sw,
-          } as QuestionForTest
-      });
+        if (!categoryData.category_code) {
+            throw new Error("Category is missing 'category_code', cannot start test.");
+        }
 
-      // 3. Create Test Attempt
-      const attemptRef = await addDoc(collection(db, 'test-attempts'), {
-        userId,
-        testId: categoryId,
-        status: 'started',
-        startedAt: serverTimestamp(),
-        score: null,
-        answers: [],
-      });
+        // 2. Find the corresponding test in the 'tests' collection
+        const testsRef = collection(db, 'tests');
+        const testQuery = query(testsRef, where('courseId', '==', categoryData.category_code));
+        const testQuerySnapshot = await getDocs(testQuery);
+        if (testQuerySnapshot.empty) {
+            throw new Error(`No active test found for category code: ${categoryData.category_code}`);
+        }
+        const testDoc = testQuerySnapshot.docs[0];
+        const testData = testDoc.data();
+        const questionIds = testData.questionIds || [];
 
-      return {
-        success: true,
-        attempt_id: attemptRef.id,
-        questions,
-        duration_minutes: testData.duration_minutes,
-        total_questions: questions.length, // Or use testData.total_questions
-        pass_mark: testData.pass_mark,
-      };
+        // 3. Create Test Attempt
+        const attemptRef = await addDoc(collection(db, 'test-attempts'), {
+            userId: userId,
+            categoryId: categoryData.category_code, // Use the linking code
+            categoryTitle: categoryData.name_en,
+            startTime: serverTimestamp(),
+            durationInMinutes: categoryData.duration_minutes,
+            passMark: categoryData.pass_mark,
+            status: 'started',
+            answers: {},
+        });
+
+        // 4. (Optional but good for response) Fetch question details
+        let questions: QuestionForTest[] = [];
+        if (questionIds.length > 0) {
+            const questionsRef = collection(db, 'Test Question');
+            const q = query(questionsRef, where(documentId(), 'in', questionIds));
+            const questionsSnapshot = await getDocs(q);
+            questions = questionsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuestionForTest));
+        }
+
+        return {
+            success: true,
+            attempt_id: attemptRef.id,
+            questions,
+            duration_minutes: categoryData.duration_minutes,
+            total_questions: questions.length,
+            pass_mark: categoryData.pass_mark,
+        };
 
     } catch (err) {
-      handleError(err);
-      return null;
+        handleError(err);
+        return null;
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   const submitAnswer = async (attemptId: string, questionId: string, answer: string) => {
     try {
       const attemptRef = doc(db, 'test-attempts', attemptId);
        await updateDoc(attemptRef, {
-        answers: arrayUnion({ questionId, answer, answeredAt: serverTimestamp() })
+        [`answers.${questionId}`]: answer // More robust update
       });
     } catch (err) {
         // This error is not critical to the user flow, so we just log it
@@ -219,55 +224,71 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
         if (!attemptSnap.exists()) throw new Error("Test attempt not found");
 
         const attemptData = attemptSnap.data();
-        const questionsQuery = query(collection(db, 'questions'), where('categoryId', '==', attemptData.testId));
+        
+        // Find the test to get the questionIds
+        const testsRef = collection(db, 'tests');
+        const testQuery = query(testsRef, where('courseId', '==', attemptData.categoryId));
+        const testQuerySnapshot = await getDocs(testQuery);
+        if (testQuerySnapshot.empty) throw new Error("Could not find test to score against.");
+        const testDoc = testQuerySnapshot.docs[0];
+        const questionIds = testDoc.data().questionIds || [];
+
+        // Fetch the correct answers for those questions
+        const questionsRef = collection(db, 'Test Question');
+        const questionsQuery = query(questionsRef, where(documentId(), 'in', questionIds));
         const questionsSnapshot = await getDocs(questionsQuery);
-        const correctAnswers = new Map(questionsSnapshot.docs.map(d => [d.id, d.data().correctAnswer]));
+        const correctAnswers = new Map(questionsSnapshot.docs.map(d => [d.id, d.data().correctAnswerIndex ?? d.data().correctAnswer])); // Handle both index and key
 
         let score = 0;
         let correct = 0;
         let wrong = 0;
-        attemptData.answers.forEach((ans: { questionId: string; answer: string; }) => {
-            if (correctAnswers.get(ans.questionId) === ans.answer) {
+        const userAnswers = attemptData.answers || {};
+
+        questionIds.forEach((questionId: string) => {
+            const correctAnswer = correctAnswers.get(questionId);
+            const userAnswer = userAnswers[questionId];
+
+            if (userAnswer === correctAnswer) { // This needs to be smarter based on type
                 score++;
                 correct++;
-            } else {
+            } else if (typeof userAnswer !== 'undefined') {
                 wrong++;
             }
         });
 
-        const totalQuestions = correctAnswers.size;
+
+        const totalQuestions = questionIds.length;
         const percentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
 
-        const testDetails = await getCategoryDetails(attemptData.testId);
-        const passed = percentage >= (testDetails?.pass_mark ?? 70);
+        const passed = percentage >= (attemptData.passMark ?? 70);
         const completedAtDate = new Date();
-        const startedAtDate = attemptData.startedAt.toDate();
+        const startedAtDate = attemptData.startTime.toDate();
         const durationInSeconds = Math.round((completedAtDate.getTime() - startedAtDate.getTime()) / 1000);
 
         await updateDoc(attemptRef, {
             status: 'completed',
-            completedAt: completedAtDate,
-            score: percentage,
+            endTime: completedAtDate,
+            score: score,
             passed: passed,
         });
 
         let certificateId: string | undefined = undefined;
         if (passed) {
-           const certResponse = await generateCertificate(attemptId, attemptData.userId, attemptData.testId, percentage);
+           const certResponse = await generateCertificate(attemptId, attemptData.userId, attemptData.categoryId, percentage);
            certificateId = certResponse?.certificate_id;
         }
 
         const result: TestResult = {
             attempt_id: attemptId,
-            category_name_en: testDetails?.name_en ?? '',
-            category_name_sw: testDetails?.name_sw ?? '',
+            category_name_en: attemptData.categoryTitle ?? '',
+            category_name_sw: '', // Need to fetch this if required
             score_percentage: percentage,
             correct_answers: correct,
             wrong_answers: wrong,
             unanswered: totalQuestions - (correct + wrong),
             total_questions: totalQuestions,
             pass_status: passed ? 'Passed' : 'Failed',
-            pass_mark: testDetails?.pass_mark ?? 70,
+            pass_mark: attemptData.passMark ?? 70,
             duration_seconds: durationInSeconds,
             completed_on: completedAtDate.toISOString(),
             certificate_id: certificateId,
@@ -288,7 +309,7 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
           const certRef = await addDoc(collection(db, "certificates"), {
               attemptId,
               userId,
-              testId,
+              testId, // testId here is actually a categoryId/courseId
               issuedAt: serverTimestamp(),
               score,
           });
@@ -309,11 +330,29 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
       if (!attemptSnap.exists() || attemptSnap.data().status !== 'completed') {
         throw new Error("Result not available or test not completed.");
       }
+      
       const resultData = attemptSnap.data();
+       // Reconstruct parts of the TestResult if they are not stored on the attempt document
+      const result: TestResult = {
+        attempt_id: attemptId,
+        category_name_en: resultData.categoryTitle,
+        category_name_sw: '',
+        score_percentage: resultData.score ? (resultData.score / resultData.total_questions) * 100 : 0,
+        correct_answers: resultData.score,
+        wrong_answers: resultData.total_questions - resultData.score,
+        unanswered: 0, // This is tricky to calculate after the fact
+        total_questions: resultData.total_questions,
+        pass_status: resultData.passed ? 'Passed' : 'Failed',
+        pass_mark: resultData.passMark,
+        duration_seconds: resultData.endTime && resultData.startTime ? (resultData.endTime.toMillis() - resultData.startTime.toMillis()) / 1000 : 0,
+        completed_on: resultData.endTime?.toDate().toISOString(),
+        certificate_id: resultData.certificate_id,
+      };
+
       return { 
         success: true,
-        ...resultData
-      } as TestResultResponse;
+        result: result
+      };
     } catch (err) {
       handleError(err);
       return null;
