@@ -65,6 +65,7 @@ const navigationGroups = [
     items: [
       { title: 'Question Bank', icon: GraduationCap, href: '/admin/questions', badge: null },
       { title: 'Test Categories', icon: TableConfig, href:'/admin/jitesti/categories', badge: null},
+      { title: 'Test Manager', icon: BookOpen, href: '/admin/jitesti/tests', badge: null },
       { title: 'Test Results', icon: BarChart3, href: '/admin/test-config', badge: null },
       { title: 'Test Config', icon: Settings2, href: '/admin/test-config', badge: null }
      

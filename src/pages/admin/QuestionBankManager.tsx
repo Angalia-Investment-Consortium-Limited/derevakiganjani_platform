@@ -38,13 +38,21 @@ import {
   orderBy, 
   doc, 
   deleteDoc, 
-  writeBatch 
+  writeBatch, 
+  getDocs
 } from "firebase/firestore";
+
+// Type for the categories, consistent with firestore_schema.md
+type JitestiCategory = {
+    id: string;
+    name_en: string;
+};
 
 const QuestionBankManager = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [questions, setQuestions] = useState<TestQuestion[]>([]);
+  const [categories, setCategories] = useState<JitestiCategory[]>([]); // State for categories
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -56,6 +64,26 @@ const QuestionBankManager = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
 
+  // Effect to fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categoriesCollection = collection(db, 'jitesti-categories');
+        const snapshot = await getDocs(categoriesCollection);
+        const categoriesData = snapshot.docs.map(doc => ({ 
+            id: doc.id, 
+            name_en: doc.data().name_en 
+        } as JitestiCategory));
+        setCategories(categoriesData);
+      } catch (err) {
+        console.error("Failed to fetch categories:", err);
+        // Optionally, show a toast notification for failing to fetch categories
+      }
+    };
+    fetchCategories();
+  }, []);
+
+  // Effect to fetch questions
   useEffect(() => {
     setIsLoading(true);
     let q = query(collection(db, "Test Question"), orderBy("modified", "desc"));
@@ -210,17 +238,18 @@ const QuestionBankManager = () => {
                 )}
               </div>
               <div className="flex items-center gap-2">
+                 {/* Dynamic Category Filter */}
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="w-full md:w-[150px]">
+                  <SelectTrigger className="w-full md:w-[180px]">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="A">Category A</SelectItem>
-                    <SelectItem value="B">Category B</SelectItem>
-                    <SelectItem value="C">Category C</SelectItem>
-                    <SelectItem value="D">Category D</SelectItem>
-                    <SelectItem value="E">Category E</SelectItem>
+                    {categories.map(category => (
+                        <SelectItem key={category.id} value={category.id}>
+                            {category.name_en}
+                        </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
