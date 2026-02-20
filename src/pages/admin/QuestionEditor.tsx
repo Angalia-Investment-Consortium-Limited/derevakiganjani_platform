@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { doc, getDoc, setDoc, serverTimestamp, collection, deleteField } from "firebase/firestore";
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { db } from "@/lib/firebase";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,17 +12,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Save, X, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Save, X, Loader2, AlertCircle, Upload, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Loader } from "@/components/ui/loader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Progress } from "@/components/ui/progress";
 import type { TestQuestion, AnswerOption, Difficulty } from "@/types/management";
 
+// This interface no longer needs `is_correct`
 interface FormAnswer {
   text_en: string;
   text_sw: string;
-  is_correct: boolean;
 }
 
 const QuestionEditor = () => {
@@ -31,9 +33,13 @@ const QuestionEditor = () => {
   const isNew = questionId === "new";
 
   const [formData, setFormData] = useState<Partial<TestQuestion> & { answers?: FormAnswer[] }>({});
+  const [correctAnswerIndex, setCorrectAnswerIndex] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const setDefaultData = useCallback(() => {
     setFormData({
@@ -41,14 +47,15 @@ const QuestionEditor = () => {
       question_text_sw: "",
       category: "B",
       question_type: "MCQ",
-      difficulty: "Easy", // Default difficulty
+      difficulty: "Easy",
       is_active: 0,
       answers: [
-        { text_en: "", text_sw: "", is_correct: true },
-        { text_en: "", text_sw: "", is_correct: false },
-        { text_en: "", text_sw: "", is_correct: false },
+        { text_en: "", text_sw: "" },
+        { text_en: "", text_sw: "" },
+        { text_en: "", text_sw: "" },
       ],
     });
+    setCorrectAnswerIndex(0);
   }, []);
 
   useEffect(() => {
@@ -65,37 +72,54 @@ const QuestionEditor = () => {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-          const dbData = docSnap.data() as TestQuestion;
+          const dbData = docSnap.data() as any;
           const answers: FormAnswer[] = [];
-          const optionMap: AnswerOption[] = ['A', 'B', 'C', 'D'];
+          let loadedCorrectIndex = 0;
 
-          optionMap.forEach(option => {
-            const enKey = `option_${option.toLowerCase()}_en` as keyof TestQuestion;
-            const swKey = `option_${option.toLowerCase()}_sw` as keyof TestQuestion;
-            if (dbData[enKey]) {
-              answers.push({
-                text_en: dbData[enKey] as string,
-                text_sw: dbData[swKey] as string,
-                is_correct: dbData.correct_answer === option,
-              });
-            }
-          });
+          const safeKey = (k: any) => String(k || '').trim().toUpperCase();
+
+          if (dbData.options && Array.isArray(dbData.options)) {
+            const correctKey = safeKey(dbData.correctAnswer);
+            dbData.options.forEach((opt: any, index: number) => {
+              answers.push({ text_en: opt.optionTextEn || "", text_sw: opt.optionTextSw || "" });
+              if (safeKey(opt.optionKey) === correctKey) {
+                loadedCorrectIndex = index;
+              }
+            });
+          } else {
+            const correctKey = safeKey(dbData.correct_answer || dbData.correctAnswer);
+            const optionMap: AnswerOption[] = ['A', 'B', 'C', 'D'];
+            optionMap.forEach((option, index) => {
+              const enKey = `option_${option.toLowerCase()}_en`;
+              const swKey = `option_${option.toLowerCase()}_sw`;
+              if (dbData[enKey] !== undefined) {
+                answers.push({ text_en: dbData[enKey], text_sw: dbData[swKey] });
+                if (safeKey(option) === correctKey) {
+                  loadedCorrectIndex = answers.length - 1;
+                }
+              }
+            });
+          }
           
-          // Ensure form has default values for fields that might be missing from Firestore
+          setCorrectAnswerIndex(loadedCorrectIndex);
           setFormData(prev => ({
-            ...prev, // Keep any previous state (though likely none)
-            ...dbData, // Load data from DB
+            ...prev,
+            ...dbData,
             name: docSnap.id,
-            answers: answers.length ? answers : prev.answers, // Keep default answers if none loaded
-            difficulty: dbData.difficulty || 'Easy', // Set default if missing
+            answers: answers.length > 0 ? answers : prev.answers,
+            difficulty: dbData.difficulty || 'Easy',
           }));
+
+          if (dbData.image) {
+            setImagePreview(dbData.image);
+          }
 
         } else {
           setError("Question not found. It may have been deleted.");
         }
       } catch (err) {
         console.error(err);
-        setError("Failed to load question data. Please check the console for details.");
+        setError("Failed to load question data.");
       } finally {
         setIsLoading(false);
       }
@@ -104,15 +128,30 @@ const QuestionEditor = () => {
     fetchQuestion();
   }, [questionId, isNew, setDefaultData]);
 
-
   const handleFieldChange = (field: keyof TestQuestion, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => { setImagePreview(reader.result as string); };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    handleFieldChange('image', deleteField());
   };
 
   const handleAddAnswer = () => {
     setFormData(prev => {
       if (prev.answers && prev.answers.length < 4) {
-        return { ...prev, answers: [...prev.answers, { text_en: "", text_sw: "", is_correct: false }] };
+        return { ...prev, answers: [...prev.answers, { text_en: "", text_sw: "" }] };
       }
       return prev;
     });
@@ -120,14 +159,14 @@ const QuestionEditor = () => {
 
   const handleRemoveAnswer = (index: number) => {
     setFormData(prev => {
-      if (prev.answers && prev.answers.length > 2) {
-        let newAnswers = prev.answers.filter((_, i) => i !== index);
-        if (!newAnswers.some(a => a.is_correct)) {
-          newAnswers[0].is_correct = true; // Ensure one answer is always correct
+        if (!prev.answers || prev.answers.length <= 2) return prev;
+        const newAnswers = prev.answers.filter((_, i) => i !== index);
+        if (index === correctAnswerIndex) {
+            setCorrectAnswerIndex(0);
+        } else if (index < correctAnswerIndex) {
+            setCorrectAnswerIndex(prevIndex => prevIndex - 1);
         }
         return { ...prev, answers: newAnswers };
-      }
-      return prev;
     });
   };
 
@@ -140,14 +179,6 @@ const QuestionEditor = () => {
     });
   };
 
-  const handleCorrectAnswerChange = (index: number) => {
-    setFormData(prev => {
-      if (!prev.answers) return prev;
-      const newAnswers = prev.answers.map((ans, i) => ({ ...ans, is_correct: i === index }));
-      return { ...prev, answers: newAnswers };
-    });
-  }
-
   const handleSave = async () => {
     if (!formData.question_text_en || !formData.question_text_sw) {
       return toast({ variant: "destructive", title: "Validation Error", description: "Question text in both English and Swahili is required." });
@@ -158,30 +189,41 @@ const QuestionEditor = () => {
 
     setIsSaving(true);
     try {
+      let imageUrl = formData.image;
+
+      if (imageFile) {
+        const storage = getStorage();
+        const storageRef = ref(storage, `question_images/${questionId || Date.now()}/${imageFile.name}`);
+        const uploadTask = uploadBytesResumable(storageRef, imageFile);
+
+        await new Promise<void>((resolve, reject) => {
+          uploadTask.on('state_changed',
+            (snapshot) => { setUploadProgress((snapshot.bytesTransferred / snapshot.totalBytes) * 100); },
+            (error) => { console.error("Upload failed", error); reject(error); },
+            async () => { imageUrl = await getDownloadURL(uploadTask.snapshot.ref); resolve(); }
+          );
+        });
+      }
+
       const { answers, ...restOfData } = formData;
-      const dataToSave: any = { ...restOfData, modified: serverTimestamp() };
-
-      const optionMap: AnswerOption[] = ['A', 'B', 'C', 'D'];
-      answers?.forEach((ans, index) => {
-        const option = optionMap[index];
-        dataToSave[`option_${option.toLowerCase()}_en`] = ans.text_en;
-        dataToSave[`option_${option.toLowerCase()}_sw`] = ans.text_sw;
-        if (ans.is_correct) {
-          dataToSave.correct_answer = option;
-        }
-      });
-
-      for (let i = answers?.length || 0; i < 4; i++) {
-        const option = optionMap[i];
-        dataToSave[`option_${option.toLowerCase()}_en`] = deleteField();
-        dataToSave[`option_${option.toLowerCase()}_sw`] = deleteField();
-      }
-
-      if (isNew) {
-        dataToSave.creation = serverTimestamp();
-      }
+      const dataToSave: any = { ...restOfData, modified: serverTimestamp(), image: imageUrl };
       
+      const optionKeys: AnswerOption[] = ['A', 'B', 'C', 'D'];
+      dataToSave.correctAnswer = optionKeys[correctAnswerIndex];
+      dataToSave.options = answers?.map((ans, index) => ({
+        optionKey: optionKeys[index],
+        optionTextEn: ans.text_en,
+        optionTextSw: ans.text_sw,
+      })) || [];
+
+      optionKeys.forEach(key => { 
+          delete dataToSave[`option_${key.toLowerCase()}_en`];
+          delete dataToSave[`option_${key.toLowerCase()}_sw`];
+      });
+      delete dataToSave.correct_answer;
       delete dataToSave.name;
+
+      if (isNew) { dataToSave.creation = serverTimestamp(); }
 
       const docId = isNew ? doc(collection(db, "Test Question")).id : questionId!;
       await setDoc(doc(db, "Test Question", docId), dataToSave, { merge: true });
@@ -191,9 +233,10 @@ const QuestionEditor = () => {
 
     } catch (err) {
       console.error(err);
-      toast({ variant: "destructive", title: "Save Failed", description: "An error occurred. Check the console for details." });
+      toast({ variant: "destructive", title: "Save Failed", description: "An error occurred. See console for details." });
     } finally {
       setIsSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -209,9 +252,7 @@ const QuestionEditor = () => {
     </Breadcrumb>
   );
 
-  if (isLoading) {
-    return <AdminLayout><Loader>Loading question editor...</Loader></AdminLayout>;
-  }
+  if (isLoading) { return <AdminLayout><Loader>Loading question editor...</Loader></AdminLayout>; }
 
   if (error) {
     return (
@@ -285,18 +326,38 @@ const QuestionEditor = () => {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle>Media (Optional)</CardTitle><CardDescription>Provide a URL for an image or YouTube video.</CardDescription></CardHeader>
+            <CardHeader>
+                <CardTitle>Media (Optional)</CardTitle>
+                <CardDescription>Upload an image for the question.</CardDescription>
+            </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="imageUrl">Image URL</Label>
-                <Input id="imageUrl" value={formData.image || ''} onChange={(e) => handleFieldChange('image', e.target.value)} placeholder="https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="videoUrl">YouTube Video URL</Label>
-                <Input id="videoUrl" value={formData.video_url || ''} onChange={(e) => handleFieldChange('video_url', e.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
-              </div>
+                <div className="space-y-2">
+                    <Label htmlFor="image-upload">Question Image</Label>
+                    <div className="flex items-center gap-4">
+                        <Input id="image-upload" type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                        <Button asChild variant="outline">
+                            <Label htmlFor="image-upload" className="cursor-pointer">
+                                <Upload className="mr-2 h-4 w-4" />
+                                Choose Image
+                            </Label>
+                        </Button>
+                        {imagePreview && (
+                            <div className="relative">
+                                <img src={imagePreview} alt="Preview" className="h-20 w-auto rounded-md border" />
+                                <Button size="icon" variant="destructive" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={handleRemoveImage}>
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                    {isSaving && uploadProgress > 0 && <Progress value={uploadProgress} className="w-full mt-2" />}
+                </div>
+                 <div className="space-y-2">
+                    <Label htmlFor="videoUrl">YouTube Video URL</Label>
+                    <Input id="videoUrl" value={formData.video_url || ''} onChange={(e) => handleFieldChange('video_url', e.target.value)} placeholder="https://www.youtube.com/watch?v=..." />
+                </div>
             </CardContent>
-          </Card>
+        </Card>
 
           <Card>
             <CardHeader>
@@ -307,7 +368,7 @@ const QuestionEditor = () => {
                <CardDescription>Select the correct answer by clicking the radio button. A maximum of 4 answers are allowed.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-               <RadioGroup value={formData.answers ? formData.answers.findIndex(a => a.is_correct).toString() : "-1"} onValueChange={(value) => handleCorrectAnswerChange(parseInt(value))}>
+               <RadioGroup value={correctAnswerIndex.toString()} onValueChange={(value) => setCorrectAnswerIndex(parseInt(value))}>
                 {(formData.answers || []).map((answer, index) => (
                   <div key={index} className="flex items-start gap-4 p-3 border rounded-md bg-muted/20">
                     <RadioGroupItem value={index.toString()} id={`answer-${index}`} className="mt-2.5" />

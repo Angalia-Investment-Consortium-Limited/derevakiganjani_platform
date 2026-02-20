@@ -11,26 +11,20 @@ import {
   addDoc,
   updateDoc,
   serverTimestamp,
-  arrayUnion,
   documentId,
 } from 'firebase/firestore';
 import type {
   DocumentData,
-  Timestamp
 } from 'firebase/firestore';
 import type {
   TestCategory,
   CategoryDetails,
-  TestQuestion,
   QuestionForTest,
-  PaymentFormData,
-  PaymentResponse,
-  PaymentStatusResponse,
   StartTestResponse,
   CompleteTestResponse,
   TestResultResponse,
-  CertificateResponse,
-  TestResult
+  TestResult,
+  CertificateResponse
 } from '@/types/jitesti';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -50,44 +44,28 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     options?.onError?.(err);
   };
 
-  // Re-usable hook to fetch the list of test categories
   const useCategoriesList = () => {
     const [data, setData] = useState<TestCategory[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [listError, setListError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
-      if (!currentUser) return; // Don't fetch if user is not authenticated
+      if (!currentUser) return;
       setIsLoading(true);
       try {
         const q = query(collection(db, 'jitesti-categories'), where('status', '==', 'active'));
         const querySnapshot = await getDocs(q);
-        const categories = querySnapshot.docs.map(doc => {
-            const data = doc.data() as DocumentData;
-            return {
-                id: doc.id,
-                name: data.name_en, // Default to English name
-                name_en: data.name_en,
-                name_sw: data.name_sw,
-                description_en: data.description_en,
-                description_sw: data.description_sw,
-                duration_minutes: data.duration_minutes,
-                pass_mark: data.pass_mark,
-                price: data.price,
-                total_questions: data.total_questions,
-                status: data.status,
-                license_class: data.license_class,
-                category_code: data.category_code, // Add this line
-                createdAt: data.createdAt,
-            } as TestCategory;
-        });
+        const categories = querySnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        } as TestCategory));
         setData(categories);
       } catch (err) {
         console.error("[JiTesti] Error fetching categories:", err);
         setListError(err instanceof Error ? err.message : 'Failed to fetch categories');
       }
       setIsLoading(false);
-    }, [currentUser]); // Add currentUser as a dependency
+    }, [currentUser]);
 
     useEffect(() => {
       fetchData();
@@ -95,7 +73,6 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
 
     return { data, isLoading, error: listError, mutate: fetchData };
   };
-
 
   const getCategoryDetails = async (categoryId: string): Promise<CategoryDetails | null> => {
     setLoading(true);
@@ -105,7 +82,6 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        // The logic for fetching related questions might need adjustment if question category IDs have changed.
         const questionsQuery = query(
           collection(db, 'questions'),
           where('categoryId', '==', categoryId), 
@@ -114,20 +90,8 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
         const questionsSnapshot = await getDocs(questionsQuery);
 
         return {
+            ...data,
             id: docSnap.id,
-            name: data.name_en,
-            name_en: data.name_en,
-            name_sw: data.name_sw,
-            description_en: data.description_en,
-            description_sw: data.description_sw,
-            duration_minutes: data.duration_minutes,
-            pass_mark: data.pass_mark,
-            price: data.price,
-            total_questions: data.total_questions,
-            status: data.status,
-            license_class: data.license_class,
-            category_code: data.category_code,
-            createdAt: data.createdAt,
             available_questions: questionsSnapshot.size,
         } as CategoryDetails;
       }
@@ -144,7 +108,6 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     setLoading(true);
     setError(null);
     try {
-        // 1. Fetch Category Details from `jitesti-categories`
         const categoryDocRef = doc(db, 'jitesti-categories', categoryId);
         const categoryDocSnap = await getDoc(categoryDocRef);
         if (!categoryDocSnap.exists()) throw new Error("Test category not found.");
@@ -154,7 +117,6 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
             throw new Error("Category is missing 'category_code', cannot start test.");
         }
 
-        // 2. Find the corresponding test in the 'tests' collection
         const testsRef = collection(db, 'tests');
         const testQuery = query(testsRef, where('courseId', '==', categoryData.category_code));
         const testQuerySnapshot = await getDocs(testQuery);
@@ -162,13 +124,12 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
             throw new Error(`No active test found for category code: ${categoryData.category_code}`);
         }
         const testDoc = testQuerySnapshot.docs[0];
-        const testData = testDoc.data();
-        const questionIds = testData.questionIds || [];
+        const questionIds = testDoc.data().questionIds || [];
 
-        // 3. Create Test Attempt
-        const attemptRef = await addDoc(collection(db, 'test-attempts'), {
+        // Corrected collection name to 'test_attempts'
+        const attemptRef = await addDoc(collection(db, 'test_attempts'), {
             userId: userId,
-            categoryId: categoryData.category_code, // Use the linking code
+            categoryId: categoryId, // Storing the original categoryId
             categoryTitle: categoryData.name_en,
             startTime: serverTimestamp(),
             durationInMinutes: categoryData.duration_minutes,
@@ -177,10 +138,10 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
             answers: {},
         });
 
-        // 4. (Optional but good for response) Fetch question details
         let questions: QuestionForTest[] = [];
         if (questionIds.length > 0) {
-            const questionsRef = collection(db, 'Test Question');
+            // Corrected question collection name
+            const questionsRef = collection(db, 'questions');
             const q = query(questionsRef, where(documentId(), 'in', questionIds));
             const questionsSnapshot = await getDocs(q);
             questions = questionsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuestionForTest));
@@ -205,12 +166,12 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
 
   const submitAnswer = async (attemptId: string, questionId: string, answer: string) => {
     try {
-      const attemptRef = doc(db, 'test-attempts', attemptId);
+      // Corrected collection name
+      const attemptRef = doc(db, 'test_attempts', attemptId);
        await updateDoc(attemptRef, {
-        [`answers.${questionId}`]: answer // More robust update
+        [`answers.${questionId}`]: answer
       });
     } catch (err) {
-        // This error is not critical to the user flow, so we just log it
         console.error("Failed to submit answer:", err);
     }
   };
@@ -219,25 +180,30 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     setLoading(true);
     setError(null);
     try {
-        const attemptRef = doc(db, 'test-attempts', attemptId);
+        const attemptRef = doc(db, 'test_attempts', attemptId);
         const attemptSnap = await getDoc(attemptRef);
         if (!attemptSnap.exists()) throw new Error("Test attempt not found");
 
         const attemptData = attemptSnap.data();
-        
-        // Find the test to get the questionIds
+
+        // Fetch category to get the linking code
+        const categoryRef = doc(db, 'jitesti-categories', attemptData.categoryId);
+        const categorySnap = await getDoc(categoryRef);
+        if (!categorySnap.exists()) throw new Error("Test category details not found.");
+        const categoryCode = categorySnap.data().category_code;
+
         const testsRef = collection(db, 'tests');
-        const testQuery = query(testsRef, where('courseId', '==', attemptData.categoryId));
+        const testQuery = query(testsRef, where('courseId', '==', categoryCode));
         const testQuerySnapshot = await getDocs(testQuery);
         if (testQuerySnapshot.empty) throw new Error("Could not find test to score against.");
         const testDoc = testQuerySnapshot.docs[0];
         const questionIds = testDoc.data().questionIds || [];
 
-        // Fetch the correct answers for those questions
-        const questionsRef = collection(db, 'Test Question');
+        // Corrected question collection name
+        const questionsRef = collection(db, 'questions');
         const questionsQuery = query(questionsRef, where(documentId(), 'in', questionIds));
         const questionsSnapshot = await getDocs(questionsQuery);
-        const correctAnswers = new Map(questionsSnapshot.docs.map(d => [d.id, d.data().correctAnswerIndex ?? d.data().correctAnswer])); // Handle both index and key
+        const correctAnswers = new Map(questionsSnapshot.docs.map(d => [d.id, d.data().correctAnswerIndex ?? d.data().correctAnswer]));
 
         let score = 0;
         let correct = 0;
@@ -248,7 +214,7 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
             const correctAnswer = correctAnswers.get(questionId);
             const userAnswer = userAnswers[questionId];
 
-            if (userAnswer === correctAnswer) { // This needs to be smarter based on type
+            if (String(userAnswer) === String(correctAnswer)) {
                 score++;
                 correct++;
             } else if (typeof userAnswer !== 'undefined') {
@@ -256,10 +222,8 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
             }
         });
 
-
         const totalQuestions = questionIds.length;
-        const percentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
-
+        const percentage = totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
         const passed = percentage >= (attemptData.passMark ?? 70);
         const completedAtDate = new Date();
         const startedAtDate = attemptData.startTime.toDate();
@@ -268,20 +232,24 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
         await updateDoc(attemptRef, {
             status: 'completed',
             endTime: completedAtDate,
-            score: score,
+            score: percentage, // Store the percentage score
+            total_questions: totalQuestions, // Store total questions
             passed: passed,
         });
 
         let certificateId: string | undefined = undefined;
         if (passed) {
-           const certResponse = await generateCertificate(attemptId, attemptData.userId, attemptData.categoryId, percentage);
-           certificateId = certResponse?.certificate_id;
+           const certResponse = await generateCertificate(attemptId, attemptData.userId, categoryCode, percentage);
+           if (certResponse?.certificate_id) {
+             certificateId = certResponse.certificate_id;
+             await updateDoc(attemptRef, { certificate_id: certificateId });
+           }
         }
 
         const result: TestResult = {
             attempt_id: attemptId,
             category_name_en: attemptData.categoryTitle ?? '',
-            category_name_sw: '', // Need to fetch this if required
+            category_name_sw: '',
             score_percentage: percentage,
             correct_answers: correct,
             wrong_answers: wrong,
@@ -304,19 +272,20 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     }
   };
 
-  const generateCertificate = async (attemptId: string, userId: string, testId: string, score: number): Promise<CertificateResponse | null> => {
+  const generateCertificate = async (attemptId: string, userId: string, course_name: string, score: number): Promise<CertificateResponse | null> => {
       try {
           const certRef = await addDoc(collection(db, "certificates"), {
-              attemptId,
-              userId,
-              testId, // testId here is actually a categoryId/courseId
-              issuedAt: serverTimestamp(),
+              testAttemptId: attemptId,
+              driverId: userId,
+              course_name,
+              issue_date: serverTimestamp(),
+              status: 'Active',
               score,
+              // certificate_url will be generated by a cloud function later
           });
           return { success: true, certificate_id: certRef.id };
       } catch(err) {
           console.error("Failed to generate certificate", err);
-          // Don't block completion flow if cert generation fails
           return null;
       }
   }
@@ -325,28 +294,30 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     setLoading(true);
     setError(null);
     try {
-      const attemptRef = doc(db, 'test-attempts', attemptId);
+      const attemptRef = doc(db, 'test_attempts', attemptId);
       const attemptSnap = await getDoc(attemptRef);
       if (!attemptSnap.exists() || attemptSnap.data().status !== 'completed') {
         throw new Error("Result not available or test not completed.");
       }
       
-      const resultData = attemptSnap.data();
-       // Reconstruct parts of the TestResult if they are not stored on the attempt document
+      const attemptData = attemptSnap.data();
+      const totalQuestions = attemptData.total_questions || 0;
+      const correctAnswers = totalQuestions > 0 ? Math.round(attemptData.score / 100 * totalQuestions) : 0;
+
       const result: TestResult = {
         attempt_id: attemptId,
-        category_name_en: resultData.categoryTitle,
+        category_name_en: attemptData.categoryTitle,
         category_name_sw: '',
-        score_percentage: resultData.score ? (resultData.score / resultData.total_questions) * 100 : 0,
-        correct_answers: resultData.score,
-        wrong_answers: resultData.total_questions - resultData.score,
-        unanswered: 0, // This is tricky to calculate after the fact
-        total_questions: resultData.total_questions,
-        pass_status: resultData.passed ? 'Passed' : 'Failed',
-        pass_mark: resultData.passMark,
-        duration_seconds: resultData.endTime && resultData.startTime ? (resultData.endTime.toMillis() - resultData.startTime.toMillis()) / 1000 : 0,
-        completed_on: resultData.endTime?.toDate().toISOString(),
-        certificate_id: resultData.certificate_id,
+        score_percentage: attemptData.score,
+        correct_answers: correctAnswers,
+        wrong_answers: totalQuestions - correctAnswers,
+        unanswered: totalQuestions - (attemptData.answers ? Object.keys(attemptData.answers).length : 0),
+        total_questions: totalQuestions,
+        pass_status: attemptData.passed ? 'Passed' : 'Failed',
+        pass_mark: attemptData.passMark,
+        duration_seconds: attemptData.endTime && attemptData.startTime ? (attemptData.endTime.toMillis() - attemptData.startTime.toMillis()) / 1000 : 0,
+        completed_on: attemptData.endTime?.toDate().toISOString(),
+        certificate_id: attemptData.certificate_id,
       };
 
       return { 
@@ -361,7 +332,6 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
     }
   };
 
-  // Reset function
   const reset = () => {
     setLoading(false);
     setError(null);

@@ -94,11 +94,15 @@ import JobManagement from "./pages/admin/JobManagement";
 import TestCategories from "./pages/jitesti/TestCategories";
 import PaymentPage from "./pages/jitesti/PaymentPage";
 import TestPage from "./pages/jitesti/TestPage";
+import TestResultPage from "./pages/jitesti/TestResultPage";
+import TestHistoryPage from "./pages/jitesti/TestHistoryPage";
 import WhatsAppPrivacyPolicy from "./pages/WhatsAppPrivacyPolicy";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import JobDetailDriver from "./pages/ajira/JobDetailDriver";
 import JitestiCategoryManager from "./pages/admin/JitestiCategoryManager";
 import JitestiTestManager from "./pages/admin/JitestiTestManager";
+import JitestiResultsPage from "./pages/admin/JitestiResults";
+import JitestiResultDetail from "./pages/admin/JitestiResultDetail";
 
 const queryClient = new QueryClient();
 
@@ -452,6 +456,16 @@ const App = () => (
                 <JitestiTestManager />
               </AdminRoleBasedRoute>
             } />
+            <Route path="/admin/jitesti/results" element={
+              <AdminRoleBasedRoute>
+                <JitestiResultsPage />
+              </AdminRoleBasedRoute>
+            } />
+            <Route path="/admin/jitesti/results/:attemptId" element={
+              <AdminRoleBasedRoute>
+                <JitestiResultDetail />
+              </AdminRoleBasedRoute>
+            } />
             
              <Route path="/jitesti" element={
               <ProtectedRoute>
@@ -468,6 +482,16 @@ const App = () => (
                 <TestPage />
               </ProtectedRoute>
             } /> 
+            <Route path="/jitesti/results/:testAttemptId" element={
+              <ProtectedRoute>
+                <TestResultPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/jitesti/my-history" element={
+              <ProtectedRoute>
+                <TestHistoryPage />
+              </ProtectedRoute>
+            } />
             
             {/* License Management Routes */}
              <Route path="/license" element={<LicenseDashboard />} />

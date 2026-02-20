@@ -1,11 +1,13 @@
+
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { GraduationCap, FileText, BookOpen, TrendingUp, Bell } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import RecentActivities from '@/components/dashboard/RecentActivities'; // Import the new component
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -17,12 +19,6 @@ const Dashboard = () => {
     { icon: BookOpen, label: t('elimika'), description: 'Continue learning', href: '/elimika', color: 'text-accent' },
     { icon: FileText, label: t('leseni'), description: 'Renew license', href: '/license-request', color: 'text-primary' },
     { icon: TrendingUp, label: 'Ajira ya Udereva', description: 'Find driver jobs', href: '/ajira/jobs', color: 'text-success' },
-  ];
-
-  const recentActivity = [
-    { date: '2025-01-15', service: 'JiTesti - Category B', status: 'Passed', score: '22/25' },
-    { date: '2025-01-10', service: 'License Renewal', status: 'Pending', score: '-' },
-    { date: '2025-01-05', service: 'Elimika - Road Signs', status: 'Completed', score: '100%' },
   ];
 
   return (
@@ -66,35 +62,9 @@ const Dashboard = () => {
           })}
         </div>
 
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('recentActivity')}</CardTitle>
-            <CardDescription>Your latest interactions with our services</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors">
-                  <div className="flex-1">
-                    <p className="font-medium">{activity.service}</p>
-                    <p className="text-sm text-muted-foreground">{activity.date}</p>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium">{activity.score}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      activity.status === 'Passed' ? 'bg-success/10 text-success' :
-                      activity.status === 'Pending' ? 'bg-warning/10 text-warning' :
-                      'bg-primary/10 text-primary'
-                    }`}>
-                      {activity.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Recent Activity - Now dynamic! */}
+        <RecentActivities />
+
       </main>
 
       <Footer />
