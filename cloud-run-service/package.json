@@ -1,0 +1,17 @@
+{
+  "name": "jitesti-payment-service",
+  "version": "1.0.0",
+  "description": "Cloud Run service for JiTesti payment processing with Selcom.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "author": "Gemini AI",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.6.0",
+    "express": "^4.18.2",
+    "firebase-admin": "^11.11.1",
+    "uuid": "^9.0.1"
+  }
+}

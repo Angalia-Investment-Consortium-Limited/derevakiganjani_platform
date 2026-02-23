@@ -21,6 +21,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/selcomWebhook",
+        "function": "selcomWebhook"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

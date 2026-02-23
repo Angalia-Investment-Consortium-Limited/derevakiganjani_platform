@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -13,9 +13,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
+  DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, Trash2, Image, Video, Loader2, AlertCircle, ChevronDown } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Image, Video, Loader2, AlertCircle, ChevronDown, Upload, Download } from "lucide-react";
 import type { TestQuestion } from "@/types/management";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -39,8 +40,11 @@ import {
   doc, 
   deleteDoc, 
   writeBatch, 
-  getDocs
+  getDocs,
+  Timestamp
 } from "firebase/firestore";
+import { unparse } from 'papaparse';
+
 
 // Type for the categories, consistent with firestore_schema.md
 type JitestiCategory = {
@@ -63,6 +67,9 @@ const QuestionBankManager = () => {
   const [selectedQuestions, setSelectedQuestions] = useState<string[]>([]);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   // Effect to fetch categories
   useEffect(() => {
@@ -192,13 +199,146 @@ const QuestionBankManager = () => {
     }
   };
 
+  const handleExport = (format: 'csv' | 'json') => {
+    if (filteredQuestions.length === 0) {
+        toast({ variant: 'destructive', title: 'Export Failed', description: 'No questions to export.' });
+        return;
+    }
+
+    let data: string;
+    let filename: string;
+
+    if (format === 'csv') {
+        try {
+            const questionsForExport = filteredQuestions.map(q => {
+                const { 
+                    options,
+                    modified,
+                    ...rest
+                } = q as any;
+
+                let modifiedISO = '';
+                if (modified) {
+                    if (typeof modified.toDate === 'function') {
+                        modifiedISO = modified.toDate().toISOString();
+                    } else if (typeof modified.seconds === 'number' && typeof modified.nanoseconds === 'number') {
+                        modifiedISO = new Timestamp(modified.seconds, modified.nanoseconds).toDate().toISOString();
+                    } else if (typeof modified === 'string') {
+                        modifiedISO = new Date(modified).toISOString();
+                    }
+                }
+
+                return {
+                    ...rest,
+                    options: JSON.stringify(options),
+                    modified: modifiedISO,
+                };
+            });
+            data = unparse(questionsForExport);
+            filename = 'questions.csv';
+        } catch (error) {
+            console.error('Error parsing CSV:', error);
+            toast({ variant: 'destructive', title: 'Export Error', description: 'Could not generate CSV file.' });
+            return;
+        }
+    } else {
+        data = JSON.stringify(filteredQuestions, null, 2);
+        filename = 'questions.json';
+    }
+
+    const blob = new Blob([data], { type: `text/${format}` });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({ title: 'Export Successful', description: `Exported ${filteredQuestions.length} questions as ${format.toUpperCase()}.` });
+};
+
+const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+        try {
+            const content = e.target?.result as string;
+            const importedQuestions: TestQuestion[] = JSON.parse(content);
+
+            if (!Array.isArray(importedQuestions) || importedQuestions.some(q => !q.question_text_en || !q.category)) {
+                throw new Error('Invalid file format. Ensure it is an array of questions with required fields.');
+            }
+
+            const batch = writeBatch(db);
+            let count = 0;
+
+            importedQuestions.forEach(question => {
+                const docRef = doc(collection(db, "Test Question")); // Creates a new doc with a unique ID
+                batch.set(docRef, { 
+                    ...question, 
+                    modified: new Date(), 
+                    is_active: question.is_active ?? 0 // Default to draft
+                });
+                count++;
+            });
+
+            await batch.commit();
+            toast({ title: 'Import Successful', description: `Successfully imported ${count} questions.` });
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+            toast({ variant: 'destructive', title: 'Import Failed', description: errorMessage });
+        } finally {
+            setIsImporting(false);
+            if(fileInputRef.current) fileInputRef.current.value = ""; // Reset file input
+        }
+    };
+
+    reader.readAsText(file);
+};
+
   const numSelected = selectedQuestions.length;
 
   return (
     <AdminLayout>
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Question Bank Manager</h1>
-        <p className="text-muted-foreground">Manage all JiTesti test questions</p>
+      <div className="mb-8 flex justify-between items-center">
+        <div>
+            <h1 className="text-4xl font-bold mb-2">Question Bank Manager</h1>
+            <p className="text-muted-foreground">Manage all JiTesti test questions</p>
+        </div>
+        <div className="flex gap-2">
+            <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleImport}
+                accept=".json"
+            />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isImporting}>
+                {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                Import
+            </Button>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                        <ChevronDown className="ml-2 h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent>
+                    <DropdownMenuGroup>
+                        <DropdownMenuItem onSelect={() => handleExport('csv')}>Export as CSV</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleExport('json')}>Export as JSON</DropdownMenuItem>
+                    </DropdownMenuGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+        </div>
       </div>
 
         <Card>

@@ -1,14 +1,15 @@
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { db } from '@/lib/firebase';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { useToast } from '@/components/ui/use-toast';
 
 // Type Definition for the component
 type JitestiCategory = {
@@ -18,6 +19,12 @@ type JitestiCategory = {
   price: number;
   durationInMinutes: number;
 };
+
+// Define the type for the simulated payment response
+interface PaymentSimulationResponse {
+  success: boolean;
+  transactionId: string;
+}
 
 // Fetch function for active categories, with correct Firestore field mapping
 const fetchActiveCategories = async (): Promise<JitestiCategory[]> => {
@@ -40,9 +47,37 @@ const fetchActiveCategories = async (): Promise<JitestiCategory[]> => {
 };
 
 const TestCategories: React.FC = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const { data: categories = [], isLoading, error } = useQuery<JitestiCategory[]>({ 
     queryKey: ['active-jitesti-categories'], 
     queryFn: fetchActiveCategories 
+  });
+
+  const paymentMutation = useMutation<PaymentSimulationResponse, Error, string>({
+    mutationFn: async (categoryId: string): Promise<PaymentSimulationResponse> => {
+      // Simulate a payment API call
+      console.log(`Simulating payment for category: ${categoryId}`);
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve({ success: true, transactionId: `txn_${Date.now()}` });
+        }, 1000);
+      });
+    },
+    onSuccess: (data, categoryId) => {
+      toast({
+        title: "Payment Successful",
+        description: `Transaction ID: ${data.transactionId}`,
+      });
+      navigate(`/jitesti/payment/${categoryId}`);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Payment Failed",
+        description: error.message || "An unexpected error occurred.",
+        variant: "destructive",
+      });
+    },
   });
 
   return (
@@ -84,9 +119,13 @@ const TestCategories: React.FC = () => {
                 </div>
               </CardContent>
               <CardFooter>
-                <Link to={`/jitesti/payment/${category.id}`} className="w-full">
-                  <Button className="w-full">Start Test</Button>
-                </Link>
+                <Button 
+                  className="w-full" 
+                  onClick={() => paymentMutation.mutate(category.id)}
+                  disabled={paymentMutation.isPending}
+                >
+                  {paymentMutation.isPending ? 'Processing Payment...' : 'Pay and Start Test'}
+                </Button>
               </CardFooter>
             </Card>
           ))}

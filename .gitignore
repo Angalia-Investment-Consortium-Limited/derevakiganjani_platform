@@ -1,8 +1,1 @@
-.DS_Store
-*.pyc
-*.egg-info
-*.swp
-tags
-node_modules
-__pycache__scripts/serviceAccountKey.json
-scripts/serviceAccountKey.json
+serviceAccountKey.json

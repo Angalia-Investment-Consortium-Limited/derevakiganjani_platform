@@ -1,7 +1,7 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Header } from '@/components/Header';
@@ -9,8 +9,10 @@ import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Award, Download, RotateCcw, BookOpen } from 'lucide-react';
+import { Award, Download, RotateCcw, BookOpen, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { CertificateGenerationService } from '@/services/CertificateGenerationService';
+import { useToast } from '@/hooks/use-toast';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -43,14 +45,37 @@ type TestAttempt = {
     certificateUrl?: string;
 };
 
+type User = {
+    id: string;
+    full_name?: string;
+    email?: string;
+};
+
+type CombinedResult = {
+    attempt: TestAttempt;
+    user: User | null;
+};
+
+
 // --- Data Fetching ---
-const fetchTestResult = async (attemptId: string): Promise<TestAttempt> => {
-    const docRef = doc(db, 'test_attempts', attemptId);
-    const docSnap = await getDoc(docRef);
-    if (!docSnap.exists()) {
+const fetchTestResult = async (attemptId: string): Promise<CombinedResult> => {
+    const attemptDocRef = doc(db, 'test_attempts', attemptId);
+    const attemptDocSnap = await getDoc(attemptDocRef);
+    if (!attemptDocSnap.exists()) {
         throw new Error("Test result not found.");
     }
-    return { id: docSnap.id, ...docSnap.data() } as TestAttempt;
+    const attempt = { id: attemptDocSnap.id, ...attemptDocSnap.data() } as TestAttempt;
+
+    let user: User | null = null;
+    if (attempt.userId) {
+        const userDocRef = doc(db, 'users', attempt.userId);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+            user = { id: userDocSnap.id, ...userDocSnap.data() } as User;
+        }
+    }
+
+    return { attempt, user };
 };
 
 
@@ -58,12 +83,56 @@ const TestResultPage: React.FC = () => {
     const { testAttemptId = '' } = useParams<{ testAttemptId: string }>();
     const navigate = useNavigate();
     const { t } = useLanguage();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
 
-    const { data: result, isLoading, error } = useQuery<TestAttempt>({
+    const [isGenerating, setIsGenerating] = useState(false);
+
+    const { data, isLoading, error } = useQuery<CombinedResult>({
         queryKey: ['test-result', testAttemptId],
         queryFn: () => fetchTestResult(testAttemptId),
         enabled: !!testAttemptId,
     });
+
+    const result = data?.attempt;
+    const user = data?.user;
+
+    useEffect(() => {
+        const generateCertificate = async () => {
+            if (result?.isPassed && !result.certificateUrl && user) {
+                setIsGenerating(true);
+                try {
+                    await CertificateGenerationService.generateAndUploadCertificate({
+                        userId: result.userId,
+                        attemptId: result.id,
+                        userName: user.full_name || 'N/A',
+                        testName: result.categoryTitle,
+                        completedAt: new Date(result.completedAt.toDate()),
+                    });
+
+                    toast({
+                        title: "Certificate Generated",
+                        description: "Your certificate has been successfully generated.",
+                    });
+
+                    // Refetch the data to get the new certificate URL
+                    queryClient.invalidateQueries({ queryKey: ['test-result', testAttemptId]});
+
+                } catch (err) {
+                    toast({
+                        variant: 'destructive',
+                        title: "Certificate Generation Failed",
+                        description: "We couldn't generate your certificate. Please try again later.",
+                    });
+                } finally {
+                    setIsGenerating(false);
+                }
+            }
+        };
+
+        generateCertificate();
+    }, [result, user, testAttemptId, queryClient, toast]);
+
 
     const performanceByTopic = useMemo(() => {
         if (!result?.answers) return [];
@@ -146,7 +215,8 @@ const TestResultPage: React.FC = () => {
                             {passed ? (
                                 <div className="p-4 bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800/20 rounded-lg text-center">
                                     <p className="font-medium text-green-800 dark:text-green-300">Congratulations! You have passed the driver test.</p>
-                                    <p className="text-sm text-muted-foreground mt-1">Your certificate is ready for download.</p>
+                                     {isGenerating && <p className="text-sm text-muted-foreground mt-1">Please wait, your certificate is being generated...</p>}
+                                     {!isGenerating && result.certificateUrl && <p className="text-sm text-muted-foreground mt-1">Your certificate is ready for download.</p>}
                                 </div>
                             ) : (
                                 <div className="p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/20 rounded-lg text-center">
@@ -175,9 +245,9 @@ const TestResultPage: React.FC = () => {
 
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4">
                                 {passed && (
-                                    <Button onClick={handleDownloadCertificate} disabled={!result.certificateUrl}>
-                                        <Download className="mr-2 h-4 w-4" />
-                                        {t('downloadCertificate')}
+                                    <Button onClick={handleDownloadCertificate} disabled={!result.certificateUrl || isGenerating}>
+                                        {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                                        {isGenerating ? t('generatingCertificate') : t('downloadCertificate')}
                                     </Button>
                                 )}
                                 <Button variant="outline" onClick={() => navigate('/jitesti')}>

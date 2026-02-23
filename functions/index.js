@@ -276,3 +276,98 @@ exports.generateThumbnail = functions.storage.object().onFinalize(async (object)
     // Clean up the local files
     return fs.unlinkSync(tempFilePath) && fs.unlinkSync(thumbFilePath);
 });
+
+/**
+ * 11. Selcom Payment Webhook
+ * 
+ * An HTTPS endpoint to receive payment status updates from Selcom.
+ * Updates the corresponding 'payments' and 'test_attempts' documents in Firestore.
+ */
+exports.selcomWebhook = functions.https.onRequest(async (request, response) => {
+    functions.logger.info("Selcom webhook received!", { body: request.body });
+
+    // Selcom sends data with Content-Type: application/json but the body might be a string.
+    let data;
+    try {
+        // In some environments, request.body is already parsed. In others, it's a raw string.
+        data = (typeof request.body === 'string') ? JSON.parse(request.body) : request.body;
+    } catch (error) {
+        functions.logger.error("Failed to parse request body:", error);
+        response.status(400).send("Invalid JSON format");
+        return;
+    }
+
+    const { order_id, status, reference } = data; // 'reference' is the payment reference ID from Selcom
+
+    if (!order_id) {
+        functions.logger.error("Webhook payload missing 'order_id'.", { payload: data });
+        response.status(400).send("Missing 'order_id'");
+        return;
+    }
+
+    try {
+        const paymentsRef = db.collection("payments");
+        // The markdown file uses 'transactionId' and 'referenceId'.
+        // The client code in PaymentPage.tsx uses 'selcomTransactionId'.
+        // My previous code used 'selcomTransactionId'. I'll stick with that as it's more specific.
+        const querySnapshot = await paymentsRef.where("selcomTransactionId", "==", order_id).get();
+
+        if (querySnapshot.empty) {
+            functions.logger.error(`No payment found with selcomTransactionId: ${order_id}`);
+            response.status(404).send("Payment not found");
+            return;
+        }
+
+        const paymentDoc = querySnapshot.docs[0];
+        const paymentId = paymentDoc.id;
+        const paymentData = paymentDoc.data();
+        
+        // Avoid processing the same webhook multiple times
+        if (paymentData.status === 'completed' || paymentData.status === 'failed') {
+            functions.logger.warn(`Payment ${paymentId} already in a final state: ${paymentData.status}. Ignoring webhook.`);
+            response.status(200).send("Webhook ignored, payment already processed.");
+            return;
+        }
+
+        let newStatus = paymentData.status; // Default to current status
+        if (status === "COMPLETED") {
+            newStatus = "completed";
+        } else if (status === "FAILED" || status === "REJECTED") { // Selcom might use FAILED or REJECTED
+            newStatus = "failed";
+        }
+        
+        // Create an update object
+        const updatePayload = {
+            status: newStatus,
+            selcomWebhookData: data // Store the full webhook payload for auditing
+        };
+
+        // Update the payment status
+        await db.collection("payments").doc(paymentId).update(updatePayload);
+        functions.logger.info(`Payment ${paymentId} status updated to ${newStatus}`);
+
+        // If payment is completed, update the corresponding test_attempt
+        if (newStatus === "completed" && paymentData.service === "JiTesti" && paymentData.testAttemptId) {
+            const testAttemptRef = db.collection("test_attempts").doc(paymentData.testAttemptId);
+            const testAttemptDoc = await testAttemptRef.get();
+
+            if (testAttemptDoc.exists) {
+                // Update only if it's still pending payment
+                if(testAttemptDoc.data().status === 'pending_payment') {
+                    await testAttemptRef.update({ status: "started" });
+                    functions.logger.info(`Test attempt ${paymentData.testAttemptId} status updated to 'started'`);
+                } else {
+                    functions.logger.warn(`Test attempt ${paymentData.testAttemptId} was not in 'pending_payment' state. Current state: ${testAttemptDoc.data().status}`);
+                }
+            } else {
+                 functions.logger.error(`Test attempt with ID ${paymentData.testAttemptId} not found.`);
+            }
+        }
+
+        response.status(200).send("Webhook processed successfully.");
+
+    } catch (error) {
+        functions.logger.error("Error processing webhook:", error);
+        response.status(500).send("Internal Server Error");
+    }
+});

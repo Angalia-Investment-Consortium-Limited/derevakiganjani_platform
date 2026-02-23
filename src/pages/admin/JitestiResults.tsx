@@ -16,6 +16,7 @@ export interface JitestiResultRow {
   userEmail: string;
   categoryTitle: string;
   score: number;
+  totalQuestions: number;
   status: string;
   completedAt: Date | null;
 }
@@ -32,7 +33,7 @@ const fetchJitestiResults = async (): Promise<JitestiResultRow[]> => {
   const results: JitestiResultRow[] = attemptsSnapshot.docs.map(doc => {
     const attempt = doc.data();
     const user = usersMap.get(attempt.userId);
-    const status = attempt.passed ? 'Passed' : 'Failed';
+    const status = attempt.isPassed ? 'Passed' : 'Failed';
 
     return {
       id: doc.id,
@@ -40,6 +41,7 @@ const fetchJitestiResults = async (): Promise<JitestiResultRow[]> => {
       userEmail: user?.email || 'N/A',
       categoryTitle: attempt.categoryTitle,
       score: attempt.score,
+      totalQuestions: attempt.answers.length,
       status: attempt.status === 'completed' ? status : 'In Progress',
       completedAt: attempt.endTime?.toDate() || null,
     };
