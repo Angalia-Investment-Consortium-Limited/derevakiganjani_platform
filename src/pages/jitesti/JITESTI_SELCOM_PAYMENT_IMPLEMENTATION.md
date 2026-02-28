@@ -41,8 +41,8 @@ This document outlines the plan for integrating the Selcom payment gateway into 
 
 ### Phase 5: Payment Verification (Webhooks)
 
--   [ ] **Webhook Endpoint:** Create a Firebase Cloud Function to serve as a webhook endpoint for Selcom to send server-to-server payment status updates.
--   [ ] **Automatic Updates:** This webhook will automatically update the status in the `payments` and `test_attempts` documents.
+-   [x] **Webhook Endpoint:** A Cloud Run service has been created to serve as the webhook endpoint. The endpoint `https://derevakiganjani.mdvfleet.co.tz/api/selcomWebhook` has been configured and is live.
+-   [x] **Automatic Updates:** The webhook automatically receives status updates from Selcom and updates the `payments` and `test_attempts` documents in Firestore.
 
 ## 3. Selcom API Credentials & Guidelines
 
@@ -50,7 +50,7 @@ This document outlines the plan for integrating the Selcom payment gateway into 
 -   **API Key**: `TILL61231447-fcffa665b91a415085cd64b07e4f1a75`
 -   **API Secret**: `4a19e7-221273-452a9c-b0f8fc-0d7d75-49`
 -   **Base URL**: `https://apigw.selcommobile.com/v1`
--   **IP Whitelisting**: `45.32.216.48`
+-   **IP Whitelisting**: `199.36.158.100`
 -   **Official Docs**: [https://developers.selcommobile.com/#introduction](https://developers.selcommobile.com/#introduction)
 
 ## 4. Selcom API Endpoint Reference
@@ -102,4 +102,3 @@ This document outlines the plan for integrating the Selcom payment gateway into 
 | `startTime` | Timestamp | The time the user started the test. |
 | `status` | String | The status of the test attempt (e.g., "started", "completed"). |
 | `userId` | String | The ID of the user who took the test. |
-

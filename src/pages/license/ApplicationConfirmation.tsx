@@ -1,196 +1,148 @@
-/**
- * Application Confirmation Page
- * 
- * Shows confirmation after successful application submission
- * with reference number and next steps
- */
 
-import { useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { useCopyToClipboard } from '@/hooks/useLicense';
-import { CheckCircle, Copy, Home, Search, FileText } from 'lucide-react';
-import { toast } from 'sonner';
+import { usePaymentProcessing } from '@/hooks/usePayments';
+import { useApplicationDetails } from '@/hooks/useApplications';
+import { CheckCircle, AlertTriangle, Loader2, Home, FileText } from 'lucide-react';
 
+// This is the page the user lands on after submitting their application form.
+// It immediately triggers the payment process.
 export default function ApplicationConfirmation() {
   const { refNo } = useParams<{ refNo: string }>();
+  const [searchParams] = useSearchParams();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const { copy, copied } = useCopyToClipboard();
-
-  const handleCopy = () => {
-    if (refNo) {
-      copy(refNo);
-      toast.success(t('Namba ya kumbukumbu imenakiliwa!'));
-    }
-  };
-
-  useEffect(() => {
-    if (!refNo) {
-      navigate('/license');
-    }
-  }, [refNo, navigate]);
 
   if (!refNo) {
+    navigate('/license');
     return null;
   }
 
-  return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-background to-secondary/5">
-      <Header />
+  const { 
+    application, 
+    isLoading: isLoadingApplication, 
+    error: applicationError 
+  } = useApplicationDetails(refNo);
 
-      <main className="flex-1 container mx-auto px-4 py-8">
-        <div className="max-w-2xl mx-auto">
-          {/* Success Icon */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-success/10 mb-4">
-              <CheckCircle className="h-12 w-12 text-success" />
-            </div>
-            <h1 className="text-3xl font-bold mb-2">
-              {t('Ombi Limewasilishwa Kwa Mafanikio!')}
-            </h1>
-            <p className="text-muted-foreground">
-              {t('Tumepokea maombi yako ya leseni')}
-            </p>
-          </div>
+  const { 
+    createPaymentOrder, 
+    pollPaymentStatus, 
+    isLoading: isProcessingPayment, 
+    error: paymentError, 
+    paymentStatus 
+  } = usePaymentProcessing(refNo);
 
-          {/* Reference Number Card */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>{t('Namba ya Kumbukumbu')}</CardTitle>
-              <CardDescription>
-                {t('Tumia namba hii kufuatilia hali ya ombi lako')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3 p-4 bg-muted rounded-lg">
-                <div className="flex-1">
-                  <p className="text-sm text-muted-foreground mb-1">
-                    {t('Namba ya Rejea')}
-                  </p>
-                  <p className="text-2xl font-bold font-mono">{refNo}</p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleCopy}
-                  className="flex-shrink-0"
-                >
-                  {copied ? (
-                    <CheckCircle className="h-4 w-4 text-success" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+  const selcomOrderId = searchParams.get('order_id');
+  const [pollAttempted, setPollAttempted] = useState(false);
 
-          {/* Next Steps Card */}
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle>{t('Hatua Zinazofuata')}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-sm font-bold text-primary">1</span>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">{t('Ukaguzi wa Nyaraka')}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('Timu yetu itakagua nyaraka zako zilizopakiwa na taarifa ulizotoa')}
-                  </p>
-                </div>
-              </div>
+  // Effect to handle the payment flow
+  useEffect(() => {
+    if (application) {
+      // If there's a selcom_order_id in the URL, it means the user is returning from Selcom.
+      // We should poll the status.
+      if (selcomOrderId && !pollAttempted) {
+        setPollAttempted(true);
+        pollPaymentStatus(selcomOrderId);
+      }
+      // If the application status is still pending payment and there's no order_id in the URL,
+      // it means we need to create the payment order for the first time.
+      else if (application.status === 'pending-payment' && !selcomOrderId) {
+        createPaymentOrder();
+      }
+    }
+  }, [application, selcomOrderId, pollAttempted, createPaymentOrder, pollPaymentStatus]);
 
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-sm font-bold text-primary">2</span>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">{t('Arifa')}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('Utapokea arifa kupitia simu au barua pepe kuhusu hali ya ombi lako')}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <span className="text-sm font-bold text-primary">3</span>
-                </div>
-                <div>
-                  <p className="font-medium mb-1">{t('Uidhinishaji')}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {t('Baada ya kukaguliwa na kuidhinishwa, utapokea maelekezo ya hatua za mwisho')}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Important Information */}
-          <Card className="mb-6 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-            <CardContent className="pt-6">
-              <div className="space-y-3 text-sm text-blue-800 dark:text-blue-200">
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                  <p>
-                    {t('Hifadhi namba ya kumbukumbu yako kwa usalama')}
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                  <p>
-                    {t('Mchakato wa ukaguzi unaweza kuchukua siku 3-5 za kazi')}
-                  </p>
-                </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
-                  <p>
-                    {t('Unaweza kufuatilia hali ya ombi lako wakati wowote kwa kutumia namba ya kumbukumbu')}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Action Buttons */}
-          <div className="grid md:grid-cols-3 gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate('/license/track')}
-              className="w-full"
-            >
-              <Search className="mr-2 h-4 w-4" />
-              {t('Fuatilia Hali')}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={() => navigate('/license/my-applications')}
-              className="w-full"
-            >
-              <FileText className="mr-2 h-4 w-4" />
-              {t('Maombi Yangu')}
-            </Button>
-
-            <Button
-              onClick={() => navigate('/dashboard')}
-              className="w-full"
-            >
-              <Home className="mr-2 h-4 w-4" />
-              {t('Dashibodi')}
-            </Button>
-          </div>
+  const renderStatus = () => {
+    // Loading states
+    if (isLoadingApplication || isProcessingPayment) {
+      return (
+        <div className="flex flex-col items-center justify-center text-center p-8">
+          <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
+          <h1 className="text-2xl font-bold">{t('processing_payment')}</h1>
+          <p className="text-muted-foreground">{t('please_wait_payment')}</p>
         </div>
-      </main>
+      );
+    }
 
+    // Error states
+    if (applicationError || paymentError) {
+        return (
+            <div className="flex flex-col items-center justify-center text-center p-8">
+                <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+                <h1 className="text-2xl font-bold">{t('payment_error_title')}</h1>
+                <p className="text-muted-foreground max-w-md">
+                    {t('payment_error_message')}: {applicationError || paymentError}
+                </p>
+                <Button onClick={() => createPaymentOrder()} className="mt-6">{t('try_again')}</Button>
+            </div>
+        );
+    }
+
+    // Final status based on polling or application data
+    const finalStatus = paymentStatus || application?.status;
+
+    switch (finalStatus) {
+      case 'completed':
+      case 'pending-review':
+        return (
+           <div className="text-center p-8">
+                <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
+                <h1 className="text-2xl font-bold">{t('payment_successful')}</h1>
+                <p className="text-muted-foreground mb-6">{t('application_under_review')}</p>
+                <div className="flex gap-4 justify-center">
+                    <Button asChild><Link to="/license/my-applications">{t('view_my_applications')}</Link></Button>
+                    <Button asChild variant="outline"><Link to="/dashboard">{t('back_to_dashboard')}</Link></Button>
+                </div>
+            </div>
+        );
+
+      case 'failed':
+      case 'payment-failed':
+        return (
+            <div className="flex flex-col items-center justify-center text-center p-8">
+                <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+                <h1 className="text-2xl font-bold">{t('payment_failed_title')}</h1>
+                <p className="text-muted-foreground">{t('payment_failed_message')}</p>
+                <Button onClick={() => createPaymentOrder()} className="mt-6">{t('try_again_payment')}</Button>
+            </div>
+        );
+
+      case 'pending':
+      case 'pending-payment':
+        return (
+             <div className="flex flex-col items-center justify-center text-center p-8">
+                <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
+                <h1 className="text-2xl font-bold">{t('redirecting_to_payment')}</h1>
+                <p className="text-muted-foreground">{t('follow_instructions_on_payment_page')}</p>
+            </div>
+        );
+
+      default:
+        return (
+            <div className="flex flex-col items-center justify-center text-center p-8">
+                <AlertTriangle className="h-16 w-16 text-yellow-500 mb-4" />
+                <h1 className="text-2xl font-bold">{t('unknown_status')}</h1>
+                <p className="text-muted-foreground">{t('checking_application_status')}</p>
+            </div>
+        );
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-50">
+      <Header />
+      <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
+        <Card className="w-full max-w-lg shadow-lg">
+            <CardContent className="p-4 sm:p-6">
+                {renderStatus()}
+            </CardContent>
+        </Card>
+      </main>
       <Footer />
     </div>
   );

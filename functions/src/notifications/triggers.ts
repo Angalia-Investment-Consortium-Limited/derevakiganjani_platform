@@ -40,7 +40,11 @@ const sendNotification = async (userId: string, notification: any) => {
     };
 
     try {
-      await admin.messaging().sendToDevice(userData.fcmTokens, payload);
+      const message = {
+        ...payload,
+        tokens: userData.fcmTokens,
+      };
+      await admin.messaging().sendEachForMulticast(message);
       console.log('Push notification sent successfully.');
     } catch (error) {
       console.error('Error sending push notification:', error);

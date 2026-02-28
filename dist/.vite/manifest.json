@@ -1,11 +1,15 @@
 {
   "index.html": {
-    "file": "assets/index-D2VFDmAm.js",
+    "file": "assets/index-BUTGPpeg.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
+    "dynamicImports": [
+      "node_modules/dompurify/dist/purify.es.mjs",
+      "node_modules/canvg/lib/index.es.js"
+    ],
     "css": [
-      "assets/index-C5y0kf8M.css"
+      "assets/index-BLP_oOCO.css"
     ],
     "assets": [
       "assets/logo-DQrYtaup.png",
@@ -18,6 +22,21 @@
       "assets/20-XyvcA0Hw.jpg",
       "assets/35-C8QjWFVy.jpg"
     ]
+  },
+  "node_modules/canvg/lib/index.es.js": {
+    "file": "assets/index.es-IdN1q5xq.js",
+    "name": "index.es",
+    "src": "node_modules/canvg/lib/index.es.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  },
+  "node_modules/dompurify/dist/purify.es.mjs": {
+    "file": "assets/purify.es-h52jTgpa.js",
+    "name": "purify.es",
+    "src": "node_modules/dompurify/dist/purify.es.mjs",
+    "isDynamicEntry": true
   },
   "src/assets/images/1.jpg": {
     "file": "assets/1-QBrop3GW.jpg",

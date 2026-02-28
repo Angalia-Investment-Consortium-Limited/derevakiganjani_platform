@@ -1,105 +1,67 @@
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import React, { useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { doc, getDocs, collection, query, where, updateDoc } from 'firebase/firestore';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { useToast } from '@/components/ui/use-toast';
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
 import { Loader2 } from 'lucide-react';
 
+// Define the type for a test attempt
+type TestAttempt = {
+  status: string;
+  categoryId: string;
+};
+
 const PaymentPendingPage: React.FC = () => {
+  const { testAttemptId } = useParams<{ testAttemptId: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const location = useLocation();
-  const queryParams = new URLSearchParams(location.search);
-  const orderId = queryParams.get('order_id');
 
-  const checkPaymentStatusMutation = useMutation({
-    mutationFn: async () => {
-      if (!orderId) {
-        throw new Error("No order ID found to check status.");
-      }
+  useEffect(() => {
+    if (!testAttemptId) {
+      toast({ title: "Error", description: "No test attempt ID found.", variant: "destructive" });
+      navigate('/jitesti');
+      return;
+    }
 
-      const response = await fetch(`https://apigw.selcommobile.com/v1/checkout/order-status?order_id=${orderId}`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${btoa('TILL61231447-fcffa665b91a415085cd64b07e4f1a75:4a19e7-221273-452a9c-b0f8fc-0d7d75-49')}`,
-        },
-      });
+    const unsub = onSnapshot(doc(db, "test_attempts", testAttemptId), 
+      async (docSnap) => {
+        if (docSnap.exists()) {
+          const testAttempt = docSnap.data() as TestAttempt;
 
-      const result = await response.json();
-
-      if (result.result !== 'SUCCESS' || !result.data || result.data.length === 0) {
-        throw new Error(result.message || 'Failed to fetch payment status.');
-      }
-
-      const paymentStatus = result.data[0].payment_status;
-
-      const paymentsQuery = query(collection(db, 'payments'), where('selcomTransactionId', '==', orderId));
-      const testAttemptsQuery = query(collection(db, 'test_attempts'), where('paymentId', '==', orderId));
-      
-      const paymentsSnapshot = await getDocs(paymentsQuery);
-      const testAttemptsSnapshot = await getDocs(testAttemptsQuery);
-
-      if (paymentStatus === 'COMPLETED') {
-        if (!paymentsSnapshot.empty) {
-          const paymentDoc = paymentsSnapshot.docs[0];
-          await updateDoc(doc(db, 'payments', paymentDoc.id), { status: 'completed' });
-        }
-
-        if (!testAttemptsSnapshot.empty) {
-          const testAttemptDoc = testAttemptsSnapshot.docs[0];
-          await updateDoc(doc(db, 'test_attempts', testAttemptDoc.id), { status: 'started' });
-          return testAttemptDoc.id;
-        } else {
-          throw new Error('Could not find test attempt to start.');
-        }
-      } else if (['REJECTED', 'CANCELLED', 'USERCANCELLED'].includes(paymentStatus)) {
-        if (!paymentsSnapshot.empty) {
-          const paymentDoc = paymentsSnapshot.docs[0];
-          await updateDoc(doc(db, 'payments', paymentDoc.id), { status: 'failed' });
-        }
-        if (!testAttemptsSnapshot.empty) {
-            const testAttemptDoc = testAttemptsSnapshot.docs[0];
-            await updateDoc(doc(db, 'test_attempts', testAttemptDoc.id), { status: 'payment_failed' });
-        }
-        throw new Error(`Payment was not successful. Status: ${paymentStatus}`)
-      } else {
-        // PENDING or INPROGRESS
-        return null; // Indicates that the payment is still pending and we should keep polling.
-      }
-    },
-    onSuccess: (testAttemptId) => {
-        if(testAttemptId){
+          if (testAttempt.status === 'active') {
             toast({
-                title: "Payment Successful!",
-                description: "Your payment has been confirmed. Starting your test now...",
+              title: "Payment Confirmed!",
+              description: "Your test is ready. Starting now...",
             });
             navigate(`/jitesti/test/${testAttemptId}`);
-        } else {
-             toast({
-                title: "Payment Still Pending",
-                description: "Your payment is still being processed. Please wait a moment and try again.",
+          } else if (testAttempt.status === 'payment_failed') {
+            toast({
+              title: "Payment Failed",
+              description: "Your payment could not be processed. Please try again.",
+              variant: "destructive",
             });
-        }
-    },
-    onError: (err) => {
-        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
-        toast({
-            title: "Payment Status Check Failed",
-            description: errorMessage,
-            variant: "destructive",
-        });
-        navigate('/jitesti'); // Optionally navigate back to categories on failure
-    },
-  });
+            navigate(`/jitesti/payment/${testAttempt.categoryId}`); // Redirect back to payment
+          }
+          // If status is still 'pending_payment', we just keep listening.
 
-  const handleCheckStatus = () => {
-    checkPaymentStatusMutation.mutate();
-  };
+        } else {
+          toast({ title: "Error", description: "Could not find your test attempt.", variant: "destructive" });
+          navigate('/jitesti');
+        }
+      },
+      (error) => {
+        console.error("Error listening to test attempt:", error);
+        toast({ title: "Error", description: "There was an error verifying payment.", variant: "destructive" });
+        navigate('/jitesti');
+      }
+    );
+
+    // Cleanup listener on component unmount
+    return () => unsub();
+  }, [testAttemptId, navigate, toast]);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -107,9 +69,9 @@ const PaymentPendingPage: React.FC = () => {
       <main className="flex-grow container mx-auto px-4 py-8 flex items-center justify-center">
         <Card className="w-full max-w-lg text-center">
           <CardHeader>
-            <CardTitle className="text-2xl">Payment Processing</CardTitle>
+            <CardTitle className="text-2xl">Processing Payment</CardTitle>
             <CardDescription>
-              Your payment is being processed. Please check your phone for a USSD prompt to enter your PIN.
+              Please approve the payment on your phone. This page will update automatically.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -117,15 +79,8 @@ const PaymentPendingPage: React.FC = () => {
               <Loader2 className="h-16 w-16 animate-spin text-primary" />
             </div>
             <p className="text-muted-foreground">
-              If you've approved the payment, click the button below to check the status.
+              Waiting for payment confirmation... Do not refresh the page.
             </p>
-            <Button 
-                className="w-full"
-                disabled={checkPaymentStatusMutation.isPending}
-                onClick={handleCheckStatus}
-            >
-                {checkPaymentStatusMutation.isPending ? 'Checking Status...' : 'Check Payment Status'}
-            </Button>
           </CardContent>
         </Card>
       </main>

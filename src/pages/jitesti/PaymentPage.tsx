@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from '../../hooks/useAuth';
@@ -12,7 +13,6 @@ import { Footer } from "@/components/Footer";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { v4 as uuidv4 } from 'uuid';
 
 // --- Type Definitions ---
 type JitestiCategory = {
@@ -44,6 +44,9 @@ const fetchCategory = async (categoryId: string): Promise<JitestiCategory | null
     return null;
 };
 
+const functions = getFunctions();
+const initiateSelcomPayment = httpsCallable(functions, 'initiateSelcomPayment');
+
 const PaymentPage: React.FC = () => {
   const { categoryId = '' } = useParams<{ categoryId: string }>();
   const navigate = useNavigate();
@@ -62,91 +65,33 @@ const PaymentPage: React.FC = () => {
         if (!user || !category) {
             throw new Error("You must be logged in and a category must be selected.");
         }
-        if (!phone || !/^\d{10,12}$/.test(phone)) {
-            throw new Error("Please enter a valid phone number (e.g., 255712345678).");
+         if (!phone.match(/^255[0-9]{9}$/)) {
+            throw new Error("Please enter a valid phone number in the format 255712345678.");
         }
 
-        const orderId = uuidv4();
-
-        // Create documents in Firestore first
-        const paymentDocRef = await addDoc(collection(db, 'payments'), {
-            userId: user.uid,
-            categoryId: categoryId,
-            amount: category.price,
-            status: 'pending',
-            createdAt: serverTimestamp(),
-            selcomTransactionId: orderId,
-            phone: phone,
-            provider: 'Selcom',
-            service: 'JiTesti',
+        const result = await initiateSelcomPayment({
+            categoryId,
+            phone,
+            category, // Send the whole category object
+            user: {
+                uid: user.uid,
+                email: user.email,
+                displayName: user.displayName
+            } 
         });
 
-        const testAttemptDocRef = await addDoc(collection(db, 'test_attempts'), {
-            userId: user.uid,
-            categoryId: categoryId,
-            categoryTitle: category.title,
-            durationInMinutes: category.durationInMinutes,
-            passMark: category.passMark,
-            startTime: serverTimestamp(),
-            status: 'pending_payment',
-            score: null,
-            answers: {},
-            paymentId: paymentDocRef.id,
-        });
-
-        // Step 1: Create Order Minimal
-        const createOrderResponse = await fetch('https://apigw.selcommobile.com/v1/checkout/create-order-minimal', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${btoa('TILL61231447-fcffa665b91a415085cd64b07e4f1a75:4a19e7-221273-452a9c-b0f8fc-0d7d75-49')}`
-            },
-            body: JSON.stringify({
-                "order_id": orderId,
-                "amount": category.price,
-                "currency": "TZS",
-                "email": user.email,
-                "phone": phone,
-                "first_name": user.displayName?.split(' ')[0] || '',
-                "last_name": user.displayName?.split(' ')[1] || '',
-                "no_of_items": 1,
-            })
-        });
-
-        const createOrderResult = await createOrderResponse.json();
-
-        if (createOrderResult.result !== 'SUCCESS') {
-            throw new Error(createOrderResult.message || 'Failed to create Selcom order.');
-        }
-
-        // Step 2: Wallet Payment
-        const walletPaymentResponse = await fetch('https://apigw.selcommobile.com/v1/wallet-payment', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${btoa('TILL61231447-fcffa665b91a415085cd64b07e4f1a75:4a19e7-221273-452a9c-b0f8fc-0d7d75-49')}`
-            },
-            body: JSON.stringify({
-                "order_id": orderId,
-                "phone": phone
-            })
-        });
-
-        const walletPaymentResult = await walletPaymentResponse.json();
-
-        if (walletPaymentResult.result !== 'SUCCESS') {
-            throw new Error(walletPaymentResult.message || 'Failed to initiate USSD push.');
-        }
-
-        return { orderId, ...walletPaymentResult };
+        return result.data as { success: boolean; testAttemptId: string };
     },
-    onSuccess: () => {
-        toast({
-            title: "Payment Initiated",
-            description: "Please check your phone and enter your PIN to approve the payment.",
-        });
-        // The user will be polled for payment status on a separate page or via a webhook in a real app
-        navigate('/jitesti/payment-pending'); // Redirect to a pending page
+    onSuccess: (data) => {
+        if (data.success) {
+            toast({
+                title: "Payment Initiated",
+                description: "Check your phone and enter your PIN to approve the payment.",
+            });
+            navigate(`/jitesti/payment-pending/${data.testAttemptId}`);
+        } else {
+            throw new Error('The payment initiation failed. Please try again.');
+        }
     },
     onError: (err) => {
         const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";

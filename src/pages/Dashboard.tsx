@@ -17,7 +17,7 @@ const Dashboard = () => {
   const quickActions = [
     { icon: GraduationCap, label: t('jiTesti'), description: 'Take a driving test', href: '/jitesti', color: 'text-secondary' },
     { icon: BookOpen, label: t('elimika'), description: 'Continue learning', href: '/elimika', color: 'text-accent' },
-    { icon: FileText, label: t('leseni'), description: 'Renew license', href: '/license-request', color: 'text-primary' },
+    { icon: FileText, label: t('leseni'), description: 'Renew license', href: '/license', color: 'text-primary' },
     { icon: TrendingUp, label: 'Ajira ya Udereva', description: 'Find driver jobs', href: '/ajira/jobs', color: 'text-success' },
   ];
 
