@@ -137,10 +137,10 @@ const MyJobPosts = () => {
                   ) : (
                     jobs.map((job) => (
                       <TableRow key={job.id}>
-                        <TableCell className="font-medium">{job.title}</TableCell>
+                        <TableCell className="font-medium">{job.job_title}</TableCell>
                         <TableCell>{job.vehicleType}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">Category {job.licenseRequired}</Badge>
+                          <Badge variant="outline">Category {job.required_license_class}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
@@ -148,7 +148,7 @@ const MyJobPosts = () => {
                         <TableCell className="text-center">
                           <span className="font-semibold">{job.applicationCount || 0}</span>
                         </TableCell>
-                        <TableCell>{new Date(job.postedOn.seconds * 1000).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(job.posted_date.seconds * 1000).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button 

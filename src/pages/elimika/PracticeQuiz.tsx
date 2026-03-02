@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -9,77 +10,53 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
+import type { Quiz, Question } from "@/types/elimika";
+import { Loader } from "@/components/ui/loader";
 
 const PracticeQuiz = () => {
   const navigate = useNavigate();
   const { courseId } = useParams();
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
+  const [quizTitle, setQuizTitle] = useState("");
 
-  const questions = [
-    {
-      id: 1,
-      question: "What should you do when approaching a pedestrian crosswalk?",
-      options: [
-        "Speed up to cross before pedestrians",
-        "Slow down and be prepared to stop",
-        "Honk to warn pedestrians",
-        "Maintain your current speed"
-      ],
-      correct: 1,
-      explanation: "You should always slow down and be prepared to stop when approaching a crosswalk to ensure pedestrian safety."
-    },
-    {
-      id: 2,
-      question: "What is the maximum speed limit in a school zone during school hours?",
-      options: [
-        "30 km/h",
-        "40 km/h",
-        "50 km/h",
-        "60 km/h"
-      ],
-      correct: 0,
-      explanation: "The speed limit in school zones is typically 30 km/h during school hours to protect children."
-    },
-    {
-      id: 3,
-      question: "When must you yield to pedestrians?",
-      options: [
-        "Only at marked crosswalks",
-        "Only when they have pressed the crossing button",
-        "At all crosswalks, marked or unmarked",
-        "Never, pedestrians must yield to vehicles"
-      ],
-      correct: 2,
-      explanation: "Drivers must yield to pedestrians at all crosswalks, whether marked or unmarked."
-    },
-    {
-      id: 4,
-      question: "What should you do if you see a pedestrian with a white cane?",
-      options: [
-        "Honk to alert them of your presence",
-        "Pass quickly to avoid causing delays",
-        "Give them extra time and space",
-        "Flash your lights"
-      ],
-      correct: 2,
-      explanation: "A white cane indicates a visually impaired pedestrian. You should give them extra time and space to cross safely."
-    },
-    {
-      id: 5,
-      question: "When turning at an intersection, you should:",
-      options: [
-        "Turn quickly before pedestrians reach the street",
-        "Always check for pedestrians before turning",
-        "Only check if the light is red",
-        "Assume pedestrians will stop for you"
-      ],
-      correct: 1,
-      explanation: "Always check for pedestrians before making any turn, even if you have a green light."
-    }
-  ];
+  useEffect(() => {
+    const fetchQuiz = async () => {
+      if (!courseId) {
+        setError("Course ID is missing.");
+        setLoading(false);
+        return;
+      }
+      try {
+        const quizzesCollection = collection(db, 'Quiz');
+        const q = query(quizzesCollection, where('course_id', '==', courseId), limit(1));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+          setError("No quiz found for this course.");
+          setQuestions([]);
+        } else {
+          const quizDoc = querySnapshot.docs[0].data() as Quiz;
+          setQuestions(quizDoc.questions || []);
+          setQuizTitle(quizDoc.title_en || "Practice Quiz");
+        }
+      } catch (err) {
+        setError("Failed to fetch quiz data.");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchQuiz();
+  }, [courseId]);
 
   const handleSubmit = () => {
     setShowFeedback(true);
@@ -92,13 +69,63 @@ const PracticeQuiz = () => {
       setSelectedAnswer("");
       setShowFeedback(false);
     } else {
-      const score = Math.round((answers.filter((ans, idx) => parseInt(ans) === questions[idx].correct).length / questions.length) * 100);
-      navigate(`/elimika/course/${courseId}`, { state: { quizScore: score } });
+      const correctAnswers = answers.filter((ans, idx) => {
+        const question = questions[idx];
+        const correctOption = question.options.find(opt => opt.option_id === question.correct_answer);
+        return correctOption ? ans === correctOption.option_id : false;
+      }).length;
+      const score = Math.round((correctAnswers / questions.length) * 100);
+      navigate(`/elimika/completion/${courseId}`, { state: { quizScore: score, totalQuestions: questions.length, correctAnswers } });
     }
   };
+  
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+            <XCircle className="mx-auto h-12 w-12 text-destructive" />
+            <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                {error}
+            </h1>
+            <p className="mt-4 text-muted-foreground">
+                There was an issue loading the quiz. Please try again later.
+            </p>
+            <div className="mt-6">
+                <Button onClick={() => navigate(-1)}>Go Back</Button>
+            </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+     return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-center">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                No Questions Found
+            </h1>
+            <p className="mt-4 text-muted-foreground">
+                This quiz does not have any questions yet.
+            </p>
+            <div className="mt-6">
+                <Button onClick={() => navigate(`/elimika/course/${courseId}`)}>Back to Course</Button>
+            </div>
+        </div>
+      </div>
+    );
+  }
 
   const question = questions[currentQuestion];
-  const isCorrect = showFeedback && parseInt(selectedAnswer) === question.correct;
+  const isCorrect = showFeedback && selectedAnswer === question.correct_answer;
   const progress = ((currentQuestion + 1) / questions.length) * 100;
 
   return (
@@ -115,9 +142,13 @@ const PracticeQuiz = () => {
             <BreadcrumbItem>
               <BreadcrumbLink href="/elimika">Elimika</BreadcrumbLink>
             </BreadcrumbItem>
+             <BreadcrumbSeparator />
+            <BreadcrumbItem>
+               <BreadcrumbLink href={`/elimika/course/${courseId}`}>Course</BreadcrumbLink>
+            </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>Practice Quiz</BreadcrumbPage>
+              <BreadcrumbPage>{quizTitle}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -127,7 +158,7 @@ const PracticeQuiz = () => {
             <CardHeader>
               <div className="space-y-4">
                 <div className="flex justify-between items-center">
-                  <CardTitle>Practice Quiz</CardTitle>
+                  <CardTitle>{quizTitle}</CardTitle>
                   <span className="text-sm text-muted-foreground">
                     Question {currentQuestion + 1} of {questions.length}
                   </span>
@@ -137,28 +168,28 @@ const PracticeQuiz = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <h3 className="text-xl font-semibold mb-4">{question.question}</h3>
+                <h3 className="text-xl font-semibold mb-4">{question.question_text_en}</h3>
                 
                 <RadioGroup value={selectedAnswer} onValueChange={setSelectedAnswer} disabled={showFeedback}>
                   <div className="space-y-3">
-                    {question.options.map((option, index) => (
-                      <div key={index} className={`flex items-center space-x-2 p-4 rounded-lg border ${
+                    {question.options.map((option) => (
+                      <div key={option.option_id} className={`flex items-center space-x-2 p-4 rounded-lg border ${
                         showFeedback 
-                          ? index === question.correct 
+                          ? option.option_id === question.correct_answer 
                             ? "border-success bg-success/10" 
-                            : parseInt(selectedAnswer) === index 
+                            : selectedAnswer === option.option_id
                               ? "border-destructive bg-destructive/10"
                               : ""
                           : ""
                       }`}>
-                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                        <Label htmlFor={`option-${index}`} className="flex-1 cursor-pointer">
-                          {option}
+                        <RadioGroupItem value={option.option_id} id={option.option_id} />
+                        <Label htmlFor={option.option_id} className="flex-1 cursor-pointer">
+                          {option.option_text_en}
                         </Label>
-                        {showFeedback && index === question.correct && (
+                        {showFeedback && option.option_id === question.correct_answer && (
                           <CheckCircle2 className="h-5 w-5 text-success" />
                         )}
-                        {showFeedback && parseInt(selectedAnswer) === index && index !== question.correct && (
+                        {showFeedback && selectedAnswer === option.option_id && option.option_id !== question.correct_answer && (
                           <XCircle className="h-5 w-5 text-destructive" />
                         )}
                       </div>
@@ -182,7 +213,8 @@ const PracticeQuiz = () => {
                       </>
                     )}
                   </div>
-                  <p className="text-sm">{question.explanation}</p>
+                  {/* The explanation part needs to be added to the Question type if we want to show it */}
+                  {/* <p className="text-sm">{question.explanation}</p> */}
                 </div>
               )}
 

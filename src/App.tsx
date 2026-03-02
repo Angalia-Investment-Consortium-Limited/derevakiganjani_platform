@@ -548,6 +548,11 @@ const App = () => (
                   <EmployerVerificationManagement />
                 </AdminRoleBasedRoute>
               } />
+              <Route path="/admin/employer-review/:id" element={
+                <AdminRoleBasedRoute>
+                  <EmployerReview />
+                </AdminRoleBasedRoute>
+              } />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/whatsapp-privacy-policy" element={<WhatsAppPrivacyPolicy />} />
             <Route path="*" element={<NotFound />} />

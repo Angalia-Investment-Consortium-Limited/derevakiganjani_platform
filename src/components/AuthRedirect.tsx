@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import type { EmployerProfile, AdminProfile } from '@/types/auth';
+import type { EmployerProfile } from '@/types/auth';
 
 const AuthRedirect = () => {
   const { user, profile, profileLoading } = useAuth();
@@ -14,10 +14,7 @@ const AuthRedirect = () => {
       return; 
     }
 
-    const isSuperAdminInToken = user?.roles?.includes('SuperAdmin');
-    const isSuperAdminInProfile = (profile as AdminProfile)?.role === 'SuperAdmin';
-
-    if (isSuperAdminInToken || isSuperAdminInProfile) {
+    if (user?.roles?.includes('SuperAdmin')) {
       navigate('/admin');
       return;
     }
@@ -27,8 +24,10 @@ const AuthRedirect = () => {
     switch (primaryRole) {
       case 'Employer': {
         const employerProfile = profile as EmployerProfile;
+        // Corrected field name from verification_status to verificationStatus
+        const status = employerProfile?.verificationStatus?.toLowerCase();
         
-        if (employerProfile?.verification_status === 'Verified' || employerProfile?.verified === true) {
+        if (status === 'verified') {
           navigate('/employer/dashboard');
         } else {
           navigate('/employer/pending-verification');
@@ -43,14 +42,17 @@ const AuthRedirect = () => {
         break;
 
       default:
-        console.warn('AuthRedirect: Could not determine user role after loading. Redirecting to login.');
-        navigate('/ingia');
+        if (user) {
+          navigate('/dashboard'); 
+        } else {
+          navigate('/ingia');
+        }
         break;
     }
   }, [user, profile, profileLoading, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
         <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
             <h1 className="text-2xl font-semibold mt-4">Logging you in...</h1>

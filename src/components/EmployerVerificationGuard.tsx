@@ -2,15 +2,21 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 import type { EmployerProfile } from '@/types/auth';
+import { useEffect } from 'react';
 
 interface EmployerVerificationGuardProps {
   children: React.ReactNode;
 }
 
 export const EmployerVerificationGuard: React.FC<EmployerVerificationGuardProps> = ({ children }) => {
-  const { user, profile, isLoading } = useAuth();
+  const { profile, profileLoading, refreshProfile } = useAuth();
 
-  if (isLoading) {
+  useEffect(() => {
+    refreshProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (profileLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -18,33 +24,12 @@ export const EmployerVerificationGuard: React.FC<EmployerVerificationGuardProps>
     );
   }
 
-  // Check if user is an employer
-  const isEmployer = user?.roles?.includes('Employer') || user?.user_type === 'Employer';
-
-  if (!isEmployer) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  // Check employer verification status
   const employerProfile = profile as EmployerProfile;
-  
-  if (!employerProfile) {
-    // Profile not loaded yet, show loading
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+  const status = employerProfile?.verificationStatus?.trim().toLowerCase();
+
+  if (status === 'verified') {
+    return <>{children}</>;
   }
 
-  // Check if employer is verified
-  const isVerified = employerProfile.verified === true || employerProfile.verification_status === 'Verified';
-
-  if (!isVerified) {
-    // Redirect to pending verification page
-    return <Navigate to="/employer/pending-verification" replace />;
-  }
-
-  // Employer is verified, allow access
-  return <>{children}</>;
+  return <Navigate to="/employer/pending-verification" replace />;
 };

@@ -8,9 +8,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Plus, Edit, XCircle, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Plus, Edit, XCircle, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,290 +19,218 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/lib/firebase';
+import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, getDocs, getDoc } from 'firebase/firestore';
+import type { ShortlistItem } from '@/types/shortlist';
+import type { Job } from '@/types/jobs';
+import type { Interview } from '@/types/interviews';
 
 const Interviews = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [shortlistedCandidates, setShortlistedCandidates] = useState<ShortlistItem[]>([]);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [newInterview, setNewInterview] = useState({ candidateId: '', jobId: '', date: '', time: '', mode: 'Online', notes: '' });
 
-  const interviews = [
-    {
-      id: 1,
-      candidate: 'John Mwamba',
-      job: 'Truck Driver',
-      date: '2025-02-05',
-      time: '10:00 AM',
-      mode: 'In-person',
-      status: 'Confirmed',
-      notes: 'Interview at office',
-    },
-    {
-      id: 2,
-      candidate: 'Mary Kamara',
-      job: 'Company Car Driver',
-      date: '2025-02-06',
-      time: '2:00 PM',
-      mode: 'Phone',
-      status: 'Requested',
-      notes: '',
-    },
-    {
-      id: 3,
-      candidate: 'David Luka',
-      job: 'Bus Driver',
-      date: '2025-02-03',
-      time: '9:00 AM',
-      mode: 'Online',
-      status: 'Completed',
-      notes: 'Zoom meeting',
-    },
-  ];
+  useEffect(() => {
+    if (!user) {
+        setError("You must be logged in to view this page.");
+        setLoading(false);
+        return;
+    }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'Confirmed':
-        return 'bg-success/10 text-success';
-      case 'Requested':
-        return 'bg-warning/10 text-warning';
-      case 'Completed':
-        return 'bg-blue-500/10 text-blue-500';
-      case 'Cancelled':
-        return 'bg-destructive/10 text-destructive';
-      default:
-        return '';
+    const q = query(collection(db, "interviews"), where("employerId", "==", user.uid));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const fetchedInterviews: Interview[] = [];
+        querySnapshot.forEach((doc) => {
+            fetchedInterviews.push({ id: doc.id, ...doc.data() } as Interview);
+        });
+        setInterviews(fetchedInterviews);
+        setLoading(false);
+    }, (err) => {
+        setError("Failed to fetch interviews.");
+        setLoading(false);
+    });
+
+    const fetchDropdownData = async () => {
+        try {
+            const shortlistQuery = query(collection(db, "shortlists"), where("employerId", "==", user.uid));
+            const shortlistSnapshot = await getDocs(shortlistQuery);
+            const candidates = await Promise.all(shortlistSnapshot.docs.map(async (docSnap) => {
+                const data = docSnap.data();
+                const driverDoc = await getDoc(doc(db, 'driver_profiles', data.driverId));
+                return { id: docSnap.id, ...data, ...(driverDoc.data()) } as ShortlistItem;
+            }));
+            setShortlistedCandidates(candidates);
+
+            const jobsQuery = query(collection(db, "jobs"), where("employerId", "==", user.uid));
+            const jobsSnapshot = await getDocs(jobsQuery);
+            setJobs(jobsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job)));
+        } catch (e) {
+            toast({ title: "Error", description: "Failed to fetch candidates or jobs.", variant: 'destructive'});
+        }
+    };
+
+    fetchDropdownData();
+    return () => unsubscribe();
+  }, [user, toast]);
+
+  const handleSchedule = async () => {
+    if(!newInterview.candidateId || !newInterview.jobId || !newInterview.date || !newInterview.time) {
+        toast({title: "Error", description: "Please fill all required fields.", variant: "destructive"});
+        return;
+    }
+    try {
+        await addDoc(collection(db, "interviews"), {
+            ...newInterview,
+            employerId: user?.uid,
+            status: 'Requested'
+        });
+        setShowScheduleModal(false);
+        toast({ title: "Success", description: "Interview scheduled successfully." });
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to schedule interview.", variant: "destructive" });
     }
   };
 
-  const handleSchedule = () => {
-    // TODO: API call to schedule interview
-    setShowScheduleModal(false);
-    toast({
-      title: "Interview Scheduled",
-      description: "The candidate will be notified about the interview.",
-    });
+  const handleAction = async (interviewId: string, status: Interview['status']) => {
+    try {
+        const interviewRef = doc(db, "interviews", interviewId);
+        await updateDoc(interviewRef, { status });
+        toast({ title: "Success", description: `Interview status updated to ${status}.` });
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to update interview status.", variant: "destructive" });
+    }
   };
 
-  const handleAction = (_interviewId: number, action: string, candidateName: string) => {
-    toast({
-      title: `Interview ${action}`,
-      description: `Interview with ${candidateName} has been ${action.toLowerCase()}.`,
-    });
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Confirmed': return 'bg-success/10 text-success';
+      case 'Requested': return 'bg-warning/10 text-warning';
+      case 'Completed': return 'bg-blue-500/10 text-blue-500';
+      case 'Cancelled': return 'bg-destructive/10 text-destructive';
+      default: return '';
+    }
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
       <main className="flex-1 container py-8">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem><BreadcrumbLink href="/ajiri-dereva/EmployerDashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbPage>Interviews</BreadcrumbPage></BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+
         <div className="mb-6 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Interview Scheduling</h1>
-            <p className="text-muted-foreground">Ratiba za Mahojiano</p>
-          </div>
-          <Button onClick={() => setShowScheduleModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Schedule Interview
-          </Button>
+           <div></div>
+          <Button onClick={() => setShowScheduleModal(true)}><Plus className="h-4 w-4 mr-2" />Schedule Interview</Button>
         </div>
+        
+        {loading && <div className="flex justify-center items-center"><Loader2 className="h-8 w-8 animate-spin" /></div>}
+        {error && <div className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> {error}</div>}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Scheduled Interviews</CardTitle>
-            <CardDescription>Manage all interview appointments</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <Input placeholder="Search candidates..." className="flex-1" />
-              <Select>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="requested">Requested</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select>
-                <SelectTrigger className="w-full md:w-[180px]">
-                  <SelectValue placeholder="Mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Modes</SelectItem>
-                  <SelectItem value="inperson">In-person</SelectItem>
-                  <SelectItem value="phone">Phone</SelectItem>
-                  <SelectItem value="online">Online</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Candidate</TableHead>
-                    <TableHead>Job Position</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Time</TableHead>
-                    <TableHead>Mode</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {interviews.map((interview) => (
-                    <TableRow key={interview.id}>
-                      <TableCell className="font-medium">{interview.candidate}</TableCell>
-                      <TableCell>{interview.job}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-muted-foreground" />
-                          {interview.date}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-muted-foreground" />
-                          {interview.time}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{interview.mode}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(interview.status)}>{interview.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {interview.status !== 'Completed' && (
-                            <>
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                onClick={() => handleAction(interview.id, 'Rescheduled', interview.candidate)}
-                                title="Reschedule"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button 
-                                size="sm" 
-                                variant="ghost"
-                                onClick={() => handleAction(interview.id, 'Cancelled', interview.candidate)}
-                                title="Cancel"
-                              >
-                                <XCircle className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </>
-                          )}
-                          {interview.status === 'Confirmed' && (
-                            <Button 
-                              size="sm" 
-                              variant="ghost"
-                              onClick={() => handleAction(interview.id, 'Marked as Completed', interview.candidate)}
-                              title="Mark Completed"
-                            >
-                              <CheckCircle2 className="h-4 w-4 text-success" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+        {!loading && !error && (
+            <Card>
+            <CardHeader>
+              <CardTitle>Scheduled Interviews</CardTitle>
+              <CardDescription>Manage all interview appointments</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Candidate</TableHead><TableHead>Job Position</TableHead><TableHead>Date & Time</TableHead><TableHead>Mode</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {interviews.map((interview) => (
+                            <TableRow key={interview.id}>
+                                <TableCell className="font-medium">{interview.candidateName}</TableCell>
+                                <TableCell>{interview.jobTitle}</TableCell>
+                                <TableCell>{interview.date} at {interview.time}</TableCell>
+                                <TableCell><Badge variant="outline">{interview.mode}</Badge></TableCell>
+                                <TableCell><Badge className={getStatusColor(interview.status)}>{interview.status}</Badge></TableCell>
+                                <TableCell className="text-right">
+                                    <Button size="sm" variant="ghost" onClick={() => handleAction(interview.id, 'Cancelled')} title="Cancel"><XCircle className="h-4 w-4 text-destructive" /></Button>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+          </Card>
+        )}
       </main>
 
       <Dialog open={showScheduleModal} onOpenChange={setShowScheduleModal}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Schedule Interview</DialogTitle>
-            <DialogDescription>
-              Set up an interview with a candidate
-            </DialogDescription>
-          </DialogHeader>
-
+          <DialogHeader><DialogTitle>Schedule Interview</DialogTitle><DialogDescription>Set up an interview with a candidate</DialogDescription></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="candidate">Candidate *</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select candidate" />
-                  </SelectTrigger>
+                <Select onValueChange={(value) => setNewInterview({...newInterview, candidateId: value})}>
+                  <SelectTrigger><SelectValue placeholder="Select candidate" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">John Mwamba</SelectItem>
-                    <SelectItem value="2">Mary Kamara</SelectItem>
-                    <SelectItem value="3">David Luka</SelectItem>
+                    {shortlistedCandidates.map(c => <SelectItem key={c.id} value={c.id}>{c.fullName}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="job">Job Position *</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select job" />
-                  </SelectTrigger>
+                <Select onValueChange={(value) => setNewInterview({...newInterview, jobId: value})}>
+                  <SelectTrigger><SelectValue placeholder="Select job" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Truck Driver</SelectItem>
-                    <SelectItem value="2">Company Car Driver</SelectItem>
-                    <SelectItem value="3">Bus Driver</SelectItem>
+                    {jobs.map(j => <SelectItem key={j.id} value={j.id}>{j.job_title}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="date">Interview Date *</Label>
-                <Input id="date" type="date" />
+                <Input id="date" type="date" onChange={(e) => setNewInterview({...newInterview, date: e.target.value})} />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="time">Interview Time *</Label>
-                <Input id="time" type="time" />
+                <Input id="time" type="time" onChange={(e) => setNewInterview({...newInterview, time: e.target.value})} />
               </div>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="mode">Interview Mode *</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select mode" />
-                </SelectTrigger>
+              <Select onValueChange={(value) => setNewInterview({...newInterview, mode: value as any})}>
+                <SelectTrigger><SelectValue placeholder="Select mode" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="inperson">In-person</SelectItem>
-                  <SelectItem value="phone">Phone Call</SelectItem>
-                  <SelectItem value="online">Online (Zoom/Meet)</SelectItem>
+                  <SelectItem value="In-person">In-person</SelectItem>
+                  <SelectItem value="Phone">Phone Call</SelectItem>
+                  <SelectItem value="Online">Online (Zoom/Meet)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-
             <div className="space-y-2">
               <Label htmlFor="notes">Additional Notes</Label>
-              <Textarea 
-                id="notes" 
-                placeholder="Location, meeting link, special instructions..."
-                rows={3}
-              />
+              <Textarea id="notes" placeholder="Location, meeting link, special instructions..." rows={3} onChange={(e) => setNewInterview({...newInterview, notes: e.target.value})} />
             </div>
           </div>
-
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowScheduleModal(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSchedule}>
-              Schedule Interview
-            </Button>
+            <Button variant="outline" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
+            <Button onClick={handleSchedule}>Schedule Interview</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       <Footer />
     </div>
   );

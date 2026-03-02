@@ -1,101 +1,74 @@
 
-import { db } from '@/lib/firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
+import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
-// Type definition for the data needed to create a certificate.
-type CertificateData = {
-    userId: string;
-    attemptId: string;
-    userName: string;
-    testName: string;
-    completedAt: Date;
-};
+interface CertificateData {
+  name: string;
+  course: string;
+  date: string;
+}
 
-/**
- * This service is responsible for generating a PDF certificate,
- * uploading it to Firebase Storage, and creating a corresponding
- * document in the 'certificates' collection.
- */
-export const CertificateGenerationService = {
-    /**
-     * Generates a PDF certificate, uploads it, and updates Firestore.
-     *
-     * @param data - The data required to generate the certificate.
-     * @returns The public URL of the generated certificate.
-     */
-    async generateAndUploadCertificate(data: CertificateData): Promise<string> {
-        try {
-            // 1. Create a container for the React component
-            const certificateContainer = document.createElement('div');
-            certificateContainer.style.position = 'absolute';
-            certificateContainer.style.left = '-9999px';
-            document.body.appendChild(certificateContainer);
+export const generateCertificate = async (data: CertificateData, userId: string): Promise<string> => {
+  const doc = new jsPDF();
 
-            // 2. Render the React component into the container
-            const certificateHtml = `
-                <div id="certificate" style="width: 800px; padding: 2rem; background-color: white;">
-                    <div style="text-align: center; border: 2px solid black; padding: 2rem;">
-                        <h1 style="font-size: 2.5rem; font-weight: bold; color: #333;">Certificate of Completion</h1>
-                        <p style="font-size: 1.2rem; margin-top: 1rem;">This certificate is awarded to</p>
-                        <p style="font-size: 2rem; font-weight: 600; margin-top: 0.5rem;">${data.userName}</p>
-                        <p style="font-size: 1.2rem; margin-top: 1rem;">for successfully completing the</p>
-                        <p style="font-size: 1.5rem; font-weight: 600; margin-top: 0.5rem;">${data.testName}</p>
-                        <p style="font-size: 1.2rem; margin-top: 1rem;">on</p>
-                        <p style="font-size: 1.2rem; margin-top: 0.5rem;">${data.completedAt.toLocaleDateString()}</p>
-                    </div>
-                </div>
-            `;
-            certificateContainer.innerHTML = certificateHtml;
+  // Add a decorative border
+  doc.setDrawColor(0, 105, 217); // Blue color
+  doc.setLineWidth(1.5);
+  doc.rect(5, 5, doc.internal.pageSize.width - 10, doc.internal.pageSize.height - 10);
+
+  // Add certificate title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(30);
+  doc.setTextColor(40, 40, 40);
+  doc.text('CERTIFICATE OF COMPLETION', 105, 40, { align: 'center' });
+
+  // Add 'Proudly Presented To'
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(16);
+  doc.setTextColor(100, 100, 100);
+  doc.text('Proudly Presented To', 105, 60, { align: 'center' });
+
+  // Add recipient's name
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(0, 105, 217);
+  doc.text(data.name, 105, 80, { align: 'center' });
+
+  // Add completion statement
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(14);
+  doc.setTextColor(100, 100, 100);
+  doc.text('For successfully completing the course:', 105, 100, { align: 'center' });
+
+  // Add course name
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(40, 40, 40);
+  doc.text(data.course, 105, 115, { align: 'center' });
+
+  // Add issue date and signature lines
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(12);
+  doc.setLineWidth(0.5);
+  doc.line(40, 150, 100, 150);
+  doc.text('Issue Date', 70, 155, { align: 'center' });
+  doc.text(data.date, 70, 160, { align: 'center' });
+
+  doc.line(140, 150, 200, 150);
+  doc.text('Authorized Signature', 170, 155, { align: 'center' });
 
 
-            // 3. Generate a canvas from the HTML
-            const canvas = await html2canvas(certificateContainer.querySelector('#certificate') as HTMLElement);
+  // Convert the PDF to a base64 string
+  const pdfAsString = doc.output('datauristring');
 
-            // 4. Create a PDF from the canvas
-            const pdf = new jsPDF({
-                orientation: 'landscape',
-                unit: 'px',
-                format: [canvas.width, canvas.height],
-            });
-            pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+  // Upload to Firebase Storage
+  const storage = getStorage();
+  const storageRef = ref(storage, `certificates/${userId}/${data.course.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+  
+  await uploadString(storageRef, pdfAsString, 'data_url');
+  
+  // Get the download URL
+  const downloadURL = await getDownloadURL(storageRef);
 
-            // 5. Upload the PDF to Firebase Storage
-            const storage = getStorage();
-            const certificateRef = ref(storage, `certificates/${data.attemptId}.pdf`);
-            const pdfBlob = pdf.output('blob');
-            await uploadBytes(certificateRef, pdfBlob);
-
-            // 6. Get the download URL
-            const certificateUrl = await getDownloadURL(certificateRef);
-
-            // 7. Create a certificate document in Firestore
-            const newCertificateRef = await addDoc(collection(db, 'certificates'), {
-                driverId: data.userId,
-                testAttemptId: data.attemptId,
-                course_name: data.testName,
-                certificate_url: certificateUrl,
-                issue_date: serverTimestamp(),
-            });
-
-            // 8. Update the test_attempts document with the certificate URL and ID
-            const testAttemptRef = doc(db, 'test_attempts', data.attemptId);
-            await updateDoc(testAttemptRef, {
-                certificateId: newCertificateRef.id,
-                certificateUrl: certificateUrl,
-            });
-            
-            // 9. Clean up the temporary container
-            document.body.removeChild(certificateContainer);
-
-            console.log(`Certificate generated and uploaded for test attempt ${data.attemptId}`);
-
-            return certificateUrl;
-        } catch (error) {
-            console.error("Error generating or uploading certificate: ", error);
-            throw new Error("Failed to generate and upload certificate.");
-        }
-    },
+  return downloadURL;
 };

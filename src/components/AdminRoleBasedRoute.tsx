@@ -1,17 +1,17 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
-import type { UserRole, AdminProfile } from '@/types/auth';
+import type { UserRole } from '@/types/auth';
 
 interface AdminRoleBasedRouteProps {
   children: React.ReactNode;
 }
 
-// A specific RoleBasedRoute that ONLY allows SuperAdmins.
+// A specific RoleBasedRoute that ONLY allows SuperAdmins and Admins.
 export const AdminRoleBasedRoute: React.FC<AdminRoleBasedRouteProps> = ({ children }) => {
-  const { user, profile, isAuthenticated, isLoading, profileLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading || profileLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -23,14 +23,13 @@ export const AdminRoleBasedRoute: React.FC<AdminRoleBasedRouteProps> = ({ childr
     return <Navigate to="/auth/admin-login" replace />;
   }
 
-  const allowedRoles: UserRole[] = ['SuperAdmin'];
-  const hasRoleInUserObject = user?.roles?.some(role => allowedRoles.includes(role));
-  const hasRoleInProfile = (profile as AdminProfile)?.role === 'SuperAdmin';
-
-  const hasPermission = hasRoleInUserObject || hasRoleInProfile;
+  const allowedRoles: UserRole[] = ['SuperAdmin', 'Admin'];
+  const hasPermission = user?.roles?.some(role => allowedRoles.includes(role));
 
   if (!hasPermission) {
-    return <Navigate to="/auth/admin-login" replace />;
+    // Redirect to a general access-denied or dashboard page instead of admin-login
+    // if the user is authenticated but doesn't have the right role.
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

@@ -71,8 +71,8 @@ const MyJobs = () => {
               <CardHeader>
                 <div className="flex justify-between items-start">
                     <div>
-                        <CardTitle>{job.title}</CardTitle>
-                        <CardDescription>{job.region}, {job.district} | Type: {job.jobType}</CardDescription>
+                        <CardTitle>{job.job_title}</CardTitle>
+                        <CardDescription>{job.region}{job.district && `, ${job.district}`} | Type: {job.employment_type}</CardDescription>
                     </div>
                     <Badge variant={job.status === 'Open' ? 'default' : job.status === 'Closed' ? 'destructive' : 'secondary'}>{job.status}</Badge>
                 </div>

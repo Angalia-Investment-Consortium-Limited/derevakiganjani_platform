@@ -2,7 +2,7 @@
 import React, { useMemo, useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Award, Download, RotateCcw, BookOpen, Loader2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { CertificateGenerationService } from '@/services/CertificateGenerationService';
+import { useCertificateGenerator } from '@/hooks/useCertificateGenerator';
 import { useToast } from '@/hooks/use-toast';
 import {
   Breadcrumb,
@@ -85,10 +85,9 @@ const TestResultPage: React.FC = () => {
     const { t } = useLanguage();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const { generate, isGenerating } = useCertificateGenerator();
 
-    const [isGenerating, setIsGenerating] = useState(false);
-
-    const { data, isLoading, error } = useQuery<CombinedResult>({
+    const { data, isLoading, error, refetch } = useQuery<CombinedResult>({
         queryKey: ['test-result', testAttemptId],
         queryFn: () => fetchTestResult(testAttemptId),
         enabled: !!testAttemptId,
@@ -98,40 +97,45 @@ const TestResultPage: React.FC = () => {
     const user = data?.user;
 
     useEffect(() => {
-        const generateCertificate = async () => {
-            if (result?.isPassed && !result.certificateUrl && user) {
-                setIsGenerating(true);
+        const autoGenerateCertificate = async () => {
+            if (result?.isPassed && !result.certificateUrl && user && !isGenerating) {
+                
+                const certificateData = {
+                  name: user.full_name || user.email || 'Anonymous',
+                  course: result.categoryTitle,
+                  date: new Date().toLocaleDateString(),
+                };
+
+                const firestoreData = {
+                    driverId: user.id,
+                    driverName: user.full_name || user.email || 'Anonymous',
+                    course_name: result.categoryTitle,
+                    testAttemptId: result.id,
+                };
+
                 try {
-                    await CertificateGenerationService.generateAndUploadCertificate({
-                        userId: result.userId,
-                        attemptId: result.id,
-                        userName: user.full_name || 'N/A',
-                        testName: result.categoryTitle,
-                        completedAt: new Date(result.completedAt.toDate()),
-                    });
+                    const url = await generate({ data: certificateData, userId: user.id, firestoreData });
+                    
+                    // Now update the test_attempts document with the new URL
+                    const attemptDocRef = doc(db, 'test_attempts', result.id);
+                    await updateDoc(attemptDocRef, { certificateUrl: url });
 
                     toast({
                         title: "Certificate Generated",
                         description: "Your certificate has been successfully generated.",
                     });
+                    
+                    // Refetch data to get the updated certificate URL
+                    refetch();
 
-                    // Refetch the data to get the new certificate URL
-                    queryClient.invalidateQueries({ queryKey: ['test-result', testAttemptId]});
-
-                } catch (err) {
-                    toast({
-                        variant: 'destructive',
-                        title: "Certificate Generation Failed",
-                        description: "We couldn't generate your certificate. Please try again later.",
-                    });
-                } finally {
-                    setIsGenerating(false);
+                } catch (e) {
+                    // The hook will show a toast on error
                 }
             }
         };
 
-        generateCertificate();
-    }, [result, user, testAttemptId, queryClient, toast]);
+        autoGenerateCertificate();
+    }, [result, user, generate, isGenerating, refetch, toast]);
 
 
     const performanceByTopic = useMemo(() => {
@@ -153,7 +157,7 @@ const TestResultPage: React.FC = () => {
     }, [result]);
 
     if (isLoading) {
-        return <div className="flex justify-center items-center min-h-screen">Loading your results...</div>;
+        return <div className="flex justify-center items-center min-h-screen"><Loader2 className="h-8 w-8 animate-spin"/></div>;
     }
 
     if (error) {

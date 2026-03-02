@@ -4,21 +4,27 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Users, UserCheck, Calendar, TrendingUp, Bell, Plus, Eye, Loader2 } from 'lucide-react';
+import { Briefcase, Users, UserCheck, Calendar, TrendingUp, Bell, Plus, Eye, Loader2, Info } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployerDashboard } from '@/hooks/useEmployerDashboard';
+import { useAuth } from '@/contexts/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import type { EmployerProfile } from '@/types/auth';
 
 const EmployerDashboard = () => {
   const navigate = useNavigate();
-  const { stats, recentApplicants, recentJobPosts, loading } = useEmployerDashboard();
+  const { stats, recentApplicants, recentJobPosts, loading: dashboardLoading } = useEmployerDashboard();
+  const { profile, profileLoading: authLoading } = useAuth();
+
+  const employerProfile = profile as EmployerProfile;
 
   const statCards = [
-    { title: 'Total Job Posts', value: stats.totalJobPosts, icon: Briefcase, color: 'text-primary' },
+    { title: 'Total Job Posts', value: stats.totalJobPosts, icon: Briefcase, color: 'text-destructive' },
     { title: 'Total Applicants', value: stats.totalApplicants, icon: Users, color: 'text-blue-500' },
     { title: 'Shortlisted', value: stats.shortlisted, icon: UserCheck, color: 'text-success' },
     { title: 'Interviews', value: stats.interviews, icon: Calendar, color: 'text-warning' },
     { title: 'Hired', value: stats.hired, icon: TrendingUp, color: 'text-green-600' },
-    { title: 'Notifications', value: '3', icon: Bell, color: 'text-destructive' }, // Notifications not yet implemented
+    { title: 'Notifications', value: '3', icon: Bell, color: 'text-destructive' }, // Placeholder
   ];
 
   const getStatusColor = (status: string) => {
@@ -32,7 +38,7 @@ const EmployerDashboard = () => {
     }
   };
 
-  if (loading) {
+  if (dashboardLoading || authLoading) {
     return <div className="flex items-center justify-center h-screen"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>;
   }
 
@@ -45,6 +51,17 @@ const EmployerDashboard = () => {
           <h1 className="text-3xl font-bold">Employer Dashboard</h1>
           <p className="text-muted-foreground">Dashibodi ya Mwajiri</p>
         </div>
+
+        {/* Corrected field name from verification_status to verificationStatus */}
+        {employerProfile?.remarks && employerProfile.verificationStatus?.toLowerCase() === 'verified' && (
+            <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
+                <Info className="h-4 w-4 !text-green-600" />
+                <AlertTitle>Note from Admin</AlertTitle>
+                <AlertDescription>
+                    {employerProfile.remarks}
+                </AlertDescription>
+            </Alert>
+        )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
           {statCards.map((stat, index) => (

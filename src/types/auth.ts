@@ -1,117 +1,76 @@
-import { Timestamp } from 'firebase/firestore';
+import type { Timestamp } from 'firebase/firestore';
 
-export type UserRole = 'Driver' | 'Employer' | 'Admin' | 'Staff' | 'SuperAdmin';
+export type UserRole = 'SuperAdmin' | 'Admin' | 'Staff' | 'Employer' | 'Driver';
 
 export interface User {
-  id: string;
   uid: string;
-  name: string;
   email: string;
-  full_name: string;
-  user_image?: string;
-  mobile_no?: string;
-  phone?: string;
   roles: UserRole[];
-  user_type?: UserRole;
+  createdAt: Timestamp;
+  full_name: string;
+  mobile_no: string;
+  phoneNumber: string;
   enabled: boolean;
-  status?: string;
-  createdAt?: Timestamp;
+  status: string;
+  email_verified_in?: boolean;
+  user_image?: string;
 }
 
-export interface DriverProfile {
-  name: string;
-  user: string;
-  full_name: string;
+export interface RegisterData {
+  email: string;
+  password: string;
+  role: UserRole;
   phone_number: string;
-  email?: string;
+  full_name?: string;
   national_id?: string;
-  license_number?: string;
-  license_category?: string;
-  profile_photo?: string;
-  date_of_birth?: string;
+  preferred_language?: string;
+  company_name?: string;
+  contact_person?: string;
+  company_registration?: string;
   address?: string;
-  years_of_experience?: number;
-  bio?: string;
-  preferred_language?: 'en' | 'sw';
-  preferred_vehicle_types?: string[];
-  preferred_region?: string;
-  languages?: string[];
+  website?: string;
+}
+
+export interface AdminProfile {
+  userId: string;
+  name: string;
+  email: string;
+  role: 'SuperAdmin' | 'Admin' | 'Staff';
 }
 
 export interface EmployerProfile {
-    user: string;
-    company_name: string;
-    company_type?: string;
-    company_registration?: string;
-    address: string;
-    contact_person: string;
-    contact_phone: string;
-    website?: string;
-    industry?: string;
-    verification_status?: 'Verified' | 'Pending' | 'Rejected';
-    approved_by?: string;
-    approved_on?: string;
-  }
-  
-  export interface StaffProfile {
-    user: string;
-    employee_id?: string;
-    department?: string;
-    position?: string;
-    start_date?: string;
-    is_tutor?: boolean;
-    is_license_officer?: boolean;
-    is_test_officer?: boolean;
-    is_finance?: boolean;
-  }
-  
-  export interface AdminProfile {
-    user: string;
-    is_super_admin: boolean;
-  }
-  
-  export interface LoginCredentials {
-    usr: string; // email or phone
-    pwd: string;
-  }
-  
-  export interface RegisterData {
-    email?: string;
-    phone_number: string;
-    password: string;
-    role: UserRole;
-    full_name?: string;
-    national_id?: string;
-    preferred_language?: 'en' | 'sw';
-    company_name?: string;
-    contact_person?: string;
-    company_registration?: string;
-    address?: string;
-    website?: string;
-  }
-  
-  export interface OTPVerification {
-    mobile_no: string;
-    otp: string;
-  }
-  
-  export interface PasswordResetRequest {
-    user: string; // email or phone
-  }
-  
-  export interface PasswordReset {
-    key: string;
-    new_password: string;
-  }
-  
-  export type ApplicationType = 'New' | 'Renewal';
-  export type ApplicationStatus = 'Pending' | 'Approved' | 'Rejected';
-  
-  export interface LicenseApplication {
-      id: string;
-      name: string;
-      reference_number: string;
-      application_type: ApplicationType;
-      status: ApplicationStatus;
-      submission_date: string;
-  }
+  userId: string;
+  company_email: string;
+  company_phone: string;
+  account_creation_date: Timestamp;
+  company_name: string;
+  contactPerson: string;
+  companyRegistration: string;
+  address: { street: string; city: string; country: string };
+  website: string;
+  verificationStatus: 'Pending' | 'Verified' | 'Rejected' | 'Suspended';
+  industry: string;
+  remarks?: string;
+  verified?: boolean; // Legacy
+}
+
+export interface DriverProfile {
+  uid: string;
+  email: string;
+  createdAt: Timestamp;
+  lastUpdated: Timestamp;
+  fullName: string;
+  phone_number: string;
+  nationalId: string;
+  preferredLanguage: string;
+  bio: string;
+  driverId: string;
+  licenseNumber: string;
+  skills: string[];
+  user_image?: string;
+  verified?: boolean;
+  experience?: string;
+  location?: string;
+  preferredVehicle?: string;
+  languages?: string[];
+}

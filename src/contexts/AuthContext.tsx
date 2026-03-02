@@ -35,7 +35,6 @@ interface AuthContextType {
   profileLoading: boolean;
   userType: UserRole | null;
   roles: UserRole[];
-  loading: boolean;
   login: (username: string, password: string) => Promise<any>;
   logout: () => Promise<void>;
   register: (data: RegisterData) => Promise<any>;
@@ -88,12 +87,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
             if (profileDoc.exists()) {
               setProfile(profileDoc.data() as DriverProfile | EmployerProfile | AdminProfile);
+            } else {
+              setProfile(null);
             }
+          } else {
+            setProfile(null);
           }
+        } else {
+          setProfile(null);
         }
+      } else {
+        setUser(null);
+        setProfile(null);
       }
     } catch (error) {
       console.error("Error fetching user profile:", error);
+      setUser(null);
+      setProfile(null);
     } finally {
       setProfileLoading(false);
     }
@@ -103,12 +113,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setCurrentUser(firebaseUser);
       if (firebaseUser) {
-        fetchUserProfile(firebaseUser);
+        fetchUserProfile(firebaseUser).finally(() => setIsLoading(false));
       } else {
         setUser(null);
         setProfile(null);
+        setIsLoading(false);
+        setProfileLoading(false);
       }
-      setIsLoading(false);
     });
     return () => unsubscribe();
   }, [fetchUserProfile]);
@@ -143,12 +154,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       console.log("Verification email sent successfully.");
     } catch (error) {
         console.error("Error sending verification email:", error);
-        // Re-throw the error to ensure the registration process fails gracefully
-        // and the user is notified.
         throw new Error("Failed to send verification email.");
     }
 
-    // 1. Create 'users' document
     const userDocRef = doc(db, 'users', firebaseUser.uid);
     await setDoc(userDocRef, {
       uid: firebaseUser.uid,
@@ -165,7 +173,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let profileCollection = '';
     let finalProfileData: any = {};
 
-    // 2. Prepare profile document data based on role
     if (role === 'Driver') {
       profileCollection = 'driver_profiles';
       const driverData = profileData as any;
@@ -201,7 +208,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       };
     }
 
-    // 3. Create profile document
     if (profileCollection) {
       const profileDocRef = doc(db, profileCollection, firebaseUser.uid);
       await setDoc(profileDocRef, finalProfileData);
@@ -238,11 +244,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (currentUser) {
       await fetchUserProfile(currentUser);
     }
-  };
+  }, [currentUser, fetchUserProfile]);
   
   const userType = user?.roles?.[0] || null;
 
@@ -263,7 +269,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     updateUser,
     updateProfile,
     refreshProfile,
-    loading: isLoading,
   };
 
   return (

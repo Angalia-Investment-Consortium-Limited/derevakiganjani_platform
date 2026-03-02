@@ -49,8 +49,8 @@ export default function LicenseDashboard() {
       <main className="flex-1 container mx-auto px-4 py-10">
         <div className="max-w-5xl mx-auto">
           <header className="mb-10">
-            <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t('license_services_dashboard')}</h1>
-            <p className="text-lg text-muted-foreground">{t('manage_your_license_applications')}</p>
+            <h1 className="text-4xl font-extrabold tracking-tight mb-2">{t('License Services Dashboard')}</h1>
+            <p className="text-lg text-muted-foreground">{t('Manage your license applications')}</p>
           </header>
 
           {/* Main Service Cards */}

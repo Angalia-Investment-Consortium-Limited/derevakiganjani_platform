@@ -12,6 +12,8 @@ import {
   XCircle,
   Loader2,
   Calendar,
+  ShieldAlert,
+  MessageSquare
 } from 'lucide-react';
 
 // UI Components
@@ -55,6 +57,7 @@ const STATUS_COLORS: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
   verified: 'bg-green-100 text-green-800 border-green-200',
   rejected: 'bg-red-100 text-red-800 border-red-200',
+  suspended: 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
 // Helper Component
@@ -70,18 +73,20 @@ const InfoItem = ({ label, value, icon, className }: { label: string; value: str
 
 export default function EmployerReview() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
   
-  const { employer, isLoading, error, updateEmployerStatus } = useEmployerReview(id!);
+  const { employer, isLoading, error, updateEmployerStatus, deleteEmployer } = useEmployerReview(id!);
   
   const [remarks, setRemarks] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleUpdate = async (status: 'verified' | 'rejected') => {
-    if (status === 'rejected' && !remarks.trim()) {
+  const handleUpdate = async (status: 'verified' | 'rejected' | 'suspended') => {
+    if ((status === 'rejected' || status === 'suspended') && !remarks.trim()) {
         toast({
             title: 'Remarks Required',
-            description: 'Please provide a reason for rejecting the employer.',
+            description: `Please provide a reason for ${status === 'rejected' ? 'rejecting' : 'suspending'} the employer.`,
             variant: 'destructive',
         });
         return;
@@ -91,12 +96,28 @@ export default function EmployerReview() {
     try {
       await updateEmployerStatus(status, remarks);
       toast({ title: 'Success', description: `Employer has been ${status}.` });
+      if (status === 'rejected') {
+          navigate("/admin/employer-verification");
+      }
     } catch (err: any) {
       toast({ title: 'Error', description: err.message || 'Failed to update status.', variant: 'destructive' });
     } finally {
       setIsUpdating(false);
     }
   };
+  
+  const handleDelete = async () => {
+      setIsDeleting(true);
+      try {
+          await deleteEmployer();
+          toast({ title: 'Success', description: 'Employer has been deleted.' });
+          navigate("/admin/employer-verification");
+      } catch (err: any) {
+          toast({ title: 'Error', description: err.message || 'Failed to delete employer.', variant: 'destructive' });
+      } finally {
+          setIsDeleting(false);
+      }
+  }
 
   const formatDate = (date: any) => {
     if (!date) return 'Not available';
@@ -196,26 +217,58 @@ export default function EmployerReview() {
         {/* Action Panel */}
         <div className="space-y-6">
           <Card>
-            <CardHeader><CardTitle>Take Action</CardTitle><CardDescription>Approve or reject this request.</CardDescription></CardHeader>
+            <CardHeader><CardTitle>Take Action</CardTitle><CardDescription>Approve, reject, or suspend this request.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
-                {employer.verificationStatus.toLowerCase() === 'pending' ? (
-                  <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
 
-                    {/* Approve Action */}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild><Button disabled={isUpdating}><CheckCircle className="h-4 w-4 mr-2" />Approve</Button></AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will verify the employer. This action can be undone later.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => handleUpdate('verified')} disabled={isUpdating}>
+                  {/* Approve Action */}
+                  {employer.verificationStatus.toLowerCase() !== 'verified' && (
+                    <Dialog>
+                      <DialogTrigger asChild><Button disabled={isUpdating} className="bg-green-600 hover:bg-green-700"><CheckCircle className="h-4 w-4 mr-2" />Approve</Button></DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Approve Employer</DialogTitle>
+                          <DialogDescription>Add optional remarks for the approval. This will be visible to the employer.</DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                          <Label htmlFor="remarks-approve">Approval Remarks (Optional)</Label>
+                          <Textarea id="remarks-approve" placeholder='e.g., "Welcome aboard! Your documents have been verified."' value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={3} />
+                        </div>
+                        <DialogFooter>
+                          <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
+                          <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleUpdate('verified')} disabled={isUpdating}>
                             {isUpdating ? <Loader2 className="h-4 w-4 animate-spin"/> : "Confirm Approval"}
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  )}
 
-                    {/* Reject Action */}
+                  {/* Suspend Action */}
+                  {employer.verificationStatus.toLowerCase() === 'verified' && (
+                    <Dialog>
+                        <DialogTrigger asChild><Button variant="outline" disabled={isUpdating}><ShieldAlert className="h-4 w-4 mr-2" />Suspend</Button></DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Suspend Employer</DialogTitle>
+                                <DialogDescription>Provide remarks for suspending this employer. This will revoke their access temporarily.</DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <Label htmlFor="remarks-suspend">Suspension Remarks</Label>
+                                <Textarea id="remarks-suspend" placeholder='e.g., "Violation of terms of service."' value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={4} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
+                                <Button variant="destructive" onClick={() => handleUpdate('suspended')} disabled={isUpdating}>
+                                    {isUpdating ? <Loader2 className="h-4 w-4 animate-spin"/> : "Confirm Suspension"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                  )}
+
+                  {/* Reject Action */}
+                  {employer.verificationStatus.toLowerCase() === 'pending' && (
                     <Dialog>
                       <DialogTrigger asChild><Button variant="destructive" disabled={isUpdating}><XCircle className="h-4 w-4 mr-2" />Reject</Button></DialogTrigger>
                       <DialogContent>
@@ -224,8 +277,8 @@ export default function EmployerReview() {
                           <DialogDescription>Provide remarks for rejecting this employer. This will be visible to them.</DialogDescription>
                         </DialogHeader>
                         <div className="py-4">
-                          <Label htmlFor="remarks">Rejection Remarks</Label>
-                          <Textarea id="remarks" placeholder='e.g., "Business registration document is not valid."' value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={4} />
+                          <Label htmlFor="remarks-reject">Rejection Remarks</Label>
+                          <Textarea id="remarks-reject" placeholder='e.g., "Business registration document is not valid."' value={remarks} onChange={(e) => setRemarks(e.target.value)} rows={4} />
                         </div>
                         <DialogFooter>
                           <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
@@ -235,13 +288,64 @@ export default function EmployerReview() {
                         </DialogFooter>
                       </DialogContent>
                     </Dialog>
+                  )}
 
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">This employer has already been {employer.verificationStatus}.</p>
-                )}
+                  {/* General Remarks for Verified/Suspended Users */}
+                  {(employer.verificationStatus.toLowerCase() === 'verified' || employer.verificationStatus.toLowerCase() === 'suspended') && (
+                       <Dialog>
+                        <DialogTrigger asChild><Button variant="outline" disabled={isUpdating}><MessageSquare className="h-4 w-4 mr-2" />Update Remarks</Button></DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Update Admin Remarks</DialogTitle>
+                                <DialogDescription>Edit or add remarks for this employer. This will be visible to them.</DialogDescription>
+                            </DialogHeader>
+                            <div className="py-4">
+                                <Label htmlFor="remarks-update">Remarks</Label>
+                                <Textarea id="remarks-update" placeholder='e.g., "Please upload a clearer copy of your business license."' defaultValue={employer.remarks} onChange={(e) => setRemarks(e.target.value)} rows={4} />
+                            </div>
+                            <DialogFooter>
+                                <DialogClose asChild><Button variant="ghost">Cancel</Button></DialogClose>
+                                <Button onClick={() => handleUpdate(employer.verificationStatus as 'verified' | 'suspended')} disabled={isUpdating}>
+                                    {isUpdating ? <Loader2 className="h-4 w-4 animate-spin"/> : "Save Remarks"}
+                                </Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+                  )}
+                </div>
             </CardContent>
           </Card>
+          
+           <Card>
+                <CardHeader>
+                    <CardTitle>Delete Employer</CardTitle>
+                    <CardDescription>This action is permanent and cannot be undone.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" disabled={isDeleting}>
+                                {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2"/> : <XCircle className="h-4 w-4 mr-2" />} 
+                                Delete Employer
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>Confirm Deletion</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    Are you sure you want to permanently delete this employer? All associated data, including job posts and applications, will be lost. This action is irreversible.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete} disabled={isDeleting} className="bg-destructive hover:bg-destructive/90">
+                                    Yes, Delete Permanently
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                </CardContent>
+            </Card>
         </div>
       </div>
     </AdminLayout>

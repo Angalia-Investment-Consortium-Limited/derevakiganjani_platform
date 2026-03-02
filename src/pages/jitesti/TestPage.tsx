@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, collection, getDocs, query, where, documentId, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
-import { CertificateGenerationService } from '@/services/CertificateGenerationService';
+import { generateCertificate } from '@/services/CertificateGenerationService';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -150,21 +150,19 @@ const TestPage: React.FC = () => {
             const isPassed = (score / questions.length) * 100 >= (testAttempt.passMark || 0);
 
             await updateDoc(doc(db, 'test_attempts', testAttemptId), { status: 'completed', score, answers, completedAt: serverTimestamp(), isPassed });
-            return { testAttemptId, isPassed, userId: user.uid, categoryTitle: testAttempt.categoryTitle };
+            return { testAttemptId, isPassed, userId: user.uid, categoryTitle: testAttempt.categoryTitle, userName: user.displayName || 'Anonymous' };
         },
         onSuccess: async (data) => {
             if (data.isPassed) {
                 try {
-                    toast({ title: "Congratulations!", description: "Generating your certificate record..." });
-                    const placeholderUrl = `https://firebasestorage.googleapis.com/v0/b/your-project-id.appspot.com/o/certificates%2F${data.testAttemptId}.pdf`;
-                    await CertificateGenerationService.createCertificate({
-                        driverId: data.userId,
-                        testAttemptId: data.testAttemptId,
-                        testName: data.categoryTitle,
-                        certificate_url: placeholderUrl,
-                    });
+                    toast({ title: "Congratulations!", description: "Generating your certificate..." });
+                    await generateCertificate({
+                        name: data.userName,
+                        course: data.categoryTitle,
+                        date: new Date().toLocaleDateString(),
+                    }, data.userId);
                 } catch (error) {
-                    toast({ title: "Certificate Error", description: "Could not create certificate record.", variant: "destructive" });
+                    toast({ title: "Certificate Error", description: "Could not generate certificate.", variant: "destructive" });
                 }
             }
             toast({ title: "Test Submitted!", description: "Redirecting to your results..." });

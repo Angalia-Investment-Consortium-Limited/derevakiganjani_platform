@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { collection, getDocs, doc, getDoc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, doc, getDoc, updateDoc, Timestamp, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Employer } from '@/types/employer';
 
@@ -72,7 +72,7 @@ export const useEmployerReview = (employerId: string | null) => {
     fetchEmployer();
   }, [fetchEmployer]);
 
-  const updateEmployerStatus = async (status: 'verified' | 'rejected', remarks: string) => {
+  const updateEmployerStatus = async (status: 'verified' | 'rejected' | 'suspended', remarks: string) => {
     if (!employerId) {
         throw new Error('Cannot update status without an employer ID.');
     }
@@ -87,5 +87,13 @@ export const useEmployerReview = (employerId: string | null) => {
     fetchEmployer();
   };
 
-  return { employer, isLoading, error, updateEmployerStatus, refresh: fetchEmployer };
+  const deleteEmployer = async () => {
+    if (!employerId) {
+        throw new Error('Cannot delete without an employer ID.');
+    }
+    const employerDocRef = doc(db, 'employers', employerId);
+    await deleteDoc(employerDocRef);
+  }
+
+  return { employer, isLoading, error, updateEmployerStatus, deleteEmployer, refresh: fetchEmployer };
 };

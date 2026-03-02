@@ -36,10 +36,10 @@ const Profile = () => {
     phone_number: '',
     address: '',
     bio: '',
-    license_number: '',
+    licenseNumber: '',
     company_name: '',
-    company_registration: '',
-    contact_person: '',
+    companyRegistration: '',
+    contactPerson: '',
     website: '',
   });
 
@@ -49,15 +49,15 @@ const Profile = () => {
       const employerProfile = profile as EmployerProfile;
       
       setFormData({
-        full_name: user?.full_name || driverProfile?.full_name || '',
+        full_name: user?.full_name || driverProfile?.fullName || '',
         email: user?.email || '',
         phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
         address: (profile as any)?.address || '',
         bio: driverProfile?.bio || '',
-        license_number: driverProfile?.license_number || '',
+        licenseNumber: driverProfile?.licenseNumber || '',
         company_name: employerProfile?.company_name || '',
-        company_registration: employerProfile?.company_registration || '',
-        contact_person: employerProfile?.contact_person || '',
+        companyRegistration: employerProfile?.companyRegistration || '',
+        contactPerson: employerProfile?.contactPerson || '',
         website: employerProfile?.website || '',
       });
     }
@@ -86,16 +86,16 @@ const Profile = () => {
       if (userType === 'Driver') {
         profileData = {
           ...profileData,
-          full_name: formData.full_name,
+          fullName: formData.full_name,
           bio: formData.bio,
-          license_number: formData.license_number,
+          licenseNumber: formData.licenseNumber,
         };
       } else if (userType === 'Employer') {
         profileData = {
           ...profileData,
           company_name: formData.company_name,
-          company_registration: formData.company_registration,
-          contact_person: formData.contact_person,
+          companyRegistration: formData.companyRegistration,
+          contactPerson: formData.contactPerson,
           website: formData.website,
         };
       }
@@ -118,15 +118,15 @@ const Profile = () => {
          const driverProfile = profile as DriverProfile;
          const employerProfile = profile as EmployerProfile;
          setFormData({
-            full_name: user?.full_name || driverProfile?.full_name || '',
+            full_name: user?.full_name || driverProfile?.fullName || '',
             email: user?.email || '',
             phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
             address: (profile as any)?.address || '',
             bio: driverProfile?.bio || '',
-            license_number: driverProfile?.license_number || '',
+            licenseNumber: driverProfile?.licenseNumber || '',
             company_name: employerProfile?.company_name || '',
-            company_registration: employerProfile?.company_registration || '',
-            contact_person: employerProfile?.contact_person || '',
+            companyRegistration: employerProfile?.companyRegistration || '',
+            contactPerson: employerProfile?.contactPerson || '',
             website: employerProfile?.website || '',
          });
     }
@@ -149,11 +149,11 @@ const Profile = () => {
             )}
         </div>
         <div className="space-y-2">
-            <Label htmlFor="license_number">License Number</Label>
+            <Label htmlFor="licenseNumber">License Number</Label>
             {isEditing ? (
-            <Input id="license_number" value={formData.license_number} onChange={(e) => setFormData({ ...formData, license_number: e.target.value })} placeholder="e.g., DL12345" />
+            <Input id="licenseNumber" value={formData.licenseNumber} onChange={(e) => setFormData({ ...formData, licenseNumber: e.target.value })} placeholder="e.g., DL12345" />
             ) : (
-            <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><Car className="h-4 w-4 text-muted-foreground" /><span>{formData.license_number || 'Not provided'}</span></div>
+            <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><Car className="h-4 w-4 text-muted-foreground" /><span>{formData.licenseNumber || 'Not provided'}</span></div>
             )}
         </div>
     </div>
@@ -171,11 +171,11 @@ const Profile = () => {
             )}
         </div>
         <div className="space-y-2">
-            <Label htmlFor="contact_person">Contact Person</Label>
+            <Label htmlFor="contactPerson">Contact Person</Label>
             {isEditing ? (
-                <Input id="contact_person" value={formData.contact_person} onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })} />
+                <Input id="contactPerson" value={formData.contactPerson} onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })} />
             ) : (
-                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><UserCheck className="h-4 w-4 text-muted-foreground" /><span>{formData.contact_person || 'Not provided'}</span></div>
+                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><UserCheck className="h-4 w-4 text-muted-foreground" /><span>{formData.contactPerson || 'Not provided'}</span></div>
             )}
         </div>
         <div className="space-y-2">
@@ -187,11 +187,11 @@ const Profile = () => {
             )}
         </div>
          <div className="space-y-2">
-            <Label htmlFor="company_registration">Company Registration</Label>
+            <Label htmlFor="companyRegistration">Company Registration</Label>
             {isEditing ? (
-                <Input id="company_registration" value={formData.company_registration} onChange={(e) => setFormData({ ...formData, company_registration: e.target.value })} />
+                <Input id="companyRegistration" value={formData.companyRegistration} onChange={(e) => setFormData({ ...formData, companyRegistration: e.target.value })} />
             ) : (
-                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><FileText className="h-4 w-4 text-muted-foreground" /><span>{formData.company_registration || 'Not provided'}</span></div>
+                <div className="flex items-center gap-2 p-3 rounded-md border bg-muted/50"><FileText className="h-4 w-4 text-muted-foreground" /><span>{formData.companyRegistration || 'Not provided'}</span></div>
             )}
         </div>
     </div>

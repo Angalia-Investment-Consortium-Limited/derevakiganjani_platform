@@ -76,9 +76,9 @@ export default function ApplicationConfirmation() {
                 <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
                 <h1 className="text-2xl font-bold">{t('payment_error_title')}</h1>
                 <p className="text-muted-foreground max-w-md">
-                    {t('payment_error_message')}: {applicationError || paymentError}
+                    {t('Payment Error Message')}: {applicationError || paymentError}
                 </p>
-                <Button onClick={() => createPaymentOrder()} className="mt-6">{t('try_again')}</Button>
+                <Button onClick={() => createPaymentOrder()} className="mt-6">{t('Try Again')}</Button>
             </div>
         );
     }

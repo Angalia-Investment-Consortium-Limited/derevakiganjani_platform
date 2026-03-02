@@ -231,7 +231,7 @@ const Register = () => {
                             }`}
                           >
                             <User className="h-8 w-8 mb-2" />
-                            <span className="font-semibold">{t('driver')}</span>
+                            <span className="font-semibold">{t('Driver')}</span>
                             <span className="text-xs text-muted-foreground text-center mt-1">{t('Driver Account')}</span>
                           </button>
                           <button
@@ -242,7 +242,7 @@ const Register = () => {
                             }`}
                           >
                             <Building2 className="h-8 w-8 mb-2" />
-                            <span className="font-semibold">{t('employer')}</span>
+                            <span className="font-semibold">{t('Employer')}</span>
                             <span className="text-xs text-muted-foreground text-center mt-1">{t('Employer Account')}</span>
                           </button>
                         </div>
@@ -287,8 +287,8 @@ const Register = () => {
                         ) : (
                           <>
                             <div className="space-y-2">
-                              <Label htmlFor="companyName">{t('Company Name')} <span className="text-destructive">*</span></Label>
-                              <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t('EnterCompanyName')} required />
+                              <Label htmlFor="Company Name">{t('Company Name')} <span className="text-destructive">*</span></Label>
+                              <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={t('Enter Company Name')} required />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor="contactPerson">{t('ContactvPerson')} <span className="text-destructive">*</span></Label>
