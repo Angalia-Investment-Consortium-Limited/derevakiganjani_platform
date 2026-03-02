@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
-import { doc, getDoc, setDoc, serverTimestamp, collection, deleteField } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, collection, deleteField, getDocs } from "firebase/firestore";
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { db } from "@/lib/firebase";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -26,6 +26,12 @@ interface FormAnswer {
   text_sw: string;
 }
 
+interface JitestiCategory {
+    id: string;
+    name_en: string;
+    name_sw: string;
+}
+
 const QuestionEditor = () => {
   const navigate = useNavigate();
   const { questionId } = useParams<{ questionId: string }>();
@@ -40,12 +46,28 @@ const QuestionEditor = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [jitestiCategories, setJitestiCategories] = useState<JitestiCategory[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categoriesCollection = collection(db, "jitesti-categories");
+        const snapshot = await getDocs(categoriesCollection);
+        const categories = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JitestiCategory));
+        setJitestiCategories(categories);
+      } catch (error) {
+        console.error("Error fetching Jitesti categories: ", error);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const setDefaultData = useCallback(() => {
     setFormData({
       question_text_en: "",
       question_text_sw: "",
-      category: "B",
+      category: "",
       question_type: "MCQ",
       difficulty: "Easy",
       is_active: 0,
@@ -290,15 +312,13 @@ const QuestionEditor = () => {
             <CardContent className="space-y-4">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                        <Label htmlFor="category">Vehicle Category</Label>
+                        <Label htmlFor="category">Test Category</Label>
                         <Select value={formData.category} onValueChange={(value) => handleFieldChange('category', value)}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="A">Category A - Motorcycles</SelectItem>
-                            <SelectItem value="B">Category B - Cars</SelectItem>
-                            <SelectItem value="C">Category C - Light Trucks</SelectItem>
-                            <SelectItem value="D">Category D - Heavy Trucks</SelectItem>
-                            <SelectItem value="E">Category E - Passenger Service</SelectItem>
+                            {jitestiCategories.map(category => (
+                              <SelectItem key={category.id} value={category.id}>{category.name_en} / {category.name_sw}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                     </div>

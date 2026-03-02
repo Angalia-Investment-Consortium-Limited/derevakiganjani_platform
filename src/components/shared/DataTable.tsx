@@ -5,6 +5,7 @@ import type {
   ColumnFiltersState,
   SortingState,
   VisibilityState,
+  RowSelectionState,
 } from "@tanstack/react-table"
 import {
   flexRender,
@@ -26,14 +27,17 @@ interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[],
   data: TData[],
   filterColumn: string,
+  rowSelection: RowSelectionState,
+  onRowSelectionChange: React.Dispatch<React.SetStateAction<RowSelectionState>>,
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
   filterColumn,
+  rowSelection,
+  onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
-  const [rowSelection, setRowSelection] = React.useState({})
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -51,7 +55,7 @@ export function DataTable<TData, TValue>({
       columnFilters,
     },
     enableRowSelection: true,
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: onRowSelectionChange,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     onColumnVisibilityChange: setColumnVisibility,
