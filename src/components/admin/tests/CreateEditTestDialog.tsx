@@ -124,7 +124,7 @@ const CreateEditTestDialog: React.FC<CreateEditTestDialogProps> = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-4xl">
+            <DialogContent className="sm:max-w-6xl">
                 <DialogHeader>
                     <DialogTitle>{initialData ? 'Edit Test' : 'Create New Test'}</DialogTitle>
                     <DialogDescription>
