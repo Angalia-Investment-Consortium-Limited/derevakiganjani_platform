@@ -86,19 +86,21 @@ const CreateEditTestDialog: React.FC<CreateEditTestDialogProps> = ({
         }
     }, [initialData, isOpen]);
 
+    // FIX: This logic correctly filters questions on the client side based on the category ID.
     const questionsForSelector = useMemo(() => {
-        const categoryName = categories.find(c => c.id === selectedCategory)?.name_en;
-
-        const categoryQuestions = categoryName
-            ? allQuestions.filter(q => q.category && categoryName.includes(q.category))
+        // Filter questions where the question's category ID matches the selected category ID.
+        const categoryQuestions = selectedCategory
+            ? allQuestions.filter(q => q.category === selectedCategory)
             : [];
 
+        // Also include questions that are already selected for this test.
         const currentlySelectedQuestions = allQuestions.filter(q => selectedQuestionIds.includes(q.id));
 
+        // Combine the lists and remove duplicates to ensure selected questions are always visible.
         const combined = [...categoryQuestions, ...currentlySelectedQuestions];
         return Array.from(new Map(combined.map(q => [q.id, q])).values());
 
-    }, [selectedCategory, allQuestions, selectedQuestionIds, categories]);
+    }, [selectedCategory, allQuestions, selectedQuestionIds]);
 
     const categoryImage = useMemo(() => {
         if (!selectedCategory) return null;
