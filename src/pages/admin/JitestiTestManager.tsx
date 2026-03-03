@@ -1,157 +1,161 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DataTable } from "@/components/shared/DataTable";
+import { getColumns } from "@/components/admin/tests/Columns";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
-import { DataTable } from "@/components/shared/DataTable";
-import { Loader2, Save } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { columns as createQuestionColumns } from "@/components/admin/questions/Columns";
-import type { RowSelectionState } from '@tanstack/react-table';
+import CreateEditTestDialog from '@/components/admin/tests/CreateEditTestDialog';
+import type { Test } from '@/components/admin/tests/Columns';
+import type { TestFormData } from '@/components/admin/tests/CreateEditTestDialog';
 
 // --- Type Definitions ---
-type Test = { id: string; test_title_en: string; courseId: string; questionIds: string[]; pass_mark_percentage: number; };
 type JitestiCategory = { id: string; name_en: string; name_sw: string; };
-type Question = { id: string; question_text_sw: string; question_text_en: string; category: string; difficulty: string; };
 
-// --- Data Fetching & Mutations ---
+// --- Data Fetching ---
+const fetchTests = async (): Promise<Test[]> => {
+    const testsCollection = collection(db, 'tests');
+    const snapshot = await getDocs(testsCollection);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Test));
+};
+
 const fetchJitestiCategories = async (): Promise<JitestiCategory[]> => {
     const categoriesCollection = collection(db, 'jitesti-categories');
     const snapshot = await getDocs(categoriesCollection);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JitestiCategory));
 };
 
-const fetchAllQuestions = async (): Promise<Question[]> => {
-    const questionsCollection = collection(db, 'Test Question');
-    const snapshot = await getDocs(questionsCollection);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Question));
-};
-
-const fetchTestByCategoryId = async (categoryId: string): Promise<Test | null> => {
-    const testsCollection = collection(db, 'tests');
-    const q = query(testsCollection, where('courseId', '==', categoryId));
-    const snapshot = await getDocs(q);
-    if (snapshot.empty) return null;
-    const testDoc = snapshot.docs[0];
-    return { id: testDoc.id, ...testDoc.data() } as Test;
-};
-
-const updateTestQuestions = async ({ testId, newQuestionIds }: { testId: string; newQuestionIds: string[] }) => {
-    const testDocRef = doc(db, 'tests', testId);
-    await updateDoc(testDocRef, { questionIds: newQuestionIds });
-};
-
+// --- Main Component ---
 const JitestiTestManager: React.FC = () => {
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-  
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
-  const [initialQuestionIds, setInitialQuestionIds] = useState<Set<string>>(new Set());
+    const queryClient = useQueryClient();
+    const { toast } = useToast();
+    const [isDialogOpen, setDialogOpen] = useState(false);
+    const [selectedTest, setSelectedTest] = useState<Test | null>(null);
 
-  const { data: categories = [], isLoading: isLoadingCategories } = useQuery<JitestiCategory[]>({ 
-    queryKey: ['jitesti-categories'], 
-    queryFn: fetchJitestiCategories 
-  });
+    const { data: tests = [], isLoading: isLoadingTests } = useQuery<Test[]>({ 
+        queryKey: ['tests'], 
+        queryFn: fetchTests 
+    });
+    const { data: categories = [] } = useQuery<JitestiCategory[]>({ 
+      queryKey: ['jitesti-categories'], 
+      queryFn: fetchJitestiCategories 
+    });
 
-  const { data: allQuestions = [], isLoading: isLoadingQuestions } = useQuery<Question[]>({ 
-    queryKey: ['questions'], 
-    queryFn: fetchAllQuestions 
-  });
+    // --- Mutations ---
+    const createTestMutation = useMutation({
+      mutationFn: async (newData: TestFormData) => {
+        await addDoc(collection(db, 'tests'), newData);
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['tests'] });
+        toast({ title: "Success", description: "Test created successfully." });
+        setDialogOpen(false);
+      },
+      onError: (error) => {
+        toast({ title: "Error", description: `Failed to create test: ${error.message}`, variant: "destructive"});
+      },
+    });
 
-  const { data: selectedTest, isLoading: isLoadingTest } = useQuery<Test | null>({ 
-    queryKey: ['test', selectedCategory], 
-    queryFn: () => selectedCategory ? fetchTestByCategoryId(selectedCategory) : null,
-    enabled: !!selectedCategory,
-  });
+    const updateTestMutation = useMutation({
+      mutationFn: async ({ id, ...updateData }: { id: string } & TestFormData) => {
+          const testDocRef = doc(db, 'tests', id);
+          await updateDoc(testDocRef, updateData as any);
+      },
+      onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: ['tests'] });
+          toast({ title: "Success", description: "Test updated successfully." });
+          setDialogOpen(false);
+      },
+      onError: (error) => {
+          toast({ title: "Error", description: `Failed to update test: ${error.message}`, variant: "destructive"});
+      },
+    });
 
-  useEffect(() => {
-    if (selectedTest && allQuestions.length > 0) {
-      const questionIdSet = new Set(selectedTest.questionIds || []);
-      setInitialQuestionIds(questionIdSet);
-      const newRowSelection: RowSelectionState = {};
-      allQuestions.forEach((q, index) => {
-        if (questionIdSet.has(q.id)) {
-          newRowSelection[index] = true;
-        }
-      });
-      setRowSelection(newRowSelection);
-    } else {
-      setRowSelection({});
-      setInitialQuestionIds(new Set());
-    }
-  }, [selectedTest, allQuestions]);
+    const deleteTestMutation = useMutation({
+        mutationFn: async (testId: string) => {
+            const testDocRef = doc(db, 'tests', testId);
+            await deleteDoc(testDocRef);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['tests'] });
+            toast({ title: "Success", description: "Test deleted successfully." });
+        },
+        onError: (error) => {
+            toast({ title: "Error", description: `Failed to delete test: ${error.message}`, variant: "destructive"});
+        },
+    });
 
-  const updateMutation = useMutation({
-    mutationFn: updateTestQuestions,
-    onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['test', selectedCategory] });
-        toast({ title: "Success", description: "Test questions updated successfully." });
-    },
-    onError: (error) => {
-        toast({ title: "Error", description: `Failed to update test: ${error.message}`, variant: "destructive"});
-    }
-  });
+    // --- Event Handlers ---
+    const handleCreateNew = () => {
+        setSelectedTest(null);
+        setDialogOpen(true);
+    };
 
-  const handleSave = () => {
-    if (selectedTest) {
-      const selectedQuestionIds = Object.keys(rowSelection).map(index => allQuestions[parseInt(index)].id);
-      updateMutation.mutate({ testId: selectedTest.id, newQuestionIds: selectedQuestionIds });
-    }
-  };
+    const handleEdit = (test: Test) => {
+        setSelectedTest(test);
+        setDialogOpen(true);
+    };
 
-  const selectedQuestionIds = useMemo(() => new Set(Object.keys(rowSelection).map(index => allQuestions[parseInt(index)]?.id).filter(Boolean)), [rowSelection, allQuestions]);
-  
-  const isDirty = initialQuestionIds.size !== selectedQuestionIds.size || [...initialQuestionIds].some(id => !selectedQuestionIds.has(id));
+    const handleDelete = (testId: string) => {
+        deleteTestMutation.mutate(testId);
+    };
 
-  const columns = useMemo(() => createQuestionColumns({
-      selectedQuestions: selectedQuestionIds,
-      setSelectedQuestions: () => {},
-  }), [selectedQuestionIds]);
+    const handleDialogClose = () => {
+        setSelectedTest(null);
+        setDialogOpen(false);
+    };
 
-  return (
-    <AdminLayout>
-        <AdminBreadcrumbs />
-         <div className="mt-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Jitesti Test Assembly</CardTitle>
-                <CardDescription>Select a category to assemble the questions for that test.</CardDescription>
-              </CardHeader>
-              <CardContent className='space-y-4'>
-                <div className='flex justify-between items-center'>
-                  <div className='w-1/3'>
-                    <Select onValueChange={setSelectedCategory} value={selectedCategory || ''}>
-                      <SelectTrigger><SelectValue placeholder="Select a Test Category..." /></SelectTrigger>
-                      <SelectContent>
-                        {isLoadingCategories ? <SelectItem value="loading" disabled>Loading...</SelectItem> : 
-                          categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name_en}</SelectItem>)
-                        }
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleSave} disabled={!isDirty || updateMutation.isPending}>
-                    {updateMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />} 
-                    Save Changes
-                  </Button>
-                </div>
+    const handleFormSubmit = (data: TestFormData) => {
+      if (selectedTest) {
+          updateTestMutation.mutate({ id: selectedTest.id, ...data });
+      } else {
+          createTestMutation.mutate(data);
+      }
+    };
 
-                <DataTable 
-                    columns={columns} 
-                    data={allQuestions} 
-                    filterColumn='question_text_sw'
-                    rowSelection={rowSelection}
-                    onRowSelectionChange={setRowSelection}
-                />
-              </CardContent>
-            </Card>
-         </div>
-    </AdminLayout>
-  );
+    const columns = useMemo(() => getColumns(handleEdit, handleDelete), []);
+
+    return (
+        <AdminLayout>
+            {/* CORRECTED: Removed the invalid 'path' prop */}
+            <AdminBreadcrumbs />
+            <div className="mt-4">
+                <Card>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <CardTitle>Jitesti Test Manager</CardTitle>
+                                <CardDescription>Create, edit, and manage all tests for the Jitesti module.</CardDescription>
+                            </div>
+                            <Button onClick={handleCreateNew}>Create New Test</Button>
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <DataTable 
+                            columns={columns}
+                            data={tests} 
+                            filterColumn='test_title_en'
+                            isLoading={isLoadingTests}
+                        />
+                    </CardContent>
+                </Card>
+            </div>
+
+            <CreateEditTestDialog 
+              isOpen={isDialogOpen}
+              onClose={handleDialogClose}
+              onSubmit={handleFormSubmit}
+              initialData={selectedTest}
+              categories={categories}
+              isSaving={createTestMutation.isPending || updateTestMutation.isPending}
+            />
+        </AdminLayout>
+    );
 };
 
 export default JitestiTestManager;

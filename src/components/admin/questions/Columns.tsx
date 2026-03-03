@@ -10,46 +10,20 @@ type Question = {
     difficulty: string;
 }
 
-export const columns = ({
-  selectedQuestions,
-  setSelectedQuestions,
-}: {
-  selectedQuestions: Set<string>;
-  setSelectedQuestions: React.Dispatch<React.SetStateAction<Set<string>>>;
-}): ColumnDef<Question>[] => [
+export const columns: ColumnDef<Question>[] = [
   {
     id: "select",
     header: ({ table }) => (
       <Checkbox
-        checked={table.getIsAllPageRowsSelected()}
-        onCheckedChange={(value) => {
-          const newSelectedQuestions = new Set(selectedQuestions);
-          table.getRowModel().rows.forEach((row) => {
-            if (value) {
-              newSelectedQuestions.add(row.original.id);
-            } else {
-              newSelectedQuestions.delete(row.original.id);
-            }
-          });
-          setSelectedQuestions(newSelectedQuestions);
-          table.toggleAllPageRowsSelected(!!value);
-        }}
+        checked={table.getIsAllPageRowsSelected() || (table.getIsSomePageRowsSelected() && "indeterminate")}
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         aria-label="Select all"
       />
     ),
     cell: ({ row }) => (
       <Checkbox
         checked={row.getIsSelected()}
-        onCheckedChange={(value) => {
-          const newSelectedQuestions = new Set(selectedQuestions);
-          if (value) {
-            newSelectedQuestions.add(row.original.id);
-          } else {
-            newSelectedQuestions.delete(row.original.id);
-          }
-          setSelectedQuestions(newSelectedQuestions);
-          row.toggleSelected(!!value);
-        }}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
         aria-label="Select row"
       />
     ),

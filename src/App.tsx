@@ -105,6 +105,8 @@ import JitestiCategoryManager from "./pages/admin/JitestiCategoryManager";
 import JitestiTestManager from "./pages/admin/JitestiTestManager";
 import JitestiResultsPage from "./pages/admin/JitestiResults";
 import JitestiResultDetail from "./pages/admin/JitestiResultDetail";
+import DriverManagement from "./pages/admin/DriverManagement";
+import EmployerManagement from "./pages/admin/EmployerManagement";
 
 const queryClient = new QueryClient();
 
@@ -179,6 +181,16 @@ const App = () => (
               <Route path="/admin" element={
                 <AdminRoleBasedRoute>
                   <Admin />
+                </AdminRoleBasedRoute>
+              } />
+              <Route path="/admin/drivers" element={
+                <AdminRoleBasedRoute>
+                  <DriverManagement />
+                </AdminRoleBasedRoute>
+              } />
+              <Route path="/admin/employers" element={
+                <AdminRoleBasedRoute>
+                  <EmployerManagement />
                 </AdminRoleBasedRoute>
               } />
               <Route path="/elimika" element={
@@ -326,7 +338,7 @@ const App = () => (
                 </RoleBasedRoute>
               } />
               <Route path="/ajiri-dereva/register" element={<EmployerRegistration />} />
-              <Route path="/ajiri-dereva/post-.job" element={
+              <Route path="/ajiri-dereva/post-job" element={
                 <RoleBasedRoute allowedRoles={['Employer']}>
                   <EmployerVerificationGuard>
                     <PostJob />

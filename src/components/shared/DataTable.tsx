@@ -1,4 +1,3 @@
-
 import * as React from "react"
 import type {
   ColumnDef,
@@ -18,25 +17,31 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 
-import { cn } from "@/lib/utils"
 import { DataTablePagination } from "./DataTablePagination"
 import { DataTableToolbar } from "./DataTableToolbar"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 
+// --- PROPS INTERFACE ---
+// Added an optional isLoading prop to handle loading states.
 interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[],
-  data: TData[],
-  filterColumn: string,
-  rowSelection: RowSelectionState,
-  onRowSelectionChange: React.Dispatch<React.SetStateAction<RowSelectionState>>,
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+  filterColumn: string;
+  isLoading?: boolean; // This new prop will toggle the loading indicator.
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: React.Dispatch<React.SetStateAction<RowSelectionState>>;
+  getRowId?: (row: TData) => string;
 }
 
+// --- COMPONENT ---
 export function DataTable<TData, TValue>({
   columns,
   data,
   filterColumn,
+  isLoading, // Destructure the new prop.
   rowSelection,
   onRowSelectionChange,
+  getRowId,
 }: DataTableProps<TData, TValue>) {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({})
@@ -51,10 +56,10 @@ export function DataTable<TData, TValue>({
     state: {
       sorting,
       columnVisibility,
-      rowSelection,
+      rowSelection: rowSelection ?? {},
       columnFilters,
     },
-    enableRowSelection: true,
+    enableRowSelection: !!rowSelection,
     onRowSelectionChange: onRowSelectionChange,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -65,6 +70,7 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
+    getRowId,
   })
 
   return (
@@ -91,7 +97,20 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {/* --- LOADING & NO-DATA-STATE HANDLING ---
+            This block now checks for the isLoading state first. If true, it shows a loading indicator.
+            Otherwise, it proceeds to check if there are rows to display or shows 'No results'.
+            */}
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  Loading, please wait...
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -113,7 +132,7 @@ export function DataTable<TData, TValue>({
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  No results found.
                 </TableCell>
               </TableRow>
             )}

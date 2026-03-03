@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,7 +16,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Search, Edit, Trash2, Image, Video, Loader2, AlertCircle, ChevronDown, Upload, Download } from "lucide-react";
+import { Plus, Search, Edit, Trash2, Image, Video, Loader2, AlertCircle, ChevronDown, Upload, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import type { TestQuestion } from "@/types/management";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -69,6 +69,9 @@ const QuestionBankManager = () => {
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
 
   // Effect to fetch categories
@@ -125,6 +128,13 @@ const QuestionBankManager = () => {
       return matchesSearch;
     });
   }, [questions, searchQuery]);
+
+  const paginatedQuestions = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredQuestions.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredQuestions, currentPage, rowsPerPage]);
+
+  const totalPages = Math.ceil(filteredQuestions.length / rowsPerPage);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
@@ -442,7 +452,7 @@ const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
                   <TableRow>
                     <TableHead>
                       <Checkbox
-                        checked={numSelected > 0 && numSelected === filteredQuestions.length}
+                        checked={numSelected > 0 && numSelected === filteredQuestions.length ? true : numSelected > 0 ? 'indeterminate' : false}
                         onCheckedChange={(checked) => handleSelectAll(!!checked)}
                         aria-label="Select all"
                       />
@@ -457,7 +467,7 @@ const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredQuestions.map((question) => (
+                  {paginatedQuestions.map((question) => (
                     <TableRow 
                       key={question.name} 
                       data-state={selectedQuestions.includes(question.name) && "selected"}
@@ -474,7 +484,7 @@ const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
                         <div className="text-sm text-muted-foreground truncate">{question.question_text_sw}</div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{question.category}</Badge>
+                        <Badge variant="outline">{(categories.find(c => c.id === question.category) || {name_en: 'Unknown'}).name_en}</Badge>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline">{question.question_type}</Badge>
@@ -543,6 +553,59 @@ const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
               </Table>
             )}
           </CardContent>
+          {totalPages > 1 && (
+            <CardFooter className="flex items-center justify-between pt-4">
+                <div className="text-sm text-muted-foreground">
+                    {selectedQuestions.length} of {filteredQuestions.length} row(s) selected.
+                </div>
+                <div className="flex items-center space-x-6 lg:space-x-8">
+                    <div className="flex items-center space-x-2">
+                        <p className="text-sm font-medium">Rows per page</p>
+                        <Select
+                            value={`${rowsPerPage}`}
+                            onValueChange={(value) => {
+                                setRowsPerPage(Number(value));
+                                setCurrentPage(1);
+                            }}
+                        >
+                            <SelectTrigger className="h-8 w-[70px]">
+                                <SelectValue placeholder={rowsPerPage} />
+                            </SelectTrigger>
+                            <SelectContent side="top">
+                                {[10, 20, 50, 100].map((pageSize) => (
+                                    <SelectItem key={pageSize} value={`${pageSize}`}>
+                                        {pageSize}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="flex w-[100px] items-center justify-center text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                        <Button
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                            disabled={currentPage === 1}
+                        >
+                            <span className="sr-only">Go to previous page</span>
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="h-8 w-8 p-0"
+                            onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                        >
+                            <span className="sr-only">Go to next page</span>
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            </CardFooter>
+          )}
       </Card>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
