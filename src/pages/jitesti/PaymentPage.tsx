@@ -1,174 +1,149 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '@/components/ui/use-toast';
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-
-// --- Type Definitions ---
-type JitestiCategory = {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  durationInMinutes: number;
-  passMark: number;
-};
-
-// --- Data Fetching ---
-const fetchCategory = async (categoryId: string): Promise<JitestiCategory | null> => {
-    if (!categoryId) return null;
-    const docRef = doc(db, 'jitesti-categories', categoryId);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-        const data = docSnap.data();
-        return {
-            id: docSnap.id,
-            title: data.name_en || 'Untitled Test',
-            description: data.description_en || '',
-            price: data.price || 0,
-            durationInMinutes: data.duration_minutes || 0,
-            passMark: data.pass_mark || 0,
-        };
-    }
-    return null;
-};
-
-const functions = getFunctions();
-const initiateSelcomPayment = httpsCallable(functions, 'initiateSelcomPayment');
+import { doc, onSnapshot, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase'; 
+import { useAuth } from '@/contexts/AuthContext';
+import { getAuth } from 'firebase/auth';
 
 const PaymentPage: React.FC = () => {
-  const { categoryId = '' } = useParams<{ categoryId: string }>();
-  const navigate = useNavigate();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [phoneNumber, setPhoneNumber] = useState('');
+    const { categoryId } = useParams<{ categoryId: string }>();
+    const navigate = useNavigate();
+    const { user } = useAuth();
+    const [status, setStatus] = useState('Initializing...');
+    const [error, setError] = useState<string | null>(null);
+    const [phoneNumber, setPhoneNumber] = useState('');
+    const [showPhoneInput, setShowPhoneInput] = useState(false);
 
-  const { data: category, isLoading, error } = useQuery<JitestiCategory | null>({ 
-    queryKey: ['jitesti-category', categoryId], 
-    queryFn: () => fetchCategory(categoryId),
-    enabled: !!categoryId, 
-  });
-
-  const initiatePaymentMutation = useMutation({
-    mutationFn: async (phone: string) => {
-        if (!user || !category) {
-            throw new Error("You must be logged in and a category must be selected.");
+    useEffect(() => {
+        if (user && !user.phoneNumber) {
+            setShowPhoneInput(true);
+            setStatus('Please provide your phone number to proceed.');
+        } else if (user) {
+            initiatePayment(user.phoneNumber);
         }
-         if (!phone.match(/^255[0-9]{9}$/)) {
-            throw new Error("Please enter a valid phone number in the format 255712345678.");
+    }, [user, categoryId, navigate]);
+
+    const handlePhoneSubmit = () => {
+        if (!phoneNumber.match(/^255[0-9]{9}$/)) {
+            setError("Please enter a valid phone number in the format 255712345678.");
+            return;
+        }
+        setError(null);
+        initiatePayment(phoneNumber);
+    };
+
+    const initiatePayment = async (phone: string) => {
+        if (!categoryId) {
+            setError('No category ID provided.');
+            return;
         }
 
-        const result = await initiateSelcomPayment({
-            categoryId,
-            phone,
-            category, // Send the whole category object
-            user: {
-                uid: user.uid,
-                email: user.email,
-                displayName: user.displayName
-            } 
-        });
+        setShowPhoneInput(false);
+        setStatus('Initializing payment...');
 
-        return result.data as { success: boolean; testAttemptId: string };
-    },
-    onSuccess: (data) => {
-        if (data.success) {
-            toast({
-                title: "Payment Initiated",
-                description: "Check your phone and enter your PIN to approve the payment.",
+        try {
+            setStatus("Fetching category details...");
+            const categoryRef = doc(db, "jitesti-categories", categoryId);
+            const categorySnap = await getDoc(categoryRef);
+
+            if (!categorySnap.exists()) {
+                throw new Error("Test category not found.");
+            }
+            const categoryData = categorySnap.data();
+
+            setStatus('Contacting payment processor...');
+
+            const auth = getAuth();
+            const idToken = await auth.currentUser?.getIdToken();
+
+            if (!idToken) {
+                throw new Error("Authentication token not available.");
+            }
+
+            const response = await fetch('https://us-central1-derevakiganjani.cloudfunctions.net/initiatePayment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${idToken}`
+                },
+                body: JSON.stringify({
+                    categoryId,
+                    phone: phone,
+                    category: {
+                        price: categoryData.price,
+                        passMark: categoryData.passMark,
+                        durationInMinutes: categoryData.duration_minutes
+                    },
+                })
             });
-            navigate(`/jitesti/payment-pending/${data.testAttemptId}`);
-        } else {
-            throw new Error('The payment initiation failed. Please try again.');
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Failed to initiate payment.');
+            }
+
+            const result = await response.json();
+            const { success, testAttemptId } = result;
+
+            if (success && testAttemptId) {
+                setStatus('Payment initiated. Waiting for confirmation...');
+                const testAttemptRef = doc(db, 'test_attempts', testAttemptId);
+                const unsubscribe = onSnapshot(testAttemptRef, (snapshot) => {
+                    const data = snapshot.data();
+                    if (data) {
+                        setStatus(`Payment status: ${data.status}`);
+                        if (data.status === 'started') {
+                            unsubscribe();
+                            navigate(`/jitesti/test/${testAttemptId}`);
+                        } else if (data.status === 'failed' || data.status === 'payment_failed') {
+                            unsubscribe();
+                            setError('Payment failed. Please try again.');
+                        }
+                    }
+                });
+            } else {
+                throw new Error('Failed to initiate payment.');
+            }
+        } catch (err: any) {
+            console.error('Payment initiation error:', err);
+            setError(err.message || 'An unknown error occurred.');
+            setStatus('Payment failed.');
         }
-    },
-    onError: (err) => {
-        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred.";
-        toast({
-            title: "Payment Error",
-            description: errorMessage,
-            variant: "destructive",
-        });
-    },
-});
+    };
 
-  const handlePayment = () => {
-    initiatePaymentMutation.mutate(phoneNumber);
-  };
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <div className="p-8 bg-white shadow-lg rounded-lg text-center max-w-md w-full">
+                <h1 className="text-2xl font-bold mb-4">Payment Processing</h1>
+                <p className="text-lg mb-4">Status: {status}</p>
+                {error && <p className="text-red-500 text-lg font-semibold">Error: {error}</p>}
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-    <Header/>
-    <main className="flex-grow container mx-auto px-4 py-8">
-        <Breadcrumb className="mb-6">
-            <BreadcrumbList>
-                <BreadcrumbItem><BreadcrumbLink href="/">Home</BreadcrumbLink></BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem><BreadcrumbLink href="/jitesti">Jitesti Categories</BreadcrumbLink></BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem><BreadcrumbPage>Payment</BreadcrumbPage></BreadcrumbItem>
-            </BreadcrumbList>
-        </Breadcrumb>
-        <div className="container mx-auto py-10 flex items-center justify-center">
-            <Card className="w-full max-w-md">
-                <CardHeader>
-                    <CardTitle>Confirm Your Test</CardTitle>
-                    <CardDescription>Review the details and enter your phone number to pay.</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    {isLoading && <p>Loading details...</p>}
-                    {error && <p className="text-red-500">Could not load test details.</p>}
-                    {category && (
-                        <div className="space-y-4">
-                            <h2 className="text-2xl font-bold">{category.title}</h2>
-                            <p className="text-muted-foreground">{category.description}</p>
-                            <div className="border-t pt-4 mt-4">
-                                <p className="flex justify-between"><span>Duration:</span> <strong>{category.durationInMinutes} minutes</strong></p>
-                                <p className="flex justify-between mt-2 text-xl"><span>Price:</span> <strong>TZS {category.price.toLocaleString()}</strong></p>
-                            </div>
-                        </div>
-                    )}
-                    <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number (e.g., 255712345678)</Label>
-                        <Input
-                            id="phone"
-                            type="tel"
+                {showPhoneInput ? (
+                    <div className="mt-4">
+                        <input
+                            type="text"
                             value={phoneNumber}
                             onChange={(e) => setPhoneNumber(e.target.value)}
-                            placeholder="255712345678"
-                            disabled={initiatePaymentMutation.isPending}
+                            placeholder="e.g., 255712345678"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
                         />
+                        <button
+                            onClick={handlePhoneSubmit}
+                            className="mt-4 w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            Submit Phone Number
+                        </button>
                     </div>
-                </CardContent>
-                <CardFooter className="flex-col space-y-4">
-                    <p className="text-xs text-muted-foreground text-center">
-                        You will receive a USSD push notification on your phone to complete the payment.
-                    </p>
-                    <Button 
-                        className="w-full"
-                        disabled={!category || !phoneNumber || initiatePaymentMutation.isPending}
-                        onClick={handlePayment}
-                    >
-                        {initiatePaymentMutation.isPending ? 'Initiating Payment...' : `Pay TZS ${category?.price.toLocaleString() || ''}`}
-                    </Button>
-                </CardFooter>
-            </Card>
+                ) : (
+                    <div className="mt-6">
+                        <p className="text-sm text-gray-600">Please do not refresh this page.</p>
+                        <p className="text-sm text-gray-600">You will be redirected automatically once the payment is confirmed.</p>
+                    </div>
+                )}
+            </div>
         </div>
-    </main>
-    <Footer />
-    </div>
-  );
+    );
 };
 
 export default PaymentPage;

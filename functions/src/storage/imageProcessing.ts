@@ -1,5 +1,5 @@
 
-import { onObjectFinalized } from "firebase-functions/v2/storage";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 import * as path from "path";
 import * as os from "os";
@@ -11,14 +11,11 @@ if (admin.apps.length === 0) {
   admin.initializeApp();
 }
 
-const storage = admin.storage();
-
 /**
  * Cloud Function that triggers when a new image is uploaded to Firebase Storage.
  * It creates a thumbnail version of the image.
  */
-export const generateThumbnail = onObjectFinalized(async (event) => {
-  const object = event.data;
+export const generateThumbnail = functions.storage.object().onFinalize(async (object) => {
   const fileBucket = object.bucket; // The Storage bucket that contains the file.
   const filePath = object.name; // File path in the bucket.
   const contentType = object.contentType; // File content type.
@@ -26,18 +23,18 @@ export const generateThumbnail = onObjectFinalized(async (event) => {
   // Exit if this is triggered on a file that isn't an image.
   if (!contentType || !contentType.startsWith('image/')) {
     console.log('This is not an image.');
-    return;
+    return null;
   }
 
   // Exit if the image is already a thumbnail.
   if (filePath && path.basename(filePath).startsWith('thumb_')) {
     console.log('Already a Thumbnail.');
-    return;
+    return null;
   }
 
   // Get the file name.
   const fileName = path.basename(filePath || '');
-  const bucket = storage.bucket(fileBucket);
+  const bucket = admin.storage().bucket(fileBucket);
   const tempFilePath = path.join(os.tmpdir(), fileName);
   const metadata = {
     contentType: contentType,
@@ -70,8 +67,10 @@ export const generateThumbnail = onObjectFinalized(async (event) => {
 
     // Once the thumbnail has been uploaded delete the local files to free up disk space.
     fs.unlinkSync(tempFilePath);
+    fs.unlinkSync(thumbFilePath)
 
   } catch (error) {
     console.error("Error creating thumbnail:", error);
   }
+    return null;
 });

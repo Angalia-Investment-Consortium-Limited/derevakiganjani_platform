@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import type { DocumentUpload, LicenseApplication } from '@/types/license';
+import type { LicenseApplication } from '@/types/license';
 import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,10 +20,11 @@ import {
   AlertDialogTitle, 
   AlertDialogTrigger 
 } from '@/components/ui/alert-dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink, Banknote } from 'lucide-react';
 import { REQUEST_STATUS_COLORS } from '@/components/admin/requests/Columns';
 import { DOCUMENT_TYPE_TRANSLATIONS } from '@/types/license';
 
@@ -32,25 +33,44 @@ const LicenseApplicationReview = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [application, setApplication] = useState<LicenseApplication | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [adminNotes, setAdminNotes] = useState("");
+  const [applicantAdvice, setApplicantAdvice] = useState("");
 
   useEffect(() => {
     if (!id) return;
     const fetchApplication = async () => {
       try {
-        const docRef = doc(db, "license_applications", id);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setApplication({ id: docSnap.id, ...docSnap.data() } as LicenseApplication);
-          setAdminNotes(docSnap.data().adminNotes || "");
+        const appDocRef = doc(db, "license_applications", id);
+        const appDocSnap = await getDoc(appDocRef);
+
+        if (appDocSnap.exists()) {
+          const appData = { id: appDocSnap.id, ...appDocSnap.data() } as LicenseApplication;
+          setApplication(appData);
+          setAdminNotes(appData.adminNotes || "");
+          setApplicantAdvice(appData.applicantAdvice || "");
+
+          // Fetch the associated payment record
+          if (appData.paymentId) {
+            const paymentDocRef = doc(db, "payments", appData.paymentId);
+            const paymentDocSnap = await getDoc(paymentDocRef);
+            if (paymentDocSnap.exists()) {
+                setPaymentStatus(paymentDocSnap.data().status || 'unknown');
+            } else {
+                setPaymentStatus('not_found');
+            }
+          } else {
+            setPaymentStatus('missing_id');
+          }
+
         } else {
           toast({ title: "Error", description: "Application not found.", variant: "destructive" });
           navigate("/admin/license-applications");
         }
       } catch (error) {
-        console.error("Error fetching application: ", error);
-        toast({ title: "Error", description: "Could not fetch the application details.", variant: "destructive" });
+        console.error("Error fetching application details: ", error);
+        toast({ title: "Error", description: "Could not fetch application and payment details.", variant: "destructive" });
       } finally {
         setIsLoading(false);
       }
@@ -65,6 +85,7 @@ const LicenseApplicationReview = () => {
       await updateDoc(docRef, {
         status: status,
         adminNotes: adminNotes,
+        applicantAdvice: applicantAdvice,
         lastUpdated: serverTimestamp()
       });
       toast({ title: "Success", description: `Application has been ${status}.` });
@@ -85,6 +106,12 @@ const LicenseApplicationReview = () => {
     </div>
   );
 
+  const getPaymentStatusBadge = () => {
+    if (!paymentStatus) return null;
+    const color = paymentStatus === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+    return <Badge className={color}>{`${paymentStatus}`.replace(/_/g, ' ')}</Badge>;
+  };
+
   if (isLoading) {
     return <AdminLayout><div className="p-6 space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-64 w-full" /></div></AdminLayout>;
   }
@@ -93,8 +120,11 @@ const LicenseApplicationReview = () => {
     return <AdminLayout><div className="p-6">Application not found.</div></AdminLayout>;
   }
 
+  const isApprovalDisabled = paymentStatus !== 'completed';
+
   return (
     <AdminLayout>
+    <TooltipProvider>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card>
@@ -111,6 +141,7 @@ const LicenseApplicationReview = () => {
                     <DetailItem icon={FileText} label="NIDA Number" value={application.nidaNumber} />
                     <DetailItem icon={Calendar} label="Date of Birth" value={application.dateOfBirth ? format(new Date(application.dateOfBirth), 'PPP') : 'N/A'} />
                     <DetailItem icon={Calendar} label="Submitted On" value={application.submittedOn ? format(application.submittedOn.toDate(), 'PPP') : 'N/A'} />
+                    <DetailItem icon={Banknote} label="Payment Status" value={getPaymentStatusBadge()} />
                 </div>
             </CardContent>
           </Card>
@@ -118,7 +149,7 @@ const LicenseApplicationReview = () => {
           <Card>
             <CardHeader><CardTitle>Uploaded Documents</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(application.documents || []).map((doc: DocumentUpload, index) => (
+                {(application.documents || []).map((doc, index) => (
                     <a href={doc.url} target="_blank" rel="noopener noreferrer" key={index} className="block p-4 border rounded-lg hover:bg-muted">
                         <div className="flex items-center gap-4">
                             <FileText className="h-8 w-8 text-primary" />
@@ -132,21 +163,30 @@ const LicenseApplicationReview = () => {
                 ))}
             </CardContent>
           </Card>
-
         </div>
 
         <div className="space-y-6">
             <Card>
                 <CardHeader><CardTitle>Actions & Notes</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
+                     <div className="space-y-2">
+                        <label htmlFor="applicant-advice" className="font-medium">Advice for Applicant</label>
+                        <Textarea 
+                            id="applicant-advice"
+                            placeholder="Add notes visible to the applicant..."
+                            value={applicantAdvice}
+                            onChange={(e) => setApplicantAdvice(e.target.value)}
+                            rows={4}
+                        />
+                    </div>
                     <div className="space-y-2">
-                        <label htmlFor="admin-notes" className="font-medium">Admin Notes</label>
+                        <label htmlFor="admin-notes" className="font-medium">Internal Admin Notes</label>
                         <Textarea 
                             id="admin-notes"
                             placeholder="Add internal notes here..."
                             value={adminNotes}
                             onChange={(e) => setAdminNotes(e.target.value)}
-                            rows={6}
+                            rows={4}
                         />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
@@ -169,10 +209,21 @@ const LicenseApplicationReview = () => {
                         </AlertDialog>
 
                         <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                                <Button variant="default"><CheckCircle className="mr-2 h-4 w-4"/>Approve</Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
+                            <TooltipTrigger>
+                                <div className="w-full">
+                                <AlertDialogTrigger asChild>
+                                        <Button variant="default" className="w-full" disabled={isApprovalDisabled}>
+                                            <CheckCircle className="mr-2 h-4 w-4"/>Approve
+                                        </Button>
+                                </AlertDialogTrigger>
+                                </div>
+                            </TooltipTrigger>
+                            {isApprovalDisabled && (
+                                <TooltipContent>
+                                    <p>Approval is disabled until payment is completed.</p>
+                                </TooltipContent>
+                            )}
+                             <AlertDialogContent>
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure you want to approve?</AlertDialogTitle>
                                 <AlertDialogDescription>
@@ -190,6 +241,7 @@ const LicenseApplicationReview = () => {
             </Card>
         </div>
       </div>
+      </TooltipProvider>
     </AdminLayout>
   );
 };

@@ -1,5 +1,5 @@
 
-import { onDocumentUpdated, onDocumentCreated } from "firebase-functions/v2/firestore";
+import * as functions from "firebase-functions/v1";
 import * as admin from "firebase-admin";
 
 // Initialize the Admin SDK if it hasn't been already
@@ -56,56 +56,40 @@ const sendNotification = async (userId: string, notification: any) => {
  * Triggered when a license application's status is updated.
  * Sends a notification to the user who submitted the application.
  */
-export const onLicenseStatusChange = onDocumentUpdated("license_applications/{appId}", async (event) => {
-  const before = event.data?.before.data();
-  const after = event.data?.after.data();
+export const onLicenseStatusChange = functions.firestore
+  .document("license_applications/{appId}")
+  .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
 
-  if (!before || !after) {
-    console.log("No data associated with the event");
-    return;
-  }
+    // Check if the status has changed to 'Approved' or 'Rejected'
+    if (before.status === after.status) {
+      return;
+    }
 
-  // Check if the status has changed to 'Approved' or 'Rejected'
-  if (before.status === after.status) {
-    return;
-  }
+    if (after.status === 'Approved' || after.status === 'Rejected') {
+      const userId = after.user;
+      const message = `Your license application #${change.after.id.substring(0, 5)} has been ${after.status.toLowerCase()}.`;
 
-  if (after.status === 'Approved' || after.status === 'Rejected') {
-    const userId = after.user;
-    const message = `Your license application #${event.data?.after.id.substring(0, 5)} has been ${after.status.toLowerCase()}.`;
+      const notification = {
+        type: 'LICENSE_STATUS',
+        message: message,
+        link: `/license/application/${change.after.id}`,
+      };
 
-    const notification = {
-      type: 'LICENSE_STATUS',
-      message: message,
-      link: `/license/application/${event.data?.after.id}`,
-    };
-
-    console.log(`Sending notification to user ${userId} for license ${event.data?.after.id}`);
-    await sendNotification(userId, notification);
-  }
-});
+      console.log(`Sending notification to user ${userId} for license ${change.after.id}`);
+      await sendNotification(userId, notification);
+    }
+  });
 
 /**
  * Triggered when a new job is posted.
- * This is a placeholder. You might want to notify all drivers in a certain region, for example.
- * For now, it does not send a notification but demonstrates the structure.
  */
-export const onNewJobPosted = onDocumentCreated("jobs/{jobId}", async (event) => {
-  const snapshot = event.data;
-  if (!snapshot) {
-    console.log("No data associated with the event");
-    return;
-  }
-  const jobData = snapshot.data();
+export const onNewJobPosted = functions.firestore
+  .document("jobs/{jobId}")
+  .onCreate(async (snapshot, context) => {
+    const jobData = snapshot.data();
 
-  // This is where you'd implement the logic to find relevant drivers to notify.
-  // For example, query for drivers in the job's region.
-  console.log(`New job posted: ${jobData.title}. Not sending notifications yet.`);
-
-  // Example: 
-  // const drivers = await db.collection('users').where('roles', 'array-contains', 'Driver').get();
-  // drivers.forEach(driver => {
-  //   const notification = { ... };
-  //   sendNotification(driver.id, notification);
-  // });
-});
+    // This is where you'd implement the logic to find relevant drivers to notify.
+    console.log(`New job posted: ${jobData.title}. Not sending notifications yet.`);
+  });

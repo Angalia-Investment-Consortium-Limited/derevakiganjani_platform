@@ -1,6 +1,6 @@
 {
   "index.html": {
-    "file": "assets/index-DvxHTGLU.js",
+    "file": "assets/index-54byR5PV.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -10,7 +10,7 @@
       "node_modules/canvg/lib/index.es.js"
     ],
     "css": [
-      "assets/index-BHI27ylw.css"
+      "assets/index-Y0AYvVqr.css"
     ],
     "assets": [
       "assets/logo-DQrYtaup.png",
@@ -25,7 +25,7 @@
     ]
   },
   "node_modules/canvg/lib/index.es.js": {
-    "file": "assets/index.es-CwgoU_6f.js",
+    "file": "assets/index.es-BZEexttO.js",
     "name": "index.es",
     "src": "node_modules/canvg/lib/index.es.js",
     "isDynamicEntry": true,
