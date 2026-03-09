@@ -9,9 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, Eye, CheckCircle, XCircle, Filter, Loader2 } from 'lucide-react';
+import { Download, Eye, CheckCircle, XCircle, Filter, Loader2, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { collection, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, Timestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 
@@ -27,8 +27,10 @@ interface Payment {
   amount: number;
   adminNote?: string;
   // Temporary, until we have user names
-  userName?: string; 
+  userName?: string;
 }
+
+type SortColumn = keyof Payment | 'userName';
 
 const PaymentsManagement = () => {
   const { toast } = useToast();
@@ -44,10 +46,15 @@ const PaymentsManagement = () => {
     service: 'all',
     query: '',
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  const [sortColumn, setSortColumn] = useState<SortColumn>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   useEffect(() => {
     setIsLoading(true);
-    const unsubscribe = onSnapshot(collection(db, 'payments'), (snapshot) => {
+    const q = query(collection(db, 'payments'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const paymentsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -60,6 +67,15 @@ const PaymentsManagement = () => {
 
     return () => unsubscribe();
   }, []);
+
+  const handleSort = (column: SortColumn) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortColumn(column);
+      setSortDirection('asc');
+    }
+  };
 
   const handleViewDetails = (payment: Payment) => {
     setSelectedPayment(payment);
@@ -84,9 +100,6 @@ const PaymentsManagement = () => {
         adminNote: adminNote,
       });
 
-      // Optionally update the corresponding test_attempt status if it's a JiTesti payment
-      // This logic can be expanded.
-      
       toast({
         title: `Payment ${newStatus}`,
         description: `Payment ID ${selectedPayment.selcomTransactionId} has been ${newStatus}.`,
@@ -130,6 +143,43 @@ const PaymentsManagement = () => {
     return true;
   });
 
+  const sortedPayments = [...filteredPayments].sort((a, b) => {
+    const aValue = a[sortColumn];
+    const bValue = b[sortColumn];
+
+    if (aValue === undefined || bValue === undefined) return 0;
+
+    if (sortColumn === 'createdAt') {
+        const aDate = (aValue as Timestamp).toDate();
+        const bDate = (bValue as Timestamp).toDate();
+        return (sortDirection === 'asc' ? 1 : -1) * (aDate.getTime() - bDate.getTime());
+    }
+
+    if (aValue < bValue) {
+      return sortDirection === 'asc' ? -1 : 1;
+    }
+    if (aValue > bValue) {
+      return sortDirection === 'asc' ? 1 : -1;
+    }
+    return 0;
+  });
+
+  const paginatedPayments = sortedPayments.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(sortedPayments.length / itemsPerPage);
+
+  const SortableHeader = ({ column, label }: { column: SortColumn, label: string }) => (
+    <TableHead onClick={() => handleSort(column)} className="cursor-pointer">
+      <div className="flex items-center">
+        {label}
+        {sortColumn === column && <ArrowUpDown className="ml-2 h-4 w-4" />}
+      </div>
+    </TableHead>
+  );
+
   return (
     <AdminLayout>
       <div className="space-y-6">
@@ -158,9 +208,9 @@ const PaymentsManagement = () => {
                 <Input
                   placeholder="Search by User, Phone, or Transaction ID..."
                   value={filters.query}
-                  onChange={(e) => setFilters({...filters, query: e.target.value})}
+                  onChange={(e) => { setFilters({...filters, query: e.target.value }); setCurrentPage(1); }}
                 />
-                <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
+                <Select value={filters.status} onValueChange={(v) => { setFilters({...filters, status: v}); setCurrentPage(1); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Filter by Status" />
                   </SelectTrigger>
@@ -171,7 +221,7 @@ const PaymentsManagement = () => {
                     <SelectItem value="failed">Failed</SelectItem>
                   </SelectContent>
                 </Select>
-                <Select value={filters.service} onValueChange={(v) => setFilters({...filters, service: v})}>
+                <Select value={filters.service} onValueChange={(v) => { setFilters({...filters, service: v}); setCurrentPage(1); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Filter by Service" />
                   </SelectTrigger>
@@ -193,13 +243,13 @@ const PaymentsManagement = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>User</TableHead>
-                      <TableHead>Service</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Phone</TableHead>
-                      <TableHead>Transaction ID</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Status</TableHead>
+                      <SortableHeader column="userName" label="User" />
+                      <SortableHeader column="service" label="Service" />
+                      <SortableHeader column="amount" label="Amount" />
+                      <SortableHeader column="phone" label="Phone" />
+                      <SortableHeader column="selcomTransactionId" label="Transaction ID" />
+                      <SortableHeader column="createdAt" label="Date" />
+                      <SortableHeader column="status" label="Status" />
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -211,14 +261,14 @@ const PaymentsManagement = () => {
                           <p className="mt-2 text-muted-foreground">Loading transactions...</p>
                         </TableCell>
                       </TableRow>
-                    ) : filteredPayments.length === 0 ? (
+                    ) : paginatedPayments.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                           No transactions found matching your criteria.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredPayments.map((payment) => (
+                      paginatedPayments.map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell className="font-medium">{payment.userName}</TableCell>
                           <TableCell>{payment.service}</TableCell>
@@ -242,6 +292,32 @@ const PaymentsManagement = () => {
                   </TableBody>
                 </Table>
               </div>
+                 <div className="flex items-center justify-between p-4 border-t">
+                    <p className="text-sm text-muted-foreground">
+                    Showing {Math.min(paginatedPayments.length, itemsPerPage * currentPage)} of {sortedPayments.length} transactions.
+                    </p>
+                    <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="text-sm">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Next
+                    </Button>
+                    </div>
+                </div>
             </CardContent>
           </Card>
 

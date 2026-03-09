@@ -17,6 +17,7 @@ type JitestiCategory = {
   description: string;
   price: number;
   durationInMinutes: number;
+  passMark: number;
 };
 
 // Fetch function for active categories, with correct Firestore field mapping
@@ -35,6 +36,7 @@ const fetchActiveCategories = async (): Promise<JitestiCategory[]> => {
         description: data.description_en || '', // map from description_en
         price: data.price || 0,
         durationInMinutes: data.duration_minutes || 0, // map from duration_minutes
+        passMark: data.passMark || 0,
       };
   });
 };
@@ -46,8 +48,9 @@ const TestCategories: React.FC = () => {
     queryFn: fetchActiveCategories 
   });
 
-  const handleStartTest = (categoryId: string) => {
-    navigate(`/jitesti/payment/${categoryId}`);
+  const handleStartTest = (category: JitestiCategory) => {
+    // Pass the entire category object in the navigation state
+    navigate(`/jitesti/payment/${category.id}`, { state: { category } });
   };
 
   return (
@@ -91,21 +94,21 @@ const TestCategories: React.FC = () => {
               <CardFooter>
                 <Button 
                   className="w-full" 
-                  onClick={() => handleStartTest(category.id)}
+                  onClick={() => handleStartTest(category)} // Pass the whole category object
                 >
                   {'Pay and Start Test'}
                 </Button>
               </CardFooter>
             </Card>
-          ))}
+          ))}\
         </div>
       )}
 
        {!isLoading && categories.length === 0 && (
-          <div className="text-center py-20">
+          <div className="text-center py-20">\
             <p className="text-xl text-muted-foreground">No test categories are available at the moment. Please check back later.</p>
           </div>
-      )}
+      )}\
     </div>
     </main>
     <Footer/>

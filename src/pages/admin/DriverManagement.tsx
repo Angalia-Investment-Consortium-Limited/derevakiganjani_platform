@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AdminLayout } from "@/components/admin/AdminLayout";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -25,12 +25,10 @@ interface Driver {
   createdAt?: Timestamp;
   phoneNumber?: string;
   mobile_no?: string;
-  // This license field is based on an assumption that it exists on the user document
   license?: {
       isVerified?: boolean;
       status?: string;
   };
-  // from driver_profiles
   licenseNumber?: string;
 }
 
@@ -40,6 +38,8 @@ const DriverManagement = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   useEffect(() => {
     setIsLoading(true);
@@ -110,7 +110,14 @@ const DriverManagement = () => {
     );
   }, [drivers, searchQuery]);
 
- const getLicenseStatus = (driver: Driver) => {
+  const paginatedDrivers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    return filteredDrivers.slice(startIndex, startIndex + itemsPerPage);
+  }, [filteredDrivers, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(filteredDrivers.length / itemsPerPage);
+
+  const getLicenseStatus = (driver: Driver) => {
       if (driver.license?.isVerified) {
           return { text: 'Verified', variant: 'default' as const };
       }
@@ -145,7 +152,10 @@ const DriverManagement = () => {
               <Input
                 placeholder="Search by name, email, or phone..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="pl-10"
               />
             </div>
@@ -178,8 +188,8 @@ const DriverManagement = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredDrivers.length > 0 ? (
-                    filteredDrivers.map((driver) => {
+                  {paginatedDrivers.length > 0 ? (
+                    paginatedDrivers.map((driver) => {
                         const licenseStatus = getLicenseStatus(driver);
                         return (
                           <TableRow key={driver.uid}>
@@ -253,6 +263,32 @@ const DriverManagement = () => {
             </div>
           )}
         </CardContent>
+        {totalPages > 1 && (
+            <CardFooter className="flex items-center justify-between pt-4">
+                 <div className="text-sm text-muted-foreground">
+                    Showing {paginatedDrivers.length} of {filteredDrivers.length} drivers.
+                </div>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span>{currentPage} / {totalPages}</span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Next
+                    </Button>
+                </div>
+            </CardFooter>
+        )}
       </Card>
     </AdminLayout>
   );

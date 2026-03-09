@@ -1,19 +1,19 @@
 
 import * as nodemailer from 'nodemailer';
-import * as functions from 'firebase-functions';
 
 // --- IMPORTANT: CONFIGURE YOUR EMAIL SERVICE --- //
-// This file reads the configuration set by the Firebase CLI.
-// firebase functions:config:set mail.host="..." mail.port="..." etc.
-// DO NOT HARDCODE YOUR PASSWORD HERE.
+// This file reads environment variables.
+// You must set these in your Firebase environment, e.g., using the Firebase CLI:
+// firebase functions:config:set mail.host="..." mail.port="..." etc. (for older setups)
+// or for Gen2, set them as params or in .env files.
 
 const mailConfig = {
-  host: functions.config().mail?.host || 'YOUR_SMTP_HOST',       
-  port: parseInt(functions.config().mail?.port || '587', 10), 
-  secure: (functions.config().mail?.secure === 'true') || false, 
+  host: process.env.MAIL_HOST || 'YOUR_SMTP_HOST',
+  port: parseInt(process.env.MAIL_PORT || '587', 10),
+  secure: (process.env.MAIL_SECURE === 'true') || false,
   auth: {
-    user: functions.config().mail?.user || 'YOUR_SMTP_USER',       
-    pass: functions.config().mail?.pass || 'YOUR_SMTP_PASSWORD',   
+    user: process.env.MAIL_USER || 'YOUR_SMTP_USER',
+    pass: process.env.MAIL_PASS || 'YOUR_SMTP_PASSWORD',
   },
 };
 
@@ -32,7 +32,7 @@ interface EmailOptions {
  */
 export const sendEmail = async ({ to, subject, html }: EmailOptions) => {
   const mailOptions = {
-    from: `"Dereva Huduma" <${functions.config().mail?.from || 'noreply@your-app.com'}>`, // This uses the 'from' email set in the config
+    from: `"Dereva Huduma" <${process.env.MAIL_FROM || 'noreply@your-app.com'}>`,
     to,
     subject,
     html,
@@ -43,6 +43,7 @@ export const sendEmail = async ({ to, subject, html }: EmailOptions) => {
     console.log(`Email sent successfully to ${to}`);
   } catch (error) {
     console.error(`Error sending email to ${to}:`, error);
-    throw new functions.https.HttpsError('internal', 'Failed to send email.');
+    // Throw a standard error, the calling function will be responsible for the user-facing error.
+    throw new Error('Failed to send email.');
   }
 };

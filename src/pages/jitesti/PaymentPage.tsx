@@ -1,90 +1,111 @@
-
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { doc, onSnapshot, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase'; 
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db, functions, auth } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { getAuth } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
+
+// Define the structure for the category data passed in navigation state
+interface Category {
+    id: string;
+    title: string;
+    price: number;
+    durationInMinutes: number;
+    passMark: number;
+}
+
+// Helper function to format the phone number correctly for the payment gateway
+const formatPhoneNumber = (phone: string): string => {
+    let formattedPhone = phone.trim();
+    if (formattedPhone.startsWith('+')) {
+        formattedPhone = formattedPhone.substring(1);
+    }
+    if (formattedPhone.startsWith('0')) {
+        return '255' + formattedPhone.substring(1);
+    }
+    return formattedPhone;
+};
 
 const PaymentPage: React.FC = () => {
     const { categoryId } = useParams<{ categoryId: string }>();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const location = useLocation();
+    const { user, isLoading } = useAuth(); // Use isLoading from AuthContext
+
+    const [category] = useState<Category | null>(location.state?.category || null);
     const [status, setStatus] = useState('Initializing...');
     const [error, setError] = useState<string | null>(null);
     const [phoneNumber, setPhoneNumber] = useState('');
     const [showPhoneInput, setShowPhoneInput] = useState(false);
 
     useEffect(() => {
+        if (isLoading) {
+            setStatus('Authenticating...');
+            return; // Wait for authentication to complete
+        }
+
+        if (!category) {
+            setError("Missing test category details. Please go back and select a test again.");
+            setStatus("Error");
+            return;
+        }
+
         if (user && !user.phoneNumber) {
             setShowPhoneInput(true);
             setStatus('Please provide your phone number to proceed.');
         } else if (user) {
             initiatePayment(user.phoneNumber);
         }
-    }, [user, categoryId, navigate]);
+    }, [user, category, navigate, isLoading]);
 
     const handlePhoneSubmit = () => {
-        if (!phoneNumber.match(/^255[0-9]{9}$/)) {
-            setError("Please enter a valid phone number in the format 255712345678.");
+        const formattedPhone = formatPhoneNumber(phoneNumber);
+        if (!formattedPhone.match(/^255[0-9]{9}$/)) {
+            setError("Please enter a valid Tanzanian phone number (e.g., 0712345678 or 255712345678).");
             return;
         }
         setError(null);
-        initiatePayment(phoneNumber);
+        initiatePayment(formattedPhone);
     };
 
-    const initiatePayment = async (phone: string) => {
-        if (!categoryId) {
-            setError('No category ID provided.');
+    const initiatePayment = async (phone: string | null) => {
+        const currentUser = auth.currentUser;
+
+        if (!category || !phone || !currentUser) {
+            setError('Your session is invalid. Please log in again.');
+            setStatus('Payment failed.');
             return;
         }
 
+        const formattedPhone = formatPhoneNumber(phone);
         setShowPhoneInput(false);
-        setStatus('Initializing payment...');
+        setStatus('Initializing secure payment...');
 
         try {
-            setStatus("Fetching category details...");
-            const categoryRef = doc(db, "jitesti-categories", categoryId);
-            const categorySnap = await getDoc(categoryRef);
+            const initiateSelcomPayment = httpsCallable(functions, 'initiateSelcomPayment');
 
-            if (!categorySnap.exists()) {
-                throw new Error("Test category not found.");
-            }
-            const categoryData = categorySnap.data();
-
-            setStatus('Contacting payment processor...');
-
-            const auth = getAuth();
-            const idToken = await auth.currentUser?.getIdToken();
-
-            if (!idToken) {
-                throw new Error("Authentication token not available.");
-            }
-
-            const response = await fetch('https://us-central1-derevakiganjani.cloudfunctions.net/initiatePayment', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${idToken}`
+            const requestData = {
+                categoryId: category.id,
+                phone: formattedPhone,
+                category: {
+                    title: category.title,
+                    price: category.price,
+                    passMark: category.passMark,
+                    durationInMinutes: category.durationInMinutes,
                 },
-                body: JSON.stringify({
-                    categoryId,
-                    phone: phone,
-                    category: {
-                        price: categoryData.price,
-                        passMark: categoryData.passMark,
-                        durationInMinutes: categoryData.duration_minutes
-                    },
-                })
-            });
+                user: { // Use the complete user object from Auth
+                    uid: currentUser.uid,
+                    email: currentUser.email,
+                    displayName: currentUser.displayName
+                }
+            };
+            
+            console.log("Calling 'initiateSelcomPayment' with data:", JSON.stringify(requestData, null, 2));
+            setStatus('Requesting payment from your provider...');
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || 'Failed to initiate payment.');
-            }
+            const result: any = await initiateSelcomPayment(requestData);
 
-            const result = await response.json();
-            const { success, testAttemptId } = result;
+            const { success, testAttemptId } = result.data;
 
             if (success && testAttemptId) {
                 setStatus('Payment initiated. Waiting for confirmation...');
@@ -98,16 +119,16 @@ const PaymentPage: React.FC = () => {
                             navigate(`/jitesti/test/${testAttemptId}`);
                         } else if (data.status === 'failed' || data.status === 'payment_failed') {
                             unsubscribe();
-                            setError('Payment failed. Please try again.');
+                            setError('Payment failed. Please try again or check your balance.');
                         }
                     }
                 });
             } else {
-                throw new Error('Failed to initiate payment.');
+                throw new Error('Failed to initiate the payment process.');
             }
         } catch (err: any) {
-            console.error('Payment initiation error:', err);
-            setError(err.message || 'An unknown error occurred.');
+            console.error('Error calling the payment function:', err);
+            setError(err.message || 'An unknown error occurred while initiating payment.');
             setStatus('Payment failed.');
         }
     };
@@ -138,7 +159,7 @@ const PaymentPage: React.FC = () => {
                 ) : (
                     <div className="mt-6">
                         <p className="text-sm text-gray-600">Please do not refresh this page.</p>
-                        <p className="text-sm text-gray-600">You will be redirected automatically once the payment is confirmed.</p>
+                        <p className="text-sm text-gray-600">A USSD prompt has been sent to your phone. Please enter your PIN to authorize the payment.</p>
                     </div>
                 )}
             </div>
