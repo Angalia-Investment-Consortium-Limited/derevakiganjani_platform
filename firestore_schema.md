@@ -97,6 +97,11 @@ This collection contains the details for each e-learning course available.
 | `level` | String | The difficulty level of the course (e.g., "Advanced"). |
 | `name` | String | A unique name or identifier for the course. |
 | `price` | Number | The price of the course. |
+| `published_date` | String | The date the course was published (e.g., "2024-01-15"). |
+| `status` | String | The current status of the course (e.g., "Published"). |
+| `thumbnail` | String | **Storage Path:** The relative path to the thumbnail file in Firebase Storage (e.g., `courses/COURSE-001/thumbnail.png`). |
+| `thumbnail_emoji` | String | An emoji representing the course. |
+| `total_lessons` | Number | The total number of lessons in the course. |
 
 ---
 
@@ -222,17 +227,22 @@ This collection stores individual lessons for the "Elimika" e-learning platform.
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
-| `content_type`| String | The type of content (e.g., "video", "text"). |
+| `content_en` | String | The main paragraph content of the lesson in English. |
+| `content_sw` | String | The main paragraph content of the lesson in Swahili. |
+| `content_type`| String | The type of content (e.g., "video", "text", "text_with_image"). |
 | `course` | String | The ID of the course this lesson belongs to. |
 | `duration_minutes`| Number | The estimated duration of the lesson. |
-| `is_active` | Boolean | Whether the lesson is currently active. |
-| `is_locked` | Boolean | Whether the lesson is locked until prerequisites are met. |
+| `image_url` | String | **Storage Path:** (Optional) The relative path to an illustrative image in Firebase Storage. |
+| `is_active` | Number | A flag indicating if the lesson is active (1 for true, 0 for false). |
+| `is_locked` | Number | A flag indicating if the lesson is locked (1 for true, 0 for false). |
 | `lesson_order`| Number | The order of the lesson within the course. |
 | `lesson_title_en`| String | The lesson title in English. |
 | `lesson_title_sw`| String | The lesson title in Swahili. |
 | `name` | String | A unique name or identifier for the lesson. |
 | `summary_en` | String | A summary of the lesson in English. |
 | `summary_sw` | String | A summary of the lesson in Swahili. |
+| `unlock_after_lesson` | String | (Optional) The ID of the lesson that must be completed to unlock this one. |
+| `video_url` | String | **Storage Path:** (Optional) The relative path to a lesson video in Firebase Storage. |
 
 ---
 
@@ -247,7 +257,7 @@ This collection tracks job applications submitted by drivers.
 | `driverId` | String | The ID of the driver who applied. |
 | `employerId` | String | The ID of the employer who posted the job. |
 | `jobId` | String | The ID of the job being applied for. |
-| `status` | String | The current status of the application (e.g., "Applied", "Viewed", "Shortlisted"). |
+| `status` | String | The current status of the.application (e.g., "Applied", "Viewed", "Shortlisted"). |
 
 ---
 
