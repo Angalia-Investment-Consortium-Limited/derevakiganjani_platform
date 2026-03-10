@@ -22,23 +22,25 @@ type JitestiCategory = {
 
 // Fetch function for active categories, with correct Firestore field mapping
 const fetchActiveCategories = async (): Promise<JitestiCategory[]> => {
+  console.log("Fetching active Jitesti categories from Firestore...");
   const categoriesCollection = collection(db, 'jitesti-categories');
-  // Query for documents where status is 'active'
   const q = query(categoriesCollection, where("status", "==", "active"));
   const snapshot = await getDocs(q);
   
-  // Map the Firestore document data to our component's data structure
-  return snapshot.docs.map(doc => {
+  const categories = snapshot.docs.map(doc => {
       const data = doc.data();
-      return {
+      const category = {
         id: doc.id,
-        title: data.name_en || 'No Title', // map from name_en
-        description: data.description_en || '', // map from description_en
+        title: data.name_en || 'No Title',
+        description: data.description_en || '',
         price: data.price || 0,
-        durationInMinutes: data.duration_minutes || 0, // map from duration_minutes
-        passMark: data.passMark || 0,
+        durationInMinutes: data.duration_minutes || 0,
+        passMark: data.pass_mark || 0, // Corrected from passMark to pass_mark
       };
+      console.log("Fetched category:", category);
+      return category;
   });
+  return categories;
 };
 
 const TestCategories: React.FC = () => {
@@ -50,6 +52,7 @@ const TestCategories: React.FC = () => {
 
   const handleStartTest = (category: JitestiCategory) => {
     // Pass the entire category object in the navigation state
+    console.log("Navigating to payment page with category:", category);
     navigate(`/jitesti/payment/${category.id}`, { state: { category } });
   };
 

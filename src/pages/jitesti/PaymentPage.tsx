@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db, functions, auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
-import { httpsCallable } from 'firebase/functions';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 // Define the structure for the category data passed in navigation state
 interface Category {
@@ -14,7 +15,7 @@ interface Category {
     passMark: number;
 }
 
-// Helper function to format the phone number correctly for the payment gateway
+// Helper function to format the phone number correctly
 const formatPhoneNumber = (phone: string): string => {
     let formattedPhone = phone.trim();
     if (formattedPhone.startsWith('+')) {
@@ -30,7 +31,7 @@ const PaymentPage: React.FC = () => {
     const { categoryId } = useParams<{ categoryId: string }>();
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, isLoading } = useAuth(); // Use isLoading from AuthContext
+    const { user, isLoading } = useAuth();
 
     const [category] = useState<Category | null>(location.state?.category || null);
     const [status, setStatus] = useState('Initializing...');
@@ -41,15 +42,13 @@ const PaymentPage: React.FC = () => {
     useEffect(() => {
         if (isLoading) {
             setStatus('Authenticating...');
-            return; // Wait for authentication to complete
+            return;
         }
-
         if (!category) {
             setError("Missing test category details. Please go back and select a test again.");
             setStatus("Error");
             return;
         }
-
         if (user && !user.phoneNumber) {
             setShowPhoneInput(true);
             setStatus('Please provide your phone number to proceed.');
@@ -61,7 +60,7 @@ const PaymentPage: React.FC = () => {
     const handlePhoneSubmit = () => {
         const formattedPhone = formatPhoneNumber(phoneNumber);
         if (!formattedPhone.match(/^255[0-9]{9}$/)) {
-            setError("Please enter a valid Tanzanian phone number (e.g., 0712345678 or 255712345678).");
+            setError("Please enter a valid Tanzanian phone number (e.g., 0712345678).");
             return;
         }
         setError(null);
@@ -69,9 +68,7 @@ const PaymentPage: React.FC = () => {
     };
 
     const initiatePayment = async (phone: string | null) => {
-        const currentUser = auth.currentUser;
-
-        if (!category || !phone || !currentUser) {
+        if (!category || !phone || !user) {
             setError('Your session is invalid. Please log in again.');
             setStatus('Payment failed.');
             return;
@@ -81,54 +78,48 @@ const PaymentPage: React.FC = () => {
         setShowPhoneInput(false);
         setStatus('Initializing secure payment...');
 
+        const paymentData = {
+            categoryId: category.id,
+            phone: formattedPhone,
+            category: category,
+        };
+
+        console.log("Calling 'initiateSelcomPayment' with data:", paymentData);
+
         try {
+            const functions = getFunctions();
             const initiateSelcomPayment = httpsCallable(functions, 'initiateSelcomPayment');
 
-            const requestData = {
-                categoryId: category.id,
-                phone: formattedPhone,
-                category: {
-                    title: category.title,
-                    price: category.price,
-                    passMark: category.passMark,
-                    durationInMinutes: category.durationInMinutes,
-                },
-                user: { // Use the complete user object from Auth
-                    uid: currentUser.uid,
-                    email: currentUser.email,
-                    displayName: currentUser.displayName
-                }
-            };
+            const result = await initiateSelcomPayment(paymentData);
             
-            console.log("Calling 'initiateSelcomPayment' with data:", JSON.stringify(requestData, null, 2));
-            setStatus('Requesting payment from your provider...');
+            console.log("'initiateSelcomPayment' function returned:", result);
 
-            const result: any = await initiateSelcomPayment(requestData);
+            const { success, testAttemptId } = result.data as { success: boolean, testAttemptId: string };
 
-            const { success, testAttemptId } = result.data;
-
-            if (success && testAttemptId) {
-                setStatus('Payment initiated. Waiting for confirmation...');
-                const testAttemptRef = doc(db, 'test_attempts', testAttemptId);
-                const unsubscribe = onSnapshot(testAttemptRef, (snapshot) => {
-                    const data = snapshot.data();
-                    if (data) {
-                        setStatus(`Payment status: ${data.status}`);
-                        if (data.status === 'started') {
-                            unsubscribe();
-                            navigate(`/jitesti/test/${testAttemptId}`);
-                        } else if (data.status === 'failed' || data.status === 'payment_failed') {
-                            unsubscribe();
-                            setError('Payment failed. Please try again or check your balance.');
-                        }
-                    }
-                });
-            } else {
-                throw new Error('Failed to initiate the payment process.');
+            if (!success || !testAttemptId) {
+                throw new Error('The payment could not be initiated. Please try again.');
             }
+            
+            // Listen for confirmation
+            setStatus('Payment initiated. Waiting for confirmation...');
+            const testAttemptSnapshotRef = doc(db, 'test_attempts', testAttemptId);
+            const unsubscribe = onSnapshot(testAttemptSnapshotRef, (snapshot) => {
+                const data = snapshot.data();
+                if (data) {
+                    setStatus(`Payment status: ${data.status}`);
+                    if (data.status === 'started') {
+                        unsubscribe();
+                        navigate(`/jitesti/test/${testAttemptId}`);
+                    } else if (data.status === 'failed' || data.status === 'payment_failed') {
+                        unsubscribe();
+                        setError('Payment failed. Please try again or check your balance.');
+                    }
+                }
+            });
+
         } catch (err: any) {
-            console.error('Error calling the payment function:', err);
-            setError(err.message || 'An unknown error occurred while initiating payment.');
+            console.error('Error initiating payment:', err);
+            setError(err.message || 'An unknown error occurred.');
             setStatus('Payment failed.');
         }
     };
