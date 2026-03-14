@@ -94,7 +94,6 @@ import EmployerReview from "./pages/admin/EmployerReview";
 import JobManagement from "./pages/admin/JobManagement";
 import TestCategories from "./pages/jitesti/TestCategories";
 import PaymentPage from "./pages/jitesti/PaymentPage";
-import PaymentPendingPage from "./pages/jitesti/PaymentPendingPage";
 import TestPage from "./pages/jitesti/TestPage";
 import TestResultPage from "./pages/jitesti/TestResultPage";
 import TestHistoryPage from "./pages/jitesti/TestHistoryPage";
@@ -494,11 +493,6 @@ const App = () => (
               <Route path="/jitesti/payment/:categoryId" element={
                 <ProtectedRoute>
                   <PaymentPage />
-                </ProtectedRoute>
-              } />
-              <Route path="/jitesti/payment-pending/:testAttemptId" element={
-                <ProtectedRoute>
-                  <PaymentPendingPage />
                 </ProtectedRoute>
               } />
               <Route path="/jitesti/test/:testAttemptId" element={

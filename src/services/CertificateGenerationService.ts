@@ -2,73 +2,120 @@
 import { jsPDF } from 'jspdf';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
+// URLs for all assets in the public folder
+const logoUrl = '/logo.png';
+// const signatureUrl = '/signature.jpeg'; // REMOVED: Replaced with text signature
+const mdvLogoUrl = '/logo2.png';
+
 interface CertificateData {
   name: string;
   course: string;
   date: string;
 }
 
+// Generic function to fetch an image and convert it to a data URL
+const getImageDataUrl = async (url: string): Promise<string | null> => {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            console.error(`Failed to fetch image: ${url} (${response.statusText})`);
+            return null;
+        }
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(null); // Resolve with null on error
+            reader.readAsDataURL(blob);
+        });
+    } catch (error) {
+        console.error(`Could not load image for PDF from ${url}:`, error);
+        return null;
+    }
+};
+
 export const generateCertificate = async (data: CertificateData, userId: string): Promise<string> => {
-  const doc = new jsPDF();
+    const doc = new jsPDF();
 
-  // Add a decorative border
-  doc.setDrawColor(0, 105, 217); // Blue color
-  doc.setLineWidth(1.5);
-  doc.rect(5, 5, doc.internal.pageSize.width - 10, doc.internal.pageSize.height - 10);
+    // Fetch all images concurrently
+    const [logoDataUrl, mdvLogoDataUrl] = await Promise.all([
+        getImageDataUrl(logoUrl),
+        getImageDataUrl(mdvLogoUrl)
+    ]);
 
-  // Add certificate title
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(30);
-  doc.setTextColor(40, 40, 40);
-  doc.text('CERTIFICATE OF COMPLETION', 105, 40, { align: 'center' });
+    // --- Certificate Layout ---
+    doc.setDrawColor(0, 105, 217); // Blue border
+    doc.setLineWidth(1.5);
+    doc.rect(5, 5, doc.internal.pageSize.width - 10, doc.internal.pageSize.height - 10);
 
-  // Add 'Proudly Presented To'
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(16);
-  doc.setTextColor(100, 100, 100);
-  doc.text('Proudly Presented To', 105, 60, { align: 'center' });
+    // 1. Add Main Logo (Further Enlarged)
+    if (logoDataUrl) {
+        doc.addImage(logoDataUrl, 'PNG', 70, 15, 70, 35);
+    }
 
-  // Add recipient's name
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
-  doc.setTextColor(0, 105, 217);
-  doc.text(data.name, 105, 80, { align: 'center' });
+    // 2. Certificate Title (Restored)
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(30);
+    doc.setTextColor(40, 40, 40);
+    doc.text('CERTIFICATE OF COMPLETION', 105, 60, { align: 'center' });
 
-  // Add completion statement
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(14);
-  doc.setTextColor(100, 100, 100);
-  doc.text('For successfully completing the course:', 105, 100, { align: 'center' });
+    // --- Main Content ---
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(16);
+    doc.setTextColor(100, 100, 100);
+    doc.text('Proudly Presented To', 105, 80, { align: 'center' });
 
-  // Add course name
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(20);
-  doc.setTextColor(40, 40, 40);
-  doc.text(data.course, 105, 115, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(26);
+    doc.setTextColor(0, 105, 217);
+    doc.text(data.name, 105, 100, { align: 'center' });
 
-  // Add issue date and signature lines
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(12);
-  doc.setLineWidth(0.5);
-  doc.line(40, 150, 100, 150);
-  doc.text('Issue Date', 70, 155, { align: 'center' });
-  doc.text(data.date, 70, 160, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text('For successfully completing the course:', 105, 120, { align: 'center' });
 
-  doc.line(140, 150, 200, 150);
-  doc.text('Authorized Signature', 170, 155, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(40, 40, 40);
+    doc.text(data.course, 105, 135, { align: 'center' });
+
+    // --- Signatures & Issuing Info ---
+    const signatureY = 175;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(12);
+
+    // Issue Date
+    doc.setLineWidth(0.5);
+    doc.line(40, signatureY, 100, signatureY);
+    doc.text('Issue Date', 70, signatureY + 5, { align: 'center' });
+    doc.text(data.date, 70, signatureY + 10, { align: 'center' });
+
+    // 3. Add Text-Based Signature
+    doc.setFont('times', 'italic');
+    doc.setFontSize(22);
+    doc.setTextColor(50, 50, 50); 
+    doc.text('David Michael', 155, signatureY - 7, { align: 'center' }); // Cursive text signature
+    doc.setFont('helvetica', 'normal'); // Reset font
+    doc.line(130, signatureY, 180, signatureY); // Line for signature
+    doc.setFontSize(12);
+    doc.text('Authorized Signature', 155, signatureY + 5, { align: 'center' });
 
 
-  // Convert the PDF to a base64 string
-  const pdfAsString = doc.output('datauristring');
+    // 4. Add MDV Logo (Bottom Right)
+    if (mdvLogoDataUrl) {
+        doc.addImage(mdvLogoDataUrl, 'PNG', 150, signatureY + 10, 30, 15);
+        doc.setFontSize(10);
+        doc.setTextColor(100,100,100);
+        doc.text('Issued by: MDV Vehicle Fleet Limited', 155, signatureY + 30, { align: 'center' });
+    }
+    
+    // --- PDF Generation and Upload ---
+    const pdfAsString = doc.output('datauristring');
+    const storage = getStorage();
+    const storageRef = ref(storage, `certificates/${userId}/${data.course.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+    await uploadString(storageRef, pdfAsString, 'data_url');
+    const downloadURL = await getDownloadURL(storageRef);
 
-  // Upload to Firebase Storage
-  const storage = getStorage();
-  const storageRef = ref(storage, `certificates/${userId}/${data.course.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
-  
-  await uploadString(storageRef, pdfAsString, 'data_url');
-  
-  // Get the download URL
-  const downloadURL = await getDownloadURL(storageRef);
-
-  return downloadURL;
+    return downloadURL;
 };

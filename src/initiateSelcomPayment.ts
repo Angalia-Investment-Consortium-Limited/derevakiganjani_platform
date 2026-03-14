@@ -15,13 +15,17 @@ const SELCOM_BASE_URL = "https://apigw.selcommobile.com/v1";
 
 const getEATTimestamp = () => {
     const now = new Date();
+    // EAT is UTC+3. We create a new date object representing the time in EAT.
     const eatTime = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+
     const year = eatTime.getUTCFullYear();
     const month = String(eatTime.getUTCMonth() + 1).padStart(2, '0');
     const day = String(eatTime.getUTCDate()).padStart(2, '0');
     const hours = String(eatTime.getUTCHours()).padStart(2, '0');
     const minutes = String(eatTime.getUTCMinutes()).padStart(2, '0');
     const seconds = String(eatTime.getUTCSeconds()).padStart(2, '0');
+
+    // Format the timestamp as YYYY-MM-DDTHH:mm:ss+03:00
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}+03:00`;
 };
 
@@ -31,7 +35,8 @@ const generateSignature = (timestamp: string, params: Record<string, any>) => {
 
     let dataToSign = `timestamp=${timestamp}`;
     for (const key of sortedKeys) {
-        dataToSign += `&${key}=${params[key]}`;
+        // URL-encode the parameter values to handle special characters
+        dataToSign += `&${key}=${encodeURIComponent(params[key])}`;
     }
 
     const hmac = crypto.createHmac('sha256', SELCOM_API_SECRET);
@@ -63,15 +68,19 @@ export const initiateSelcomPayment = onCall({
     vpcConnector: 'selcom-connector',
     vpcConnectorEgressSettings: 'ALL_TRAFFIC' 
 }, async (request) => {
-    logger.info("--- initiateSelcomPayment: Start ---", { data: request.data });
+    logger.info("--- initiateSelcomPayment: Start ---");
+    logger.info("Received data:", request.data);
 
+    // 1. Auth Check
     if (!request.auth) {
         logger.error("Authentication check failed: User is not logged in.");
         throw new HttpsError("unauthenticated", "You must be logged in.");
     }
     const uid = request.auth.uid;
     const userEmail = request.auth.token.email;
+    logger.info(`Authenticated user: ${uid} (${userEmail})`);
 
+    // 2. Data Validation
     const { categoryId, phone, category } = request.data as RequestData;
     if (!categoryId || !phone || !category) {
         logger.error("Data validation failed: Missing required fields.", { categoryId, phone, category });
@@ -81,12 +90,17 @@ export const initiateSelcomPayment = onCall({
         logger.error(`Data validation failed: Invalid phone format - ${phone}`);
         throw new HttpsError("invalid-argument", "Invalid phone number format.");
     }
+    logger.info("Data validation successful.");
 
+    const passMark = category.passMark || 0;
+
+    // 3. Get User's Full Name
     let buyerName = userEmail?.split('@')[0] || "JiTesti User";
     try {
         const userDoc = await admin.firestore().collection("users").doc(uid).get();
         if (userDoc.exists && userDoc.data()?.full_name) {
             buyerName = userDoc.data()!.full_name;
+            logger.info(`Found user's full name: ${buyerName}`);
         }
     } catch (error) {
         logger.warn("Could not fetch user's full name, using fallback.", { error });
@@ -97,6 +111,7 @@ export const initiateSelcomPayment = onCall({
     let testAttemptDocRef: admin.firestore.DocumentReference | undefined;
 
     try {
+        // 4. Create Pending Firestore Records
         paymentDocRef = await admin.firestore().collection("payments").add({
             userId: uid, categoryId, amount: category.price, status: "pending",
             createdAt: admin.firestore.FieldValue.serverTimestamp(), selcomTransactionId: orderId,
@@ -104,11 +119,13 @@ export const initiateSelcomPayment = onCall({
         });
         testAttemptDocRef = await admin.firestore().collection("test_attempts").add({
             userId: uid, categoryId, categoryTitle: category.title, durationInMinutes: category.durationInMinutes,
-            passMark: category.passMark || 0, 
-            startTime: null, status: "pending payment", score: null,
+            passMark: passMark, 
+            startTime: null, status: "pending_payment", score: null,
             answers: {}, paymentId: paymentDocRef.id,
         });
+        logger.info(`Created pending documents. Payment ID: ${paymentDocRef.id}, Test Attempt ID: ${testAttemptDocRef.id}`);
 
+        // 5. Call Selcom API
         const orderTimestamp = getEATTimestamp();
         const encodedApiKey = Buffer.from(SELCOM_API_KEY).toString('base64');
         const orderJson = {
@@ -138,26 +155,17 @@ export const initiateSelcomPayment = onCall({
             },
             body: JSON.stringify(orderJson)
         });
-
         const createOrderResult = await createOrderResponse.json();
 
         if (createOrderResult.result !== "SUCCESS") {
-            logger.error("Failed to create Selcom order", { response: createOrderResult });
+             logger.error("Failed to create Selcom order", createOrderResult);
             throw new HttpsError("internal", createOrderResult.message || "Failed to create Selcom order.");
         }
+        logger.info("Selcom order created successfully.", createOrderResult);
         
-        const transid = createOrderResult.data[0]?.payment_token;
-
-        if (!transid) {
-            logger.error("Could not extract payment_token from Selcom response", { response: createOrderResult });
-            throw new HttpsError("internal", "Failed to retrieve payment token from provider.");
-        }
-
-        logger.info(`Extracted transid (payment_token): ${transid}`);
-
+        const transid = createOrderResult.data[0].transid;
         const walletTimestamp = getEATTimestamp();
-        // --- FIX: Add order_id to the wallet payment request --- 
-        const walletJson = { order_id: orderId, transid: transid, msisdn: phone };
+        const walletJson = { transid: transid, msisdn: phone };
         const { digest: walletDigest, signedFields: walletSignedFields } = generateSignature(walletTimestamp, walletJson);
 
         const walletResponse = await fetch(`${SELCOM_BASE_URL}/checkout/wallet-payment`, {
@@ -175,20 +183,20 @@ export const initiateSelcomPayment = onCall({
         const walletResult = await walletResponse.json();
 
         if (walletResult.result !== "SUCCESS") {
-            logger.error("Failed to initiate wallet payment", { response: walletResult });
-            throw new HttpsError("internal", walletResult.message || "Failed to initiate USSD push.");
+            logger.error("Failed to initiate wallet payment", walletResult);
+            throw.new HttpsError("internal", walletResult.message || "Failed to initiate USSD push.");
         }
+        logger.info("Selcom wallet payment initiated successfully.", walletResult);
 
-        await paymentDocRef.update({ selcomPaymentToken: transid, status: "processing" });
-
-
+        // 6. Success
         logger.info(`--- initiateSelcomPayment: Success ---`, { testAttemptId: testAttemptDocRef.id });
         return { success: true, testAttemptId: testAttemptDocRef.id };
 
     } catch (error: any) {
+        // 7. Error Handling
         logger.error("An error occurred during payment initiation:", { orderId, error });
-        if (paymentDocRef) await paymentDocRef.update({ status: "failed", error: error.message });
-        if (testAttemptDocRef) await testAttemptDocRef.update({ status: "payment_failed", error: error.message });
+        if (paymentDocRef) await paymentDocRef.update({ status: "failed" });
+        if (testAttemptDocRef) await testAttemptDocRef.update({ status: "payment_failed" });
 
         if (error instanceof HttpsError) throw error;
         throw new HttpsError("internal", "An unexpected error occurred.");

@@ -6,8 +6,12 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 export default defineConfig({
   plugins: [react(), tsconfigPaths()],
   server: {
-    port: 8080,
+    port: 9002,
     host: '0.0.0.0',
+    hmr: {
+      protocol: 'wss',
+      host: '9000-firebase-derevakiganjani-1769298209139.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev',
+    },
   },
   publicDir: 'public',
   base: '/',

@@ -1,3 +1,4 @@
+
 # JiTesti Selcom Payment Implementation Plan
 
 This document outlines the plan for integrating the Selcom payment gateway into the JiTesti feature. It includes an analysis of the existing data structure, the implementation plan, and a detailed API reference.
@@ -207,11 +208,44 @@ Lists all orders within a specified date range.
 ```
 
 ---
-## 6. Files to be Modified / Created
+## 6. Webhook Callback
+
+Payment status callback API from the payment gateway to the ecommerce website. **Note: Webhook only on successful transactions.**
+
+### Webhook Payload Sample
+```json
+{
+  "result": "SUCCESS",
+  "resultcode": "000",
+  "order_id": "602021152",
+  "transid": "7945454515",
+  "reference": "856266164161",
+  "channel": "TIGOPESATZ",
+  "amount": "10000",
+  "phone": "255000000001",
+  "payment_status": "COMPLETED"
+}
+```
+
+### HTTP Request Parameters
+
+| Parameter      | Type      | Example    | Description                                       |
+| :------------- | :-------- | :--------- | :------------------------------------------------ |
+| `transid`      | Mandatory | A1234      | Third-party transaction ID (same as payment request) |
+| `order_id`     | Mandatory | 123        | Order ID                                          |
+| `reference`    | Mandatory | 0289124234 | Selcom Gateway transaction reference              |
+| `result`       | Mandatory | SUCCESS    | Status of the transaction (SUCCESS, FAIL)         |
+| `resultcode`   | Mandatory | 000        | Error code                                        |
+| `payment_status` | Mandatory | COMPLETE   | Status of the payment (COMPLETED, CANCELLED, etc.)   |
+
+
+---
+
+## 7. Files to be Modified / Created
 
 -   **`functions/src/index.ts`** (Cloud Function implementation)
 -   **`src/pages/jitesti/PaymentPage.tsx`** (Client-side UI and function trigger)
 -   **`src/pages/jitesti/JITESTI_SELCOM_PAYMENT_IMPLEMENTATION.md`** (This file)
 
-## 7. Firestore Schema Reference
+## 8. Firestore Schema Reference
 _(Schema definitions remain the same)_

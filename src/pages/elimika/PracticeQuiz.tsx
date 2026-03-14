@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
@@ -9,54 +8,28 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { CheckCircle2, XCircle } from "lucide-react";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs, limit } from "firebase/firestore";
-import type { Quiz, Question } from "@/types/elimika";
+import { CheckCircle2, XCircle, AlertCircle } from "lucide-react";
+import { useElimika } from "@/hooks/useElimika";
+import { useLanguage } from "@/contexts/LanguageContext";
+import type { Question } from "@/types/elimika";
 import { Loader } from "@/components/ui/loader";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const PracticeQuiz = () => {
   const navigate = useNavigate();
-  const { courseId } = useParams();
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { courseId } = useParams<{ courseId: string }>();
+  const { language } = useLanguage();
+  const { useQuiz, useCourse } = useElimika();
+
+  const { data: quiz, isLoading: quizLoading, isError: quizError } = useQuiz(courseId);
+  const { data: course, isLoading: courseLoading, isError: courseError } = useCourse(courseId);
+
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [answers, setAnswers] = useState<string[]>([]);
-  const [quizTitle, setQuizTitle] = useState("");
 
-  useEffect(() => {
-    const fetchQuiz = async () => {
-      if (!courseId) {
-        setError("Course ID is missing.");
-        setLoading(false);
-        return;
-      }
-      try {
-        const quizzesCollection = collection(db, 'Quiz');
-        const q = query(quizzesCollection, where('course_id', '==', courseId), limit(1));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-          setError("No quiz found for this course.");
-          setQuestions([]);
-        } else {
-          const quizDoc = querySnapshot.docs[0].data() as Quiz;
-          setQuestions(quizDoc.questions || []);
-          setQuizTitle(quizDoc.title_en || "Practice Quiz");
-        }
-      } catch (err) {
-        setError("Failed to fetch quiz data.");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchQuiz();
-  }, [courseId]);
+  const questions = useMemo(() => quiz?.questions || [], [quiz]);
 
   const handleSubmit = () => {
     setShowFeedback(true);
@@ -79,7 +52,10 @@ const PracticeQuiz = () => {
     }
   };
   
-  if (loading) {
+  const isLoading = quizLoading || courseLoading;
+  const error = quizError || courseError;
+
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader />
@@ -89,37 +65,41 @@ const PracticeQuiz = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-            <XCircle className="mx-auto h-12 w-12 text-destructive" />
-            <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                {error}
-            </h1>
-            <p className="mt-4 text-muted-foreground">
-                There was an issue loading the quiz. Please try again later.
-            </p>
-            <div className="mt-6">
-                <Button onClick={() => navigate(-1)}>Go Back</Button>
-            </div>
-        </div>
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-8">
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>{language === 'en' ? 'Error' : 'Kosa'}</AlertTitle>
+                <AlertDescription>
+                    {language === 'en' ? 'Failed to load quiz. Please try again later.' : 'Imeshindwa kupakia jaribio. Tafadhali jaribu tena baadaye.'}
+                </AlertDescription>
+            </Alert>
+            <Button className="mt-4" onClick={() => navigate(-1)}>{language === 'en' ? 'Go Back' : 'Rudi Nyuma'}</Button>
+        </main>
+        <Footer />
       </div>
     );
   }
 
-  if (questions.length === 0) {
+  if (!quiz || questions.length === 0) {
      return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                No Questions Found
-            </h1>
-            <p className="mt-4 text-muted-foreground">
-                This quiz does not have any questions yet.
-            </p>
-            <div className="mt-6">
-                <Button onClick={() => navigate(`/elimika/course/${courseId}`)}>Back to Course</Button>
-            </div>
-        </div>
+        <div className="min-h-screen flex flex-col bg-background">
+            <Header />
+            <main className="flex-grow container mx-auto px-4 py-8">
+                <div className="text-center py-12">
+                    <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                        {language === 'en' ? 'No Questions Found' : 'Hakuna Maswali Yaliyopatikana'}
+                    </h1>
+                    <p className="mt-4 text-muted-foreground">
+                        {language === 'en' ? 'This quiz does not have any questions yet.' : 'Jaribio hili halina maswali bado.'}
+                    </p>
+                    <div className="mt-6">
+                        <Button onClick={() => navigate(`/elimika/course/${courseId}`)}>{language === 'en' ? 'Back to Course' : 'Rudi kwenye Kozi'}</Button>
+                    </div>
+                </div>
+            </main>
+            <Footer />
       </div>
     );
   }
@@ -127,6 +107,8 @@ const PracticeQuiz = () => {
   const question = questions[currentQuestion];
   const isCorrect = showFeedback && selectedAnswer === question.correct_answer;
   const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const quizTitle = language === 'en' ? (quiz.title_en || 'Practice Quiz') : (quiz.title_sw || quiz.title_en || 'Zoezi la Mazoezi');
+  const courseName = language === 'en' ? (course?.course_name_en || '') : (course?.course_name_sw || course?.course_name_en || '')
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -135,21 +117,13 @@ const PracticeQuiz = () => {
       <main className="flex-grow container mx-auto px-4 py-8">
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
-            </BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink href="/dashboard">{language === 'en' ? 'Home' : 'Nyumbani'}</BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/elimika">Elimika</BreadcrumbLink>
-            </BreadcrumbItem>
-             <BreadcrumbSeparator />
-            <BreadcrumbItem>
-               <BreadcrumbLink href={`/elimika/course/${courseId}`}>Course</BreadcrumbLink>
-            </BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink href="/elimika">Elimika</BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{quizTitle}</BreadcrumbPage>
-            </BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink href={`/elimika/course/${courseId}`}>{courseName}</BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbPage>{quizTitle}</BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
@@ -160,7 +134,7 @@ const PracticeQuiz = () => {
                 <div className="flex justify-between items-center">
                   <CardTitle>{quizTitle}</CardTitle>
                   <span className="text-sm text-muted-foreground">
-                    Question {currentQuestion + 1} of {questions.length}
+                    {language === 'en' ? 'Question' : 'Swali'} {currentQuestion + 1} {language === 'en' ? 'of' : 'kati ya'} {questions.length}
                   </span>
                 </div>
                 <Progress value={progress} className="h-2" />
@@ -168,7 +142,7 @@ const PracticeQuiz = () => {
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <h3 className="text-xl font-semibold mb-4">{question.question_text_en}</h3>
+                <h3 className="text-xl font-semibold mb-4">{language === 'en' ? question.question_text_en : (question.question_text_sw || question.question_text_en)}</h3>
                 
                 <RadioGroup value={selectedAnswer} onValueChange={setSelectedAnswer} disabled={showFeedback}>
                   <div className="space-y-3">
@@ -184,14 +158,10 @@ const PracticeQuiz = () => {
                       }`}>
                         <RadioGroupItem value={option.option_id} id={option.option_id} />
                         <Label htmlFor={option.option_id} className="flex-1 cursor-pointer">
-                          {option.option_text_en}
+                          {language === 'en' ? option.option_text_en : (option.option_text_sw || option.option_text_en)}
                         </Label>
-                        {showFeedback && option.option_id === question.correct_answer && (
-                          <CheckCircle2 className="h-5 w-5 text-success" />
-                        )}
-                        {showFeedback && selectedAnswer === option.option_id && option.option_id !== question.correct_answer && (
-                          <XCircle className="h-5 w-5 text-destructive" />
-                        )}
+                        {showFeedback && option.option_id === question.correct_answer && <CheckCircle2 className="h-5 w-5 text-success" />}
+                        {showFeedback && selectedAnswer === option.option_id && option.option_id !== question.correct_answer && <XCircle className="h-5 w-5 text-destructive" />}
                       </div>
                     ))}
                   </div>
@@ -204,31 +174,25 @@ const PracticeQuiz = () => {
                     {isCorrect ? (
                       <>
                         <CheckCircle2 className="h-5 w-5 text-success" />
-                        <span className="font-semibold text-success">Correct!</span>
+                        <span className="font-semibold text-success">{language === 'en' ? 'Correct!' : 'Sahihi!'}</span>
                       </>
                     ) : (
                       <>
                         <XCircle className="h-5 w-5 text-destructive" />
-                        <span className="font-semibold text-destructive">Incorrect</span>
+                        <span className="font-semibold text-destructive">{language === 'en' ? 'Incorrect' : 'Si Sahihi'}</span>
                       </>
                     )}
                   </div>
-                  {/* The explanation part needs to be added to the Question type if we want to show it */}
-                  {/* <p className="text-sm">{question.explanation}</p> */}
                 </div>
               )}
 
               <div className="flex justify-between">
-                <Button variant="outline" onClick={() => navigate(`/elimika/course/${courseId}`)}>
-                  Exit Quiz
-                </Button>
+                <Button variant="outline" onClick={() => navigate(`/elimika/course/${courseId}`)}>{language === 'en' ? 'Exit Quiz' : 'Toka kwenye Jaribio'}</Button>
                 {!showFeedback ? (
-                  <Button onClick={handleSubmit} disabled={!selectedAnswer}>
-                    Submit Answer
-                  </Button>
+                  <Button onClick={handleSubmit} disabled={!selectedAnswer}>{language === 'en' ? 'Submit Answer' : 'Wasilisha Jibu'}</Button>
                 ) : (
                   <Button onClick={handleNext}>
-                    {currentQuestion < questions.length - 1 ? "Next Question" : "Finish Quiz"}
+                    {currentQuestion < questions.length - 1 ? (language === 'en' ? 'Next Question' : 'Swali Linalofuata') : (language === 'en' ? 'Finish Quiz' : 'Maliza Jaribio')}
                   </Button>
                 )}
               </div>

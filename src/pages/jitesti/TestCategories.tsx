@@ -103,15 +103,15 @@ const TestCategories: React.FC = () => {
                 </Button>
               </CardFooter>
             </Card>
-          ))}\
+          ))}
         </div>
       )}
 
        {!isLoading && categories.length === 0 && (
-          <div className="text-center py-20">\
+          <div className="text-center py-20">
             <p className="text-xl text-muted-foreground">No test categories are available at the moment. Please check back later.</p>
           </div>
-      )}\
+      )}
     </div>
     </main>
     <Footer/>

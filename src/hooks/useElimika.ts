@@ -1,5 +1,5 @@
-
 import { db } from '@/lib/firebase';
+import { useState } from 'react';
 import type {
   Course,
   CourseFilters,
@@ -7,8 +7,8 @@ import type {
   Lesson,
   LessonProgress,
   EnrollmentRequest,
-  LessonProgressUpdate,
-  DriverProfile
+  ElimikaDriverProfile,
+  Quiz
 } from '@/types/elimika';
 import {
   collection,
@@ -18,6 +18,7 @@ import {
   getDocs,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   orderBy,
   limit,
@@ -25,25 +26,26 @@ import {
   getCountFromServer,
   Query,
   serverTimestamp,
+  DocumentReference,
 } from 'firebase/firestore';
-import type { DocumentData, User } from 'firebase/firestore';
+import type { DocumentData } from 'firebase/firestore';
 import useSWR, { useSWRConfig } from 'swr';
-import { getAuth } from "firebase/auth";
+import { getAuth, type User } from "firebase/auth";
 
 // Define collections
-const coursesCollection = collection(db, 'Course');
-const lessonsCollection = collection(db, 'Lesson');
-const enrollmentsCollection = collection(db, 'CourseEnrollment');
-const lessonProgressCollection = collection(db, 'LessonProgress');
-const driverProfilesCollection = collection(db, 'Driver Profile');
-
+const coursesCollection = collection(db, 'courses');
+const lessonsCollection = collection(db, 'lessons');
+const enrollmentsCollection = collection(db, 'course_enrollments');
+const lessonProgressCollection = collection(db, 'lesson_progresses');
+const driverProfilesCollection = collection(db, 'driver_profiles');
+const quizzesCollection = collection(db, 'quizzes');
 
 const fetcher = async (query: Query<DocumentData>) => {
   const querySnapshot = await getDocs(query);
   return querySnapshot.docs.map((doc) => ({ ...doc.data(), name: doc.id }));
 };
 
-const docFetcher = async (docRef: DocumentData) => {
+const docFetcher = async (docRef: DocumentReference<DocumentData>) => {
     if (!docRef) return null;
     const docSnap = await getDoc(docRef);
     return docSnap.exists() ? { ...docSnap.data(), name: docSnap.id } : null;
@@ -59,30 +61,27 @@ export const useElimika = () => {
       where('is_active', '==', 1)
     );
 
-    // Apply filters if they exist
-    // This part can be expanded with more complex filtering logic
     if (filters?.level) {
       q = query(q, where('level', '==', filters.level));
     }
-    // Add other filters for category, track, search etc.
 
     q = query(q, orderBy('course_name_en', 'desc'));
 
     const { data, error } = useSWR(q, fetcher);
 
     return {
-      courses: data as Course[] | undefined,
+      data: data as Course[] | undefined,
       isLoading: !error && !data,
       isError: error,
     };
   };
 
   const useCourse = (courseId: string | undefined) => {
-    const docRef = courseId ? doc(db, 'Course', courseId) : null;
+    const docRef = courseId ? doc(db, 'courses', courseId) : null;
     const { data, error } = useSWR(docRef, docFetcher);
     
     return {
-      course: data as Course | undefined,
+      data: data as Course | undefined,
       isLoading: !error && !data && !!courseId,
       isError: error,
     };
@@ -92,7 +91,7 @@ export const useElimika = () => {
     const q = courseId
       ? query(
           lessonsCollection,
-          where('course', '==', courseId),
+          where('course_id', '==', courseId),
           where('is_active', '==', 1),
           orderBy('lesson_order', 'asc')
         )
@@ -101,24 +100,24 @@ export const useElimika = () => {
     const { data, error } = useSWR(q, fetcher);
 
     return {
-      lessons: data as Lesson[] | undefined,
+      data: data as Lesson[] | undefined,
       isLoading: !error && !data && !!courseId,
       isError: error,
     };
   };
 
   const useLesson = (lessonId: string | undefined) => {
-    const docRef = lessonId ? doc(db, 'Lesson', lessonId) : null;
+    const docRef = lessonId ? doc(db, 'lessons', lessonId) : null;
     const { data, error } = useSWR(docRef, docFetcher);
 
     return {
-      lesson: data as Lesson | undefined,
+      data: data as Lesson | undefined,
       isLoading: !error && !data && !!lessonId,
       isError: error,
     };
   };
 
-  const useDriverProfileByUser = (user: User | undefined) => {
+  const useDriverProfileByUser = (user: User | null | undefined) => {
     const q = user?.uid
         ? query(driverProfilesCollection, where("user", "==", user.uid), limit(1))
         : null;
@@ -126,7 +125,7 @@ export const useElimika = () => {
     const { data, error } = useSWR(q, fetcher);
 
     return {
-        data: data as DriverProfile[] | undefined,
+        data: data as ElimikaDriverProfile[] | undefined,
         isLoading: !error && !data && !!user,
         error: error,
     };
@@ -163,7 +162,7 @@ export const useElimika = () => {
     };
   };
   
-  const enrollInCourse = () => {
+  const useEnrollInCourse = () => {
     const [loading, setLoading] = useState(false);
     
     const enroll = async (data: EnrollmentRequest) => {
@@ -172,8 +171,7 @@ export const useElimika = () => {
             const enrollmentData = {
               ...data,
               enrollment_date: serverTimestamp(),
-              status: 'Enrolled',
-              progress_percentage: 0,
+              status: 'Enrolled',              progress_percentage: 0,
               completed_lessons: 0,
               certificate_issued: 0,
             };
@@ -215,6 +213,43 @@ export const useElimika = () => {
     };
   };
 
+  const useQuiz = (courseId: string | undefined) => {
+    const docRef = courseId ? doc(db, 'quizzes', courseId) : null;
+    const { data, error } = useSWR(docRef, docFetcher);
+    return {
+      data: data as Quiz | undefined,
+      isLoading: !error && !data && !!courseId,
+      isError: error,
+    };
+  };
+
+  const useSaveQuiz = () => {
+    const [loading, setLoading] = useState(false);
+    const { mutate } = useSWRConfig();
+
+    const saveQuiz = async (quizData: Quiz) => {
+      setLoading(true);
+      try {
+        const courseId = quizData.course_id;
+        const docRef = doc(db, 'quizzes', courseId);
+        const dataToSave = {
+          ...quizData,
+          updated_at: serverTimestamp(),
+          created_at: quizData.created_at || serverTimestamp(),
+        };
+        await setDoc(docRef, dataToSave, { merge: true });
+        mutate(docRef);
+      } catch (e) {
+        console.error("Failed to save quiz:", e);
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return { saveQuiz, loading };
+  };
+
   return {
     useCourses,
     useCourse,
@@ -222,7 +257,9 @@ export const useElimika = () => {
     useLesson,
     useDriverProfileByUser,
     useEnrollmentStatus,
-    enrollInCourse,
+    useEnrollInCourse,
     useLessonProgress,
+    useQuiz,
+    useSaveQuiz,
   };
 };
