@@ -347,5 +347,30 @@ This collection defines the roles that can be assigned to users, each with a spe
 | `name` | String | The name of the role (e.g., "Administrator", "Driver"). |
 | `permissions` | Array | A list of permission IDs (strings) that are granted to this role. |
 
+---
+
+### `jobs`
+This collection stores job postings created by employers.
+
+**Document ID:** A unique ID for the job posting.
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `employerId` | `string` | The ID of the employer who posted the job. |
+| `employerName`| `string` | The name of the employer. |
+| `job_title`| `string` | The title of the job posting (e.g., "BodaBoda"). |
+| `job_type`| `string` | The type of employment (e.g., "Full-time", "Part-time"). |
+| `region`| `string` | The geographical region for the job (e.g., "Dar es Salaam").|
+| `district`| `string` | The specific district within the region (e.g., "Kinondoni").|
+| `salary`| `map` | An object with `from` and `to` fields for the salary range in TZS.|
+| `minimum_experience_years` | `number` | The minimum years of experience required for the job. |
+| `application_deadline` | `timestamp`| The deadline for job applications. |
+| `required_license_category`| `array` | An array of strings for required license categories (e.g., `["C1", "E"]`).|
+| `job_description`| `string` | A detailed description of the job and its requirements. |
+| `required_skills`| `array` | An array of strings listing required skills (e.g., `["Defensive Driving"]`).|
+| `benefits`| `array` | An array of strings listing job benefits (e.g., `["Health Insurance"]`).|
+| `posted_date`| `timestamp`| The date and time when the job was posted. |
+| `status`| `string` | The current status of the job post (e.g., "Open", "Closed", "Draft").|
+
 
 *This document will be updated as more collections are added or modified.*

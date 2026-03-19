@@ -2,26 +2,26 @@ import { Timestamp } from "firebase/firestore";
 
 export interface Job {
     id: string;
+    title: string;
+    jobType: 'full-time' | 'contract' | 'temporary' | 'part-time' | '';
+    region: string;
+    district: string;
+    minExperience: number;
+    salaryMin?: number;
+    salaryMax?: number;
+    description: string;
+    skills: string[];
+    benefits: string[];
+    licenseCategory: string[];
+    deadline: string | Timestamp;
     employerId: string;
-    job_title: string;
-    employment_type: 'full-time' | 'contract' | 'temporary' | 'part-time' | '';
+    employerName: string;
+    postedOn: Timestamp;
+    status: 'Published' | 'Draft' | 'Closed';
+    applicationCount?: number;
     positions?: number;
     vehicleType?: 'car' | 'motorcycle' | 'bus' | 'truck' | 'other' | '';
-    licenseCategory?: string[];
-    required_license_class: string;
-    minExperience?: number;
-    required_skills: string[];
-    region: string;
-    district?: string;
-    salary_range?: string;
-    benefits?: string[];
-    job_description: string;
-    expire_date?: Timestamp | string;
     startDate?: Timestamp | string;
-    status: 'Open' | 'Closed' | 'draft';
-    posted_date: Timestamp;
-    applicationCount?: number;
-    employerName?: string; // from DB
     company_name?: string; // for UI
 }
 

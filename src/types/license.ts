@@ -27,6 +27,12 @@ export const APPLICATION_TYPES = [
     'LATRA Exam'
 ] as const;
 
+export const APPLICATION_FEES: { [key in ApplicationType]: number } = {
+    'New License': 3000,
+    'License Renewal': 3000,
+    'LATRA Exam': 2000,
+};
+
 export const LICENSE_CATEGORIES = [
     'A', 'A1', 'A2', 'A3', 
     'B', 'B1', 

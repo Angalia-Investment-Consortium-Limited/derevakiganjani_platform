@@ -89,9 +89,6 @@ const CourseDetail = () => {
       await enroll({
         driver: driverProfileId,
         course: courseId,
-        course_name_en: course.course_name_en,
-        course_name_sw: course.course_name_sw,
-        driver_name: currentUser.displayName || 'Unknown User'
       });
       
       toast({

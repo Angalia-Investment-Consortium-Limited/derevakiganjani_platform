@@ -1,11 +1,11 @@
 
 # LESENI (License Services) Module: Implementation Plan
 
-**Document Version:** 1.5
-**Date:** 2023-10-27
+**Document Version:** 1.6
+**Date:** 2023-10-28
 **Authors:** Gemini AI (Firebase Architect)
 
-This document provides a complete technical engineering roadmap for the implementation of the LESENI (License Services) module on the Dereva Kiganjani platform. It is designed for production-grade deployment and adheres strictly to the existing Firestore-only architecture.
+This document provides a complete technical engineering roadmap for the implementation of the LESENI (License Services) module on the Dereva Kiganjani platform.
 
 ---
 
@@ -22,8 +22,8 @@ The LESENI module is a digital interface for drivers to apply for various licens
 - **Firebase Authentication:** For user identification and role-based access control.
 - **Firestore:** Primary database for all application and request data.
 - **Firebase Storage:** For secure upload and storage of applicant documents.
-- **Selcom Payment Gateway:** For processing license fees via client-side integration.
-- **Constraint:** This implementation **MUST NOT** use Firebase Cloud Functions.
+- **Firebase Cloud Functions:** For secure, server-side business logic, including payment gateway integration.
+- **Selcom Payment Gateway:** For processing license fees via the `initiateLicensePayment` Cloud Function.
 
 ---
 
@@ -40,13 +40,12 @@ The LESENI module is a digital interface for drivers to apply for various licens
 
 ### `license_applications`
 **Document ID:** Auto-generated unique ID.
-*This structure remains as previously defined for formal applications.*
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `userId` | `string` | UID of the applicant. |
 | `paymentId`| `string` | ID of the corresponding entry in `payments`. |
-| `status` | `string` | "pending-payment", "pending-review", etc. |
+| `status` | `string` | "pending-payment", "pending-review", "payment-failed", etc. |
 | ... | ... | ... |
 
 ### `license_requests` (New)
@@ -76,10 +75,10 @@ The LESENI module is a digital interface for drivers to apply for various licens
 - **Function:** Main entry point. Displays service types and recent application statuses.
 
 **Page: `/license/apply/:type` (Component: `LicenseApplicationWizard`)**
-- **Function:** The main wizard for submitting a formal application (New, Renewal, LATRA).
+- **Function:** The main wizard for submitting a formal application. On submission, it calls the `initiateLicensePayment` Cloud Function to trigger the payment process.
 
 **Page: `/license/confirmation/:refNo` (Component: `ApplicationConfirmation`)**
-- **Function:** Manages the post-payment process and Selcom status polling.
+- **Function:** Displays payment instructions to the user and listens for real-time status updates from Firestore to confirm payment completion.
 
 **Page: `/license/my-applications` (Component: `MyLicenseApplications`)**
 - **Function:** Allows a driver to view all their formal license applications.
@@ -90,18 +89,16 @@ The LESENI module is a digital interface for drivers to apply for various licens
 ### GENERAL REQUEST FLOW
 
 **Page: `/license-request` (Component: `LicenseRequest`)**
-- **Function:** Provides a simple form for drivers to submit general inquiries (e.g., questions about requirements, data correction requests).
-- **Process:** On submission, a new document is created in the `license_requests` collection with a status of `"submitted"`.
+- **Function:** Provides a simple form for drivers to submit general inquiries.
 
 **Page: `/license/my-requests` (Component: `MyLicenseRequests`)**
 - **Function:** Allows a driver to view the history and status of their general requests.
-- **Firestore Read:** Queries the `license_requests` collection where `userId == currentUser.uid`.
 
 ---
 
 ## 6. Admin Flow (Step-by-Step)
 
-*Admin flow for `license_applications` remains as previously defined. An additional section for managing `license_requests` will be required.*
+*Admin flow remains as previously defined.*
 
 ---
 
@@ -129,13 +126,18 @@ The LESENI module is a digital interface for drivers to apply for various licens
 ### Phase 1 – Core Application & Submission
 - [x] Implement `LicenseApplicationWizard` UI and validation.
 - [x] Implement document upload to Firebase Storage.
-- [x] On submit, create `license_applications` and `payments` docs.
-- [x] Redirect to the Selcom payment gateway.
+- [x] On submit, create initial `license_applications` document with `status: "draft"`.
+- [x] Call the `initiateLicensePayment` Cloud Function with application and phone details.
 
-### Phase 2 – Selcom Payment & Confirmation
-- [x] Implement the `ApplicationConfirmation` page as the callback URL.
-- [x] Integrate Selcom `order-status` polling.
-- [x] Implement Firestore status updates based on poll results.
+### Phase 1.5 – Backend Payment Integration
+- [x] Create the `initiateLicensePayment` Firebase Cloud Function.
+- [x] Function handles creating `payments` document and interacting with the Selcom API to initiate the USSD push.
+- [x] Function updates `license_applications` with `paymentId` and `status: "pending-payment"`.
+
+### Phase 2 – Payment Confirmation & Status Update
+- [x] Implement the `ApplicationConfirmation` page to show payment instructions.
+- [x] Use Firestore real-time listeners to automatically detect status changes on the `license_applications` document.
+- [x] Implement the `selcomWebhook` to securely receive payment status updates from Selcom and update Firestore accordingly.
 
 ### Phase 3 – Driver Status Tracking
 - [x] Implement `LicenseDashboard` with a recent applications view.
@@ -162,14 +164,12 @@ The LESENI module is a digital interface for drivers to apply for various licens
 
 ## 9. Progress Tracking
 
-*This section will be updated by the engineering team during development.*
-
 - [x] **Phase 1 – Core Application & Submission:** Completed
-- [x] **Phase 2 – Selcom Payment & Confirmation:** Completed
+- [x] **Phase 1.5 – Backend Payment Integration:** Completed
+- [x] **Phase 2 – Payment Confirmation & Status Update:** Completed
 - [x] **Phase 3 – Driver Status Tracking:** Completed
 - [x] **Phase 4 – General License Requests:** In Progress
 - [x] **Phase 5 – Admin Dashboard & Statistics:** Completed
 - [x] **Phase 6 – Admin Review & Actions:** In Progress
 - [ ] **Deployment Readiness:** Not Started
 - [ ] **Final QA & Sign-off:** Not Started
-

@@ -106,6 +106,7 @@ import JitestiResultsPage from "./pages/admin/JitestiResults";
 import JitestiResultDetail from "./pages/admin/JitestiResultDetail";
 import DriverManagement from "./pages/admin/DriverManagement";
 import EmployerManagement from "./pages/admin/EmployerManagement";
+import AdminDriverProfileView from "./pages/admin/AdminDriverProfileView";
 
 const queryClient = new QueryClient();
 
@@ -185,6 +186,11 @@ const App = () => (
               <Route path="/admin/drivers" element={
                 <AdminRoleBasedRoute>
                   <DriverManagement />
+                </AdminRoleBasedRoute>
+              } />
+              <Route path="/admin/driver/:driverId" element={
+                <AdminRoleBasedRoute>
+                  <AdminDriverProfileView />
                 </AdminRoleBasedRoute>
               } />
               <Route path="/admin/employers" element={

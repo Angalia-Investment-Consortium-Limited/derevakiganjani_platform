@@ -14,17 +14,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   useApplicationForm, 
   useSubmitApplication, 
-  useFileValidation
+  useFileValidation 
 } from '@/hooks/useApplications';
 import { 
   MultiDocumentUpload, 
 } from '@/components/license/DocumentUpload';
-import type { ApplicationType, LicenseCategory, LatraType, DocumentType } from '@/types/license';
+import type { ApplicationType, LicenseCategory, LatraType } from '@/types/license';
 import { 
   LICENSE_CATEGORIES, 
   APPLICATION_TYPES, 
   REQUIRED_DOCUMENTS, 
-  FILE_UPLOAD_CONFIG
+  FILE_UPLOAD_CONFIG,
+  APPLICATION_FEES
 } from '@/types/license';
 import { 
   ChevronLeft, 
@@ -36,6 +37,7 @@ import {
   Loader2 
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const MOCK_REGIONS = ['Dar es Salaam', 'Mwanza', 'Arusha', 'Dodoma', 'Mbeya'];
 const MOCK_DISTRICTS: { [key: string]: string[] } = {
@@ -48,7 +50,7 @@ const MOCK_DISTRICTS: { [key: string]: string[] } = {
 
 export default function LicenseApplicationWizard() {
   const { type } = useParams<{ type: string }>();
-  const { language, t } = useLanguage();
+  const { t } = useLanguage();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -57,11 +59,11 @@ export default function LicenseApplicationWizard() {
       case 'new': return 'New License';
       case 'renewal': return 'License Renewal';
       case 'latra': return 'LATRA Exam';
-      default: return 'New License'; // Default or navigate to a not-found page
+      default: return 'New License';
     }
   }, [type]);
 
-  const { submit, isSubmitting } = useSubmitApplication();
+  const { submit: createApplication, isSubmitting } = useSubmitApplication();
   const validateFile = useFileValidation(FILE_UPLOAD_CONFIG);
 
   const {
@@ -85,6 +87,7 @@ export default function LicenseApplicationWizard() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [regions] = useState<string[]>(MOCK_REGIONS);
   const [districts, setDistricts] = useState<string[]>([]);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   useEffect(() => {
     if (formData.region) {
@@ -106,22 +109,22 @@ export default function LicenseApplicationWizard() {
   const validateStep = useCallback(() => {
     const newErrors: Record<string, string> = {};
     switch (currentStep) {
-      case 0: // Personal Information
+      case 0:
         if (!formData.full_name?.trim()) newErrors.full_name = t('full_name_required');
         if (!formData.nida_number?.trim()) newErrors.nida_number = t('nida_number_required');
         if (!formData.date_of_birth?.trim()) newErrors.date_of_birth = t('date_of_birth_required');
         if (!formData.phone_number?.trim()) newErrors.phone_number = t('phone_number_required');
-        else if (!/^\+?[0-9]{10,13}$/.test(formData.phone_number.replace(/\s/g, ''))) newErrors.phone_number = t('invalid_phone_number');
-        if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) newErrors.email = t('invalid_email');
+        else if (!/^255[0-9]{9}$/.test(formData.phone_number.replace(/\s/g, ''))) newErrors.phone_number = t('invalid_phone_number_format');
+        if (formData.email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(formData.email)) newErrors.email = t('invalid_email');
         break;
-      case 1: // Location & License
+      case 1:
         if (!formData.region) newErrors.region = t('region_required');
         if (!formData.district) newErrors.district = t('district_required');
         if (!formData.license_category) newErrors.license_category = t('license_category_required');
         if (applicationType === 'LATRA Exam' && !formData.latra_type) newErrors.latra_type = t('latra_type_required');
         if (applicationType === 'License Renewal' && !formData.current_license_number?.trim()) newErrors.current_license_number = t('current_license_required');
         break;
-      case 2: // Upload Documents
+      case 2:
         const requiredDocs = REQUIRED_DOCUMENTS[applicationType];
         const uploadedDocTypes = uploadedFiles.map(f => f.documentType);
         const missingDocs = requiredDocs.filter(doc => !uploadedDocTypes.includes(doc));
@@ -142,19 +145,53 @@ export default function LicenseApplicationWizard() {
     }
   };
 
-  const handleSubmit = async () => {
-    if (isSubmitting) return;
+  const handleSubmitAndPay = async () => {
+    if (isSubmitting || isProcessingPayment) return;
 
-    const result = await submit(formData, uploadedFiles);
+    // 1. Create the application document in Firestore
+    const creationResult = await createApplication(formData, uploadedFiles);
 
-    if (result.success && result.applicationId) {
-      toast.success(result.message);
-      // Navigate to confirmation page, which will handle the payment step
-      navigate(`/license/confirmation/${result.applicationId}`);
-    } else {
-      toast.error(result.message);
+    if (!creationResult.success || !creationResult.applicationId) {
+      toast.error(creationResult.message);
+      return;
+    }
+
+    toast.info(t('application_submitted_redirecting_to_payment'));
+    setIsProcessingPayment(true);
+
+    // 2. Call the Cloud Function to initiate payment
+    try {
+        const functions = getFunctions();
+        const initiateLicensePayment = httpsCallable(functions, 'initiateLicensePayment');
+        
+        const fee = APPLICATION_FEES[applicationType];
+
+        const paymentResult = await initiateLicensePayment({
+            applicationId: creationResult.applicationId,
+            phone: formData.phone_number,
+            application: {
+                id: creationResult.applicationId,
+                type: applicationType,
+                fee: fee
+            }
+        });
+
+        const resultData = paymentResult.data as { success: boolean; applicationId?: string; message?: string };
+
+        if (resultData.success) {
+            toast.success(t('payment_initiated_successfully'));
+            navigate(`/license/confirmation/${creationResult.applicationId}`);
+        } else {
+            throw new Error(resultData.message || t('payment_initiation_failed'));
+        }
+    } catch (error: any) {
+        console.error("Payment initiation error:", error);
+        toast.error(error.message || t('an_error_occurred_during_payment'));
+        // Optionally revert application status or let user retry payment
+        setIsProcessingPayment(false);
     }
   };
+
 
   useEffect(() => {
     if (!user) {
@@ -184,8 +221,13 @@ export default function LicenseApplicationWizard() {
               {errors.date_of_birth && <p className="text-sm text-destructive">{errors.date_of_birth}</p>}
             </div>
              <div className="space-y-2">
-              <Label htmlFor="phone_number">{t('phone_number')}</Label>
-              <Input id="phone_number" value={formData.phone_number} onChange={(e) => updateFormData({ phone_number: e.target.value })} />
+              <Label htmlFor="phone_number">{t('phone_number_for_payment')}</Label>
+              <Input 
+                id="phone_number" 
+                placeholder="255xxxxxxxxx"
+                value={formData.phone_number} 
+                onChange={(e) => updateFormData({ phone_number: e.target.value })} 
+              />
               {errors.phone_number && <p className="text-sm text-destructive">{errors.phone_number}</p>}
             </div>
             <div className="space-y-2">
@@ -328,19 +370,19 @@ export default function LicenseApplicationWizard() {
           </Card>
 
           <div className="flex justify-between mt-8">
-            <Button onClick={previousStep} disabled={currentStep === 0 || isSubmitting}>
+            <Button onClick={previousStep} disabled={currentStep === 0 || isSubmitting || isProcessingPayment}>
               <ChevronLeft className="mr-2 h-4 w-4" /> {t('previous')}
             </Button>
             {currentStep === steps.length - 1 ? (
-              <Button onClick={handleSubmit} disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('submitting')}</>
+              <Button onClick={handleSubmitAndPay} disabled={isSubmitting || isProcessingPayment}>
+                {isProcessingPayment ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('processing_payment')}</>
                 ) : (
                   <>{t('submit_proceed_to_payment')} <ChevronRight className="ml-2 h-4 w-4" /></>
                 )}
               </Button>
             ) : (
-              <Button onClick={handleNext} disabled={isSubmitting}>
+              <Button onClick={handleNext} disabled={isSubmitting || isProcessingPayment}>
                 {t('next')} <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             )}

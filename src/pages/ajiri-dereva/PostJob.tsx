@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Briefcase, Calendar, DollarSign, MapPin, FileText, Loader2, PlusCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
@@ -18,6 +19,14 @@ import { useNavigate } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Job } from '@/types/jobs';
 import type { EmployerProfile } from '@/types/auth';
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbSeparator,
+  BreadcrumbPage,
+} from '@/components/ui/breadcrumb';
 
 const PostJob = () => {
   const { toast } = useToast();
@@ -46,15 +55,26 @@ const PostJob = () => {
   const [newSkill, setNewSkill] = useState('');
   const [newBenefit, setNewBenefit] = useState('');
 
+  const licenseCategories = [
+    { id: 'A', label: 'A - Motorcycle' },
+    { id: 'B', label: 'B - Car' },
+    { id: 'C1', label: 'C1 - Medium Truck' },
+    { id: 'C2', label: 'C2 - Medium Bus' },
+    { id: 'C3', label: 'C3 - Medium Vehicle with Trailer' },
+    { id: 'D', label: 'D - Heavy Bus' },
+    { id: 'E', label: 'E - Heavy Truck with Trailer' },
+  ];
+
   const { regions, isLoading: regionsLoading } = useRegions();
-  const { districts, isLoading: districtsLoading } = useDistricts(formData.region || '');
+  const selectedRegion = useMemo(() => regions.find(r => r.name === formData.region), [regions, formData.region]);
+  const { districts, isLoading: districtsLoading } = useDistricts(selectedRegion?.id || '');
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { id, value, type } = e.target;
     setFormData(prev => ({ ...prev, [id]: type === 'number' ? Number(value) : value }));
   };
 
-  const handleSelectChange = (id: keyof Job, value: string | string[]) => {
+  const handleSelectChange = (id: keyof Job, value: string) => {
     setFormData(prev => ({ ...prev, [id]: value }));
     if (id === 'region') {
       setFormData(prev => ({ ...prev, district: '' }));
@@ -73,7 +93,18 @@ const PostJob = () => {
     setFormData(prev => ({...prev, [field]: (prev[field] || []).filter((_, i) => i !== index)}));
   };
 
-  const requiredFields: (keyof Job)[] = ['title', 'jobType', 'region', 'district', 'description', 'deadline'];
+  const handleLicenseCategoryChange = (category: string) => {
+    setFormData(prev => {
+      const existing = prev.licenseCategory || [];
+      if (existing.includes(category)) {
+        return { ...prev, licenseCategory: existing.filter(c => c !== category) };
+      } else {
+        return { ...prev, licenseCategory: [...existing, category] };
+      }
+    });
+  };
+
+  const requiredFields: (keyof Job)[] = ['title', 'jobType', 'region', 'district', 'description', 'deadline', 'licenseCategory'];
   const isFormValid = useMemo(() => {
     return requiredFields.every(field => formData[field] && (Array.isArray(formData[field]) ? (formData[field] as any[]).length > 0 : true));
   }, [formData]);
@@ -92,7 +123,7 @@ const PostJob = () => {
     try {
       await addDoc(collection(db, 'jobs'), {
         ...formData,
-        employerId: employerProfile.user,
+        employerId: employerProfile.userId,
         employerName: employerProfile.company_name,
         postedOn: Timestamp.now(),
         status,
@@ -126,6 +157,13 @@ const PostJob = () => {
       <Header />
       
       <main className="flex-1 container py-8">
+        <Breadcrumb className="mb-6">
+          <BreadcrumbList>
+            <BreadcrumbItem><BreadcrumbLink href="/ajiri-dereva/EmployerDashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem><BreadcrumbPage>Post Job</BreadcrumbPage></BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
         <div className="mb-6">
           <h1 className="text-3xl font-bold">Post a Job Vacancy</h1>
           <p className="text-muted-foreground">Chapisha Kazi</p>
@@ -171,7 +209,7 @@ const PostJob = () => {
                 <Select onValueChange={(v) => handleSelectChange('district', v)} value={formData.district} disabled={isSaving || districtsLoading || !formData.region}>
                   <SelectTrigger><SelectValue placeholder="Select district" /></SelectTrigger>
                   <SelectContent>
-                    {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    {districts.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -196,20 +234,23 @@ const PostJob = () => {
               </div>
             </div>
 
-             <div className="space-y-2">
-                <Label>License Category Required</Label>
-                <Select onValueChange={(v) => handleSelectChange('licenseCategory', v)} disabled={isSaving} >
-                    <SelectTrigger><SelectValue placeholder="Select all that apply" /></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="A">A - Motorcycle</SelectItem>
-                        <SelectItem value="B">B - Car</SelectItem>
-                        <SelectItem value="C1">C1 - Medium Truck</SelectItem>
-                        <SelectItem value="C2">C2 - Medium Bus</SelectItem>
-                        <SelectItem value="C3">C3 - Medium Vehicle with Trailer</SelectItem>
-                        <SelectItem value="D">D - Heavy Bus</SelectItem>
-                        <SelectItem value="E">E - Heavy Truck with Trailer</SelectItem>
-                    </SelectContent>
-                </Select>
+            <div className="space-y-2">
+              <Label>License Category Required *</Label>
+              <div className="grid grid-cols-2 gap-4 pt-2">
+                {licenseCategories.map(category => (
+                  <div key={category.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`license-${category.id}`}
+                      checked={formData.licenseCategory?.includes(category.id)}
+                      onCheckedChange={() => handleLicenseCategoryChange(category.id)}
+                      disabled={isSaving}
+                    />
+                    <Label htmlFor={`license-${category.id}`} className="font-normal">
+                      {category.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="space-y-2">

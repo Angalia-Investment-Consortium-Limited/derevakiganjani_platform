@@ -223,7 +223,7 @@ const DriverManagement = () => {
                                 <DropdownMenuContent align="end">
                                   <DropdownMenuItem
                                     onClick={() =>
-                                      navigate(`/driver/${driver.uid}`)
+                                      navigate(`/admin/driver/${driver.uid}`)
                                     }
                                   >
                                     <Eye className="mr-2 h-4 w-4" />

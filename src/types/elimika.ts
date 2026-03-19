@@ -16,6 +16,9 @@ export interface Course {
     status: string;
     is_active: number;
     level: string;
+    thumbnail_emoji?: string;
+    total_lessons?: number;
+    duration_hours?: number;
 }
 
 export interface CourseFilters {
@@ -44,8 +47,8 @@ export interface EnrollmentRequest {
 export interface Lesson {
     name: string; // Document ID
     lesson_id: string;
-    title_en: string;
-    title_sw: string;
+    lesson_title_en: string;
+    lesson_title_sw: string;
     content_en: string;
     content_sw: string;
     video_url?: string;
@@ -53,6 +56,10 @@ export interface Lesson {
     lesson_order: number;
     course_id: string;
     is_active: number;
+    is_locked?: boolean;
+    unlock_after_lesson?: string | null;
+    content_type?: string;
+    duration_minutes?: number;
 }
 
 export interface Quiz {

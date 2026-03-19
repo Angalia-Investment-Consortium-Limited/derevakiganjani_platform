@@ -57,7 +57,7 @@ export const useElimika = () => {
   const useCourses = (filters?: CourseFilters) => {
     let q = query(
       coursesCollection,
-      where('status', '==', 'Published'),
+      where('status', '==', 'published'),
       where('is_active', '==', 1)
     );
 
