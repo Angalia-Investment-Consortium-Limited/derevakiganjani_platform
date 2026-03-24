@@ -1,79 +1,119 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
-import { CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { CheckCircle2, ChevronLeft, ChevronRight, Loader2, PlayCircle, FileText, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useElimika } from "@/hooks/useElimika";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Badge } from "@/components/ui/badge";
 
 const LessonViewer = () => {
   const navigate = useNavigate();
-  const { lessonId } = useParams();
+  const { lessonId } = useParams<{ lessonId: string }>();
+  const { currentUser } = useAuth();
+  const { language } = useLanguage();
   const { toast } = useToast();
-  const [completed, setCompleted] = useState(false);
+  
+  const { useLesson, useCourse, useLessons, useDriverProfileByUser, useEnrollmentStatus, useUpdateLessonProgress, useLessonProgress } = useElimika();
+  
+  const { data: lesson, isLoading: lessonLoading } = useLesson(lessonId);
+  const courseIdToUse = lesson?.course || lesson?.course_id;
+  const { data: course, isLoading: courseLoading } = useCourse(courseIdToUse);
+  const { data: lessons, isLoading: lessonsLoading } = useLessons(courseIdToUse);
+  
+  const { data: driverProfileData } = useDriverProfileByUser(currentUser || undefined);
+  const driverProfileId = (driverProfileData && driverProfileData.length > 0) ? driverProfileData[0].name : currentUser?.uid;
+  
+  const { data: enrollment } = useEnrollmentStatus(courseIdToUse, driverProfileId);
+  const { data: progressData, mutate: mutateProgress } = useLessonProgress(driverProfileId, enrollment?.name);
+  
+  const { markAsComplete, loading: markingComplete } = useUpdateLessonProgress();
 
-  const lesson = {
-    id: lessonId,
-    title: "Pedestrian Safety",
-    courseId: 1,
-    videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-    imageUrl: "",
-    pdfUrl: "",
-    content: `
-      <h2>Understanding Pedestrian Safety</h2>
-      <p>As a driver, ensuring pedestrian safety is one of your most important responsibilities. This lesson covers the essential rules and best practices for sharing the road with pedestrians.</p>
+  const isCompleted = useMemo(() => {
+    if (!progressData || !lessonId) return false;
+    return progressData.some(p => p.lesson_id === lessonId && p.status === 'completed');
+  }, [progressData, lessonId]);
+
+  const sortedLessons = useMemo(() => {
+    if (!lessons) return [];
+    return [...lessons].sort((a, b) => (a.lesson_order || 0) - (b.lesson_order || 0));
+  }, [lessons]);
+
+  const currentIndex = useMemo(() => {
+    if (!sortedLessons || !lessonId) return -1;
+    return sortedLessons.findIndex(l => l.name === lessonId);
+  }, [sortedLessons, lessonId]);
+
+  const prevLesson = currentIndex > 0 ? sortedLessons[currentIndex - 1] : null;
+  const nextLesson = currentIndex < sortedLessons.length - 1 ? sortedLessons[currentIndex + 1] : null;
+
+  const handleMarkComplete = async () => {
+    if (!driverProfileId || !enrollment || !lesson || !course || !lessonId) return;
+    
+    try {
+      await markAsComplete(
+        driverProfileId,
+        enrollment.name,
+        course.name,
+        lessonId,
+        course.total_lessons || sortedLessons.length,
+        enrollment.completed_lessons
+      );
       
-      <h3>Key Safety Rules</h3>
-      <ul>
-        <li><strong>Crosswalks:</strong> Always yield to pedestrians at marked and unmarked crosswalks</li>
-        <li><strong>School Zones:</strong> Reduce speed and stay alert in school zones during school hours</li>
-        <li><strong>Intersections:</strong> Look for pedestrians before making turns, even on green lights</li>
-        <li><strong>Residential Areas:</strong> Watch for children playing and people crossing between parked cars</li>
-      </ul>
-
-      <h3>Best Practices</h3>
-      <p>When approaching areas with high pedestrian traffic:</p>
-      <ul>
-        <li>Slow down and be prepared to stop</li>
-        <li>Make eye contact with pedestrians to ensure they see you</li>
-        <li>Never pass vehicles stopped at crosswalks</li>
-        <li>Be extra cautious in poor weather or low visibility conditions</li>
-        <li>Avoid distractions like mobile phones</li>
-      </ul>
-
-      <h3>Special Considerations</h3>
-      <p>Some pedestrians require extra care and attention:</p>
-      <ul>
-        <li>Children are unpredictable and may dart into the street</li>
-        <li>Elderly pedestrians may move more slowly</li>
-        <li>Visually impaired pedestrians using white canes or guide dogs</li>
-        <li>Pedestrians using mobility devices</li>
-      </ul>
-
-      <h3>Legal Requirements</h3>
-      <p>Remember that failing to yield to pedestrians can result in:</p>
-      <ul>
-        <li>Traffic citations and fines</li>
-        <li>Points on your driving record</li>
-        <li>Increased insurance premiums</li>
-        <li>Criminal charges in case of accidents</li>
-      </ul>
-    `,
-    duration: "15 min",
-    progress: 0,
-    hasNext: true,
-    hasPrevious: true
+      toast({
+        title: language === 'en' ? "Lesson Completed!" : "Somo Limekamilika!",
+        description: language === 'en' ? "Your progress has been saved." : "Maendeleo yako yamehifadhiwa.",
+      });
+      
+      await mutateProgress();
+    } catch (error) {
+        toast({
+            title: language === 'en' ? "Error" : "Kosa",
+            description: language === 'en' ? "Failed to save progress." : "Imeshindwa kuhifadhi maendeleo.",
+            variant: "destructive"
+        });
+    }
   };
 
-  const handleMarkComplete = () => {
-    setCompleted(true);
-    toast({
-      title: "Lesson Completed!",
-      description: "Great job! You can now move to the next lesson.",
-    });
-  };
+  const isLoading = lessonLoading || courseLoading || lessonsLoading;
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-grow flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!lesson) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-grow container mx-auto px-4 py-8">
+          <div className="text-center py-12">
+            <h3 className="text-lg font-semibold">{language === 'en' ? 'Lesson not found' : 'Somo halijapatikana'}</h3>
+            <Button className="mt-4" onClick={() => navigate('/elimika')}>
+              {language === 'en' ? 'Back to Elimika' : 'Rudi Elimika'}
+            </Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  const lessonTitle = language === 'en' ? lesson.lesson_title_en : (lesson.lesson_title_sw || lesson.lesson_title_en);
+  const courseTitle = course ? (language === 'en' ? course.course_name_en : course.course_name_sw) : 'Course';
+  const lessonContent = language === 'en' ? lesson.content_en : (lesson.content_sw || lesson.content_en);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -83,7 +123,7 @@ const LessonViewer = () => {
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
+              <BreadcrumbLink href="/dashboard">{language === 'en' ? 'Home' : 'Nyumbani'}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -91,11 +131,11 @@ const LessonViewer = () => {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href={`/elimika/course/${lesson.courseId}`}>Course</BreadcrumbLink>
+              <BreadcrumbLink href={`/elimika/course/${course?.name}`}>{courseTitle}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{lesson.title}</BreadcrumbPage>
+              <BreadcrumbPage>{lessonTitle}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -103,79 +143,86 @@ const LessonViewer = () => {
         <div className="max-w-4xl mx-auto">
           <Card>
             <CardHeader>
-              <CardTitle className="text-3xl">{lesson.title}</CardTitle>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>{lesson.duration}</span>
+              <div className="flex justify-between items-start">
+                <div>
+                  <CardTitle className="text-3xl">{lessonTitle}</CardTitle>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                    <span>{lesson.duration_minutes || 0} {language === 'en' ? 'min' : 'dak'}</span>
+                    {isCompleted && (
+                      <Badge variant="secondary" className="bg-success/10 text-success hover:bg-success/20">
+                        {language === 'en' ? 'Completed' : 'Imekamilika'}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {lesson.videoUrl && (
-                <div className="aspect-video w-full overflow-hidden rounded-lg border">
-                  <iframe
-                    src={lesson.videoUrl}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    title={lesson.title}
-                  />
+              {lesson.video_url && (
+                <div className="aspect-video w-full overflow-hidden rounded-lg border bg-black">
+                   {/* Simplified video display, assuming it's a direct URL or YouTube embed handled by iframe */}
+                   {lesson.video_url.includes('youtube.com') || lesson.video_url.includes('youtu.be') ? (
+                     <iframe
+                        src={lesson.video_url.replace('watch?v=', 'embed/')}
+                        className="w-full h-full"
+                        allowFullScreen
+                        title={lessonTitle}
+                    />
+                   ) : (
+                    <video src={lesson.video_url} controls className="w-full h-full" />
+                   )}
                 </div>
               )}
 
-              {lesson.imageUrl && (
+              {lesson.content_type === 'image' && lesson.image_url && (
                 <div className="w-full overflow-hidden rounded-lg border">
-                  <img src={lesson.imageUrl} alt={lesson.title} className="w-full" />
-                </div>
-              )}
-
-              {lesson.pdfUrl && (
-                <div className="border rounded-lg p-4">
-                  <a 
-                    href={lesson.pdfUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-primary hover:underline"
-                  >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Download PDF Resource
-                  </a>
+                  <img src={lesson.image_url} alt={lessonTitle} className="w-full object-cover" />
                 </div>
               )}
 
               <div className="prose prose-slate max-w-none dark:prose-invert"
-                   dangerouslySetInnerHTML={{ __html: lesson.content }}
+                   dangerouslySetInnerHTML={{ __html: lessonContent || '' }}
               />
 
-              {!completed ? (
-                <Button className="w-full" onClick={handleMarkComplete}>
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                  Mark Lesson Complete
+              {!isCompleted ? (
+                <Button className="w-full" onClick={handleMarkComplete} disabled={markingComplete || !enrollment}>
+                  {markingComplete ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
+                  {language === 'en' ? 'Mark Lesson Complete' : 'Weka Somo Limekamilika'}
                 </Button>
               ) : (
                 <div className="flex items-center justify-center gap-2 p-4 bg-success/10 rounded-lg text-success">
                   <CheckCircle2 className="h-5 w-5" />
-                  <span className="font-medium">Lesson Completed!</span>
+                  <span className="font-medium">{language === 'en' ? 'Lesson Completed!' : 'Somo Limekamilika!'}</span>
                 </div>
               )}
 
-              <div className="flex justify-between gap-4 pt-4">
+              <div className="flex justify-between gap-4 pt-4 border-t">
                 <Button
                   variant="outline"
-                  onClick={() => navigate(`/elimika/lesson/${Number(lessonId) - 1}`)}
-                  disabled={!lesson.hasPrevious}
+                  onClick={() => navigate(`/elimika/lesson/${prevLesson?.name}`)}
+                  disabled={!prevLesson}
                 >
                   <ChevronLeft className="mr-2 h-4 w-4" />
-                  Previous Lesson
+                  {language === 'en' ? 'Previous' : 'Iliyopita'}
                 </Button>
                 <Button
-                  onClick={() => navigate(`/elimika/lesson/${Number(lessonId) + 1}`)}
-                  disabled={!lesson.hasNext || !completed}
+                  onClick={() => navigate(`/elimika/lesson/${nextLesson?.name}`)}
+                  disabled={!nextLesson || (!isCompleted && lesson.is_locked)}
                 >
-                  Next Lesson
+                  {language === 'en' ? 'Next' : 'Inayofuata'}
                   <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
               </div>
+              
+              {currentIndex === sortedLessons.length - 1 && isCompleted && (
+                <Button 
+                    className="w-full bg-success hover:bg-success/90" 
+                    onClick={() => navigate(`/elimika/quiz/${course?.name}`)}
+                >
+                    <PlayCircle className="mr-2 h-4 w-4" />
+                    {language === 'en' ? 'Take Final Quiz' : 'Fanya Zoezi la Mwisho'}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </div>

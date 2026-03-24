@@ -26,7 +26,8 @@ const selcomClient = axios.create({
 selcomClient.interceptors.request.use(config => {
     const apiKey = process.env.SELCOM_API_KEY;
     const apiSecret = process.env.SELCOM_API_SECRET;
-    config.headers.Authorization = `Bearer ${apiKey}:${apiSecret}`;
+    const token = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
+    config.headers.Authorization = `Basic ${token}`;
     return config;
 });
 
@@ -74,17 +75,63 @@ const verifyWebhookSignature = (req) => {
 
 // --- API Endpoints ---
 
-app.get('/', (req, res) => res.send('JiTesti Cloud Run Payment Service is running!'));
+// --- API Endpoints ---
 
-// ... (other endpoints: /create-order, /order-status)
+app.get('/', (req, res) => res.send('ELIMIKA Cloud Run Payment Service is running!'));
+
+/**
+ * Creates a new order on Selcom.
+ * This proxies the request to Selcom to keep API keys secure.
+ */
+app.post('/create-order', async (req, res) => {
+    const { amount, currency, order_id, customer_email, customer_phone, remarks } = req.body;
+
+    if (!amount || !order_id) {
+        return res.status(400).send('Bad Request: Missing amount or order_id');
+    }
+
+    try {
+        const response = await selcomClient.post('/checkout/create-order-minimal', {
+            vendor: "MDVFLEET",
+            order_id,
+            buyer_email: customer_email,
+            buyer_phone: customer_phone,
+            amount,
+            currency: currency || 'TZS',
+            remarks: remarks || 'ELIMIKA Course Payment',
+            no_of_items: 1
+        });
+
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error creating Selcom order:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json(error.response?.data || { error: 'Internal Server Error' });
+    }
+});
+
+/**
+ * Checks the status of an existing order.
+ */
+app.get('/order-status/:orderId', async (req, res) => {
+    const { orderId } = req.params;
+
+    try {
+        const response = await selcomClient.get(`/checkout/order-status?order_id=${orderId}`);
+        res.status(200).json(response.data);
+    } catch (error) {
+        console.error('Error checking Selcom order status:', error.response?.data || error.message);
+        res.status(error.response?.status || 500).json(error.response?.data || { error: 'Internal Server Error' });
+    }
+});
 
 /**
  * Webhook endpoint for Selcom to send payment status updates.
  */
 app.post('/selcom-webhook', async (req, res) => {
-    // if (!verifyWebhookSignature(req)) {
-    //     return res.status(401).send('Unauthorized: Invalid signature');
-    // }
+    if (!verifyWebhookSignature(req)) {
+        console.error('Unauthorized: Invalid webhook signature');
+        return res.status(401).send('Unauthorized: Invalid signature');
+    }
 
     const { order_id, payment_status } = req.body;
 
@@ -96,10 +143,7 @@ app.post('/selcom-webhook', async (req, res) => {
         const updatedPayment = await updatePaymentStatus(order_id, payment_status, req.body);
         if (updatedPayment) {
             console.log(`Successfully updated payment ${updatedPayment.id} to ${payment_status}`);
-            // You might want to trigger other business processes here, 
-            // e.g., sending a confirmation email.
         }
-        // Always respond with a 200 to acknowledge receipt of the webhook.
         res.status(200).send({ status: 'received' });
     } catch (error) {
         console.error('Error processing webhook:', error);

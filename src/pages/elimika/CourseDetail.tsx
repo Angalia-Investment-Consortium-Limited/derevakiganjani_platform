@@ -23,16 +23,16 @@ const CourseDetail = () => {
   const { language } = useLanguage();
   const { toast } = useToast();
   
-  const { useCourse, useLessons, useDriverProfileByUser, useEnrollmentStatus, useLessonProgress, useEnrollInCourse } = useElimika();
+  const { useCourse, useLessons, useDriverProfileByUser, useEnrollmentStatus, useLessonProgress, useEnrollInCourse, useCoursePayment } = useElimika();
   
   const { data: driverProfileData, isLoading: profileLoading } = useDriverProfileByUser(currentUser || undefined);
   
   const driverProfileId = useMemo(() => {
-    if (!driverProfileData || driverProfileData.length === 0) {
-      return undefined;
+    if (driverProfileData && driverProfileData.length > 0) {
+      return driverProfileData[0].name;
     }
-    return driverProfileData[0].name;
-  }, [driverProfileData]);
+    return currentUser?.uid;
+  }, [driverProfileData, currentUser]);
   
   const { data: course, isLoading: courseLoading, isError: courseError } = useCourse(courseId);
   
@@ -43,6 +43,7 @@ const CourseDetail = () => {
   const { data: progressData, isLoading: progressLoading } = useLessonProgress(driverProfileId, enrollment?.name);
   
   const { enroll, loading: enrolling } = useEnrollInCourse();
+  const { initiatePayment, loading: paying } = useCoursePayment();
   
   const completedLessonIds = useMemo(() => {
     if (!progressData) return new Set();
@@ -86,6 +87,28 @@ const CourseDetail = () => {
     }
     
     try {
+      // 1. If course is NOT free, initiate payment first
+      if (course.is_free === 0) {
+        const amount = course.price || 0;
+        const result = await initiatePayment(
+          courseId, 
+          driverProfileId, 
+          amount, 
+          currentUser.email || '', 
+          '' // Phone number could be fetched from profile if needed
+        );
+        
+        if (result.checkoutUrl) {
+          toast({
+            title: language === 'en' ? "Redirecting to Payment..." : "Inakuelekeza kwenye Malipo...",
+            description: language === 'en' ? "Please complete your payment on Selcom" : "Tafadhali kamilisha malipo yako Selcom"
+          });
+          window.location.href = result.checkoutUrl;
+          return;
+        }
+      }
+
+      // 2. If free, or payment initiated (and eventually completed), enroll
       await enroll({
         driver: driverProfileId,
         course: courseId,
@@ -245,7 +268,7 @@ const CourseDetail = () => {
                   <div className="space-y-3">
                     <h3 className="text-lg font-semibold">{language === 'en' ? 'Course Lessons' : 'Masomo ya Kozi'}</h3>
                     {lessons && lessons.length > 0 ? (
-                      lessons.map((lesson) => {
+                      [...lessons].sort((a,b) => (a.lesson_order || 0) - (b.lesson_order || 0)).map((lesson) => {
                         const locked = isLessonLocked(lesson);
                         const completed = isLessonCompleted(lesson.name);
                         const lessonTitle = language === 'en' ? lesson.lesson_title_en : (lesson.lesson_title_sw || lesson.lesson_title_en);
@@ -287,8 +310,8 @@ const CourseDetail = () => {
                   <CardDescription>{language === 'en' ? 'Start your learning journey' : 'Anza safari yako ya kujifunza'}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" onClick={handleEnroll} disabled={enrolling || !currentUser}>
-                    {enrolling ? (language === 'en' ? 'Enrolling...' : 'Inasajili...') : (language === 'en' ? 'Enroll Now' : 'Jisajili Sasa')}
+                  <Button className="w-full" onClick={handleEnroll} disabled={enrolling || paying || !currentUser}>
+                    {paying ? (language === 'en' ? 'Processing Payment...' : 'Inasindika Malipo...') : (enrolling ? (language === 'en' ? 'Enrolling...' : 'Inasajili...') : (course.is_free === 0 ? (language === 'en' ? `Buy Now (TZS ${course.price})` : `Nunua Sasa (TZS ${course.price})`) : (language === 'en' ? 'Enroll Now' : 'Jisajili Sasa')))}
                   </Button>
                   {!currentUser && <p className="text-sm text-muted-foreground mt-2 text-center">{language === 'en' ? 'Please log in to enroll' : 'Tafadhali ingia ili kujisajili'}</p>}
                 </CardContent>

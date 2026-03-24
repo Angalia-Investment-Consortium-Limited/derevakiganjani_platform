@@ -7,67 +7,97 @@ service cloud.firestore {
       return exists(/admins/$(request.auth.uid));
     }
 
-    // Drivers can read categories, Admins can do anything
-    match /jitesti-categories/{categoryId} {
-      allow read: if request.auth != null;
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ELIMIKA: Courses
+    match /courses/{courseId} {
+      allow read: if isAuthenticated() && resource.data.is_active == 1;
       allow write: if isAdmin();
     }
 
-    // Drivers can't read tests directly (prevents fetching answers), Admins can manage
+    // ELIMIKA: Lessons
+    match /lessons/{lessonId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ELIMIKA: Course Enrollments
+    match /course_enrollments/{enrollmentId} {
+      allow read, update: if isOwner(resource.data.driverId) || isAdmin();
+      allow create: if isOwner(request.resource.data.driverId);
+      allow delete: if isAdmin();
+    }
+
+    // ELIMIKA: Quizzes
+    match /quizzes/{quizId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // ELIMIKA: Quiz Attempts
+    match /quiz_attempts/{attemptId} {
+      allow read: if isOwner(resource.data.driverId) || isAdmin();
+      allow create: if isOwner(request.resource.data.driverId);
+      allow update, delete: if isAdmin();
+    }
+
+    // JITESTI: Categories
+    match /jitesti-categories/{categoryId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // JITESTI: Tests
     match /tests/{testId} {
       allow read, write: if isAdmin();
     }
 
-    // Drivers can't read question answers directly, Admins can manage
+    // JITESTI: Questions
     match /questions/{questionId} {
       allow write: if isAdmin();
-      // Allow reading only the question text and options, not the answer
-      allow read: if request.auth != null && !("correctAnswerIndex" in resource.data);
+      allow read: if isAuthenticated() && !("correctAnswerIndex" in resource.data);
     }
 
-    // Rules for creating and managing payments
+    // Payments: Shared between modules
     match /payments/{paymentId} {
-      allow read: if request.auth.uid == resource.data.userId || isAdmin();
-      // Allow creation with 'Pending' status
-      allow create: if request.auth.uid == request.resource.data.userId
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isOwner(request.resource.data.userId)
                       && request.resource.data.status == 'Pending';
-      // Allow update to 'Completed' ONLY if a selcom transaction ID is provided
-      // This is our primary webhook-less security check.
-      allow update: if request.auth.uid == resource.data.userId
+      allow update: if isOwner(resource.data.userId)
                       && resource.data.status == 'Pending'
                       && request.resource.data.status == 'Completed'
                       && request.resource.data.selcomTransactionId != null;
     }
 
-    // The core rules for test attempts
+    // Test Attempts: Primarily for JITESTI
     match /test_attempts/{attemptId} {
-      allow read: if request.auth.uid == resource.data.userId || isAdmin();
-
-      // Allow creation if linked to a COMPLETED payment
-      allow create: if request.auth.uid == request.resource.data.userId
+      allow read: if isOwner(resource.data.userId) || isAdmin();
+      allow create: if isOwner(request.resource.data.userId)
                       && request.resource.data.status == 'not-started'
                       && get(/databases/$(database)/documents/payments/$(request.resource.data.paymentId)).data.status == 'Completed';
       
-      // Allow updates only while 'in-progress' and before expiry
-      allow update: if request.auth.uid == resource.data.userId
+      allow update: if isOwner(resource.data.userId)
                       && resource.data.status == 'in-progress'
                       && request.time < resource.data.expiresAt
-                      // Prevent changing immutable fields
                       && request.resource.data.userId == resource.data.userId
                       && request.resource.data.testId == resource.data.testId
-                      // Score can only be written once when moving to 'completed'
                       && (request.resource.data.score == null || resource.data.score == null);
 
-      // Prevent any further modification once completed
       allow update: if false; 
     }
 
-    // Certificate access rules
+    // Certificates: Shared between modules
     match /certificates/{certId} {
-      allow read: if request.auth.uid == resource.data.userId || isAdmin();
-      // Certificates are created by the client, but only if the linked test_attempt was passed
-      allow create: if request.auth.uid == request.resource.data.userId
-                      && get(/databases/$(database)/documents/test_attempts/$(request.resource.data.attemptId)).data.pass == true;
+      allow read: if isOwner(resource.data.userId) || isOwner(resource.data.driverId) || isAdmin();
+      // Allow creation if the user is the owner and has passed a test (either JITESTI or ELIMIKA quiz)
+      allow create: if (isOwner(request.resource.data.userId) || isOwner(request.resource.data.driverId));
     }
   }
 }

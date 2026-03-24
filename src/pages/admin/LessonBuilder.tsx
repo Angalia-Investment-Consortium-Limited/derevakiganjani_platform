@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Save, Upload, FileText, Image, Video } from "lucide-react";
+import { Save, Upload, FileText, Image, Video, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { db } from "@/lib/firebase";
+import { doc, getDoc, setDoc, addDoc, collection } from "firebase/firestore";
 
 const LessonBuilder = () => {
   const navigate = useNavigate();
@@ -19,31 +22,132 @@ const LessonBuilder = () => {
   const [formData, setFormData] = useState({
     title: "",
     titleSw: "",
+    summaryEn: "",
+    summarySw: "",
     duration: "",
     content: "",
     contentSw: "",
     videoUrl: "",
     pdfUrl: "",
-    imageUrl: ""
+    imageUrl: "",
+    order: 1
   });
+  const [isLoading, setIsLoading] = useState(!isNew);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    toast({
-      title: "Lesson Saved",
-      description: "The lesson has been saved successfully.",
-    });
-    navigate(`/admin/course/edit/${courseId}`);
+  useEffect(() => {
+    if (isNew) return;
+    const fetchLesson = async () => {
+      if (!lessonId) return;
+      setIsLoading(true);
+      try {
+        const docSnap = await getDoc(doc(db, "lessons", lessonId));
+        if (docSnap.exists()) {
+          const data: any = docSnap.data();
+          setFormData({
+            title: data.lesson_title_en || "",
+            titleSw: data.lesson_title_sw || "",
+            summaryEn: data.summary_en || "",
+            summarySw: data.summary_sw || "",
+            duration: data.duration_minutes ? String(data.duration_minutes) : "",
+            content: data.content_en || "",
+            contentSw: data.content_sw || "",
+            videoUrl: data.video_url || "",
+            pdfUrl: data.pdf_url || "",
+            imageUrl: data.image_url || "",
+            order: data.lesson_order || 1
+          });
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Lesson not found." });
+          navigate(`/admin/course/${courseId}`);
+        }
+      } catch (err) {
+        toast({ variant: "destructive", title: "Error", description: "Failed to load lesson." });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchLesson();
+  }, [lessonId, courseId, isNew, navigate, toast]);
+
+  const handleSave = async () => {
+    if (!formData.title || !courseId) {
+      toast({ variant: "destructive", title: "Validation Error", description: "Title is required." });
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const dataToSave = {
+        lesson_title_en: formData.title,
+        lesson_title_sw: formData.titleSw,
+        summary_en: formData.summaryEn,
+        summary_sw: formData.summarySw,
+        content_en: formData.content,
+        content_sw: formData.contentSw,
+        duration_minutes: parseInt(formData.duration) || 0,
+        video_url: formData.videoUrl,
+        image_url: formData.imageUrl,
+        pdf_url: formData.pdfUrl,
+        lesson_order: formData.order,
+        course_id: courseId,
+        course: courseId,
+        is_active: 1,
+        content_type: formData.videoUrl ? 'video' : 'text',
+        lesson_type: formData.videoUrl ? 'video' : 'text'
+      };
+
+      if (isNew) {
+        const newLessonRef = await addDoc(collection(db, "lessons"), { ...dataToSave, lesson_id: '' });
+        await setDoc(newLessonRef, { lesson_id: newLessonRef.id, name: newLessonRef.id }, { merge: true });
+      } else {
+        if (!lessonId) return;
+        await setDoc(doc(db, "lessons", lessonId), dataToSave, { merge: true });
+      }
+      toast({ title: "Lesson Saved", description: "The lesson has been saved successfully." });
+      navigate(`/admin/course/${courseId}`);
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to save lesson." });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Header />
-      
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">{isNew ? "Create New Lesson" : "Edit Lesson"}</h1>
-          <p className="text-muted-foreground">Build engaging lesson content with text, media, and resources</p>
+  if (isLoading) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center py-16">
+           <Loader2 className="w-8 h-8 animate-spin text-primary" />
+           <span className="ml-2">Loading lesson...</span>
         </div>
+      </AdminLayout>
+    );
+  }
+
+  return (
+    <AdminLayout>
+      <Breadcrumb className="mb-6">
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild><Link to="/admin">Admin</Link></BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild><Link to="/admin/courses">Courses</Link></BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbLink asChild><Link to={`/admin/course/${courseId}`}>Course Details</Link></BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>{isNew ? "New Lesson" : "Edit Lesson"}</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold mb-2">{isNew ? "Create New Lesson" : "Edit Lesson"}</h1>
+        <p className="text-muted-foreground">Build engaging lesson content with text, media, and resources</p>
+      </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
@@ -69,6 +173,29 @@ const LessonBuilder = () => {
                       value={formData.titleSw}
                       onChange={(e) => setFormData({...formData, titleSw: e.target.value})}
                       placeholder="e.g., Utangulizi wa Usalama Barabarani"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="summaryEn">Short Summary (English)</Label>
+                    <Textarea
+                      id="summaryEn"
+                      value={formData.summaryEn}
+                      onChange={(e) => setFormData({...formData, summaryEn: e.target.value})}
+                      placeholder="Brief overview of the lesson..."
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="summarySw">Short Summary (Swahili)</Label>
+                    <Textarea
+                      id="summarySw"
+                      value={formData.summarySw}
+                      onChange={(e) => setFormData({...formData, summarySw: e.target.value})}
+                      placeholder="Muhtasari mfupi wa somo..."
+                      rows={2}
                     />
                   </div>
                 </div>
@@ -184,11 +311,11 @@ const LessonBuilder = () => {
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Button className="w-full" onClick={handleSave}>
-                  <Save className="mr-2 h-4 w-4" />
+                <Button className="w-full" onClick={handleSave} disabled={isSaving}>
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                   Save Lesson
                 </Button>
-                <Button variant="outline" className="w-full" onClick={() => navigate(`/admin/course/edit/${courseId}`)}>
+                <Button variant="outline" className="w-full" onClick={() => navigate(`/admin/course/${courseId}`)} disabled={isSaving}>
                   Cancel
                 </Button>
               </CardContent>
@@ -223,10 +350,7 @@ const LessonBuilder = () => {
             </Card>
           </div>
         </div>
-      </main>
-
-      <Footer />
-    </div>
+    </AdminLayout>
   );
 };
 

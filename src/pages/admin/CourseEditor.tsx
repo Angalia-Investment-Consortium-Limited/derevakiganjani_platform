@@ -9,9 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Save, X, Loader2 } from "lucide-react";
+import { Plus, Save, X, Loader2, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
+import { useElimika } from "@/hooks/useElimika";
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import type { Course } from "@/types/elimika";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
@@ -33,9 +34,8 @@ const CourseEditor = () => {
     is_free: 1,
     status: "Draft",
   });
-  const [lessons, setLessons] = useState<{ id: number; title: string; duration: string; order: number }[]>([
-    { id: 1, title: "", duration: "", order: 1 }
-  ]);
+  const { useLessons } = useElimika();
+  const { data: fetchedLessons, isLoading: isLessonsLoading } = useLessons(!isNew ? courseId : undefined);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -46,7 +46,7 @@ const CourseEditor = () => {
       if (!courseId) return;
       setIsLoading(true);
       try {
-        const courseRef = doc(db, "Course", courseId);
+        const courseRef = doc(db, "courses", courseId);
         const docSnap = await getDoc(courseRef);
 
         if (docSnap.exists()) {
@@ -95,25 +95,30 @@ const CourseEditor = () => {
     }
     setIsSaving(true);
     try {
-      const dataToSave = {
+      const dataToSave: any = {
         ...formData,
         price: formData.is_free === 1 ? 0 : Number(formData.price || 0),
         duration_hours: Number(formData.duration_hours || 0),
-        total_lessons: lessons.length,
+        total_lessons: fetchedLessons?.length || 0,
+        is_active: 1,
         modified: serverTimestamp(),
       };
 
+      if (formData.status === 'Published') {
+        dataToSave.published_date = new Date().toISOString().split('T')[0];
+      }
+
       if (isNew) {
-        const courseRef = await addDoc(collection(db, "Course"), {
+        const courseRef = await addDoc(collection(db, "courses"), {
           ...dataToSave,
           name: formData.course_name_en.toLowerCase().replace(/\s+/g, '-').slice(0, 50),
           created: serverTimestamp(),
         });
-        await setDoc(doc(db, "Course", courseRef.id), { name: courseRef.id }, { merge: true });
+        await setDoc(doc(db, "courses", courseRef.id), { name: courseRef.id }, { merge: true });
 
       } else {
         if (!courseId) return;
-        const courseRef = doc(db, "Course", courseId);
+        const courseRef = doc(db, "courses", courseId);
         await setDoc(courseRef, dataToSave, { merge: true });
       }
 
@@ -254,6 +259,41 @@ const CourseEditor = () => {
               </div>
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Lessons</CardTitle>
+              <Button size="sm" onClick={() => navigate(`/admin/course/${courseId}/lesson/new`)} disabled={isNew || isSaving}>
+                <Plus className="h-4 w-4 mr-1" /> Add Lesson
+              </Button>
+            </CardHeader>
+            <CardContent>
+               {isNew ? (
+                 <p className="text-sm text-muted-foreground">Save the course first before adding lessons.</p>
+               ) : isLessonsLoading ? (
+                 <p className="text-sm text-muted-foreground flex items-center"><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading lessons...</p>
+               ) : (
+                 <div className="space-y-2">
+                   {(!fetchedLessons || fetchedLessons.length === 0) ? (
+                     <p className="text-sm text-muted-foreground">No lessons yet.</p>
+                   ) : (
+                     [...fetchedLessons].sort((a,b) => (a.lesson_order || 0) - (b.lesson_order || 0)).map((lesson, idx) => (
+                       <div key={lesson.name || idx} className="flex items-center justify-between p-3 border rounded-md">
+                         <div className="flex flex-col">
+                           <span className="font-medium text-sm">{lesson.lesson_title_en}</span>
+                           <span className="text-xs text-muted-foreground">Order: {lesson.lesson_order} • Duration: {lesson.duration_minutes} min</span>
+                         </div>
+                         <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/course/${courseId}/lesson/${lesson.name}`)}>
+                           <Edit className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     ))
+                   )}
+                 </div>
+               )}
+            </CardContent>
+          </Card>
+
         </div>
       </div>
     </AdminLayout>

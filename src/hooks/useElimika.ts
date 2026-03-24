@@ -31,6 +31,7 @@ import {
 import type { DocumentData } from 'firebase/firestore';
 import useSWR, { useSWRConfig } from 'swr';
 import { getAuth, type User } from "firebase/auth";
+import { useAuth } from "@/contexts/AuthContext";
 
 // Define collections
 const coursesCollection = collection(db, 'courses');
@@ -57,15 +58,15 @@ export const useElimika = () => {
   const useCourses = (filters?: CourseFilters) => {
     let q = query(
       coursesCollection,
-      where('status', '==', 'published'),
-      where('is_active', '==', 1)
+      where('status', '==', 'Published')
+      // where('is_active', '==', 1)
     );
 
     if (filters?.level) {
       q = query(q, where('level', '==', filters.level));
     }
 
-    q = query(q, orderBy('course_name_en', 'desc'));
+    // q = query(q, orderBy('course_name_en', 'desc'));
 
     const { data, error } = useSWR(q, fetcher);
 
@@ -91,9 +92,7 @@ export const useElimika = () => {
     const q = courseId
       ? query(
           lessonsCollection,
-          where('course_id', '==', courseId),
-          where('is_active', '==', 1),
-          orderBy('lesson_order', 'asc')
+          where('course', '==', courseId)
         )
       : null;
 
@@ -130,6 +129,20 @@ export const useElimika = () => {
         error: error,
     };
   }
+
+  const useDriverEnrollments = (driverProfileId: string | undefined) => {
+    const q = driverProfileId
+        ? query(enrollmentsCollection, where('driver', '==', driverProfileId), orderBy('last_accessed', 'desc'))
+        : null;
+
+    const { data, error } = useSWR(q, fetcher);
+
+    return {
+        data: data as CourseEnrollment[] | undefined,
+        isLoading: !error && !data && !!driverProfileId,
+        isError: error,
+    };
+  };
 
   const useEnrollmentStatus = (
     courseId: string | undefined,
@@ -171,9 +184,11 @@ export const useElimika = () => {
             const enrollmentData = {
               ...data,
               enrollment_date: serverTimestamp(),
-              status: 'Enrolled',              progress_percentage: 0,
+              status: 'In Progress',
+              progress_percentage: 0,
               completed_lessons: 0,
-              certificate_issued: 0,
+              certificate_issued: null,
+              last_accessed: serverTimestamp(),
             };
             const docRef = await addDoc(enrollmentsCollection, enrollmentData);
             
@@ -183,13 +198,74 @@ export const useElimika = () => {
             return docRef;
         } catch(e) {
             console.error(e);
-            throw e; // re-throw to be caught in component
+            throw e; 
         } finally {
             setLoading(false);
         }
     };
     
     return { enroll, loading };
+  };
+
+  const useUpdateLessonProgress = () => {
+    const [loading, setLoading] = useState(false);
+
+    const markAsComplete = async (
+      driverProfileId: string,
+      enrollmentId: string,
+      courseId: string,
+      lessonId: string,
+      totalLessons: number,
+      currentCompletedCount: number
+    ) => {
+      setLoading(true);
+      try {
+        // 1. Create or update lesson_progresses document
+        const progressId = `${enrollmentId}_${lessonId}`;
+        const lessonProgressRef = doc(db, 'lesson_progresses', progressId);
+        
+        // Check if already completed to avoid double counting
+        const currentProgress = await getDoc(lessonProgressRef);
+        if (currentProgress.exists() && currentProgress.data().status === 'completed') {
+           return;
+        }
+
+        await setDoc(lessonProgressRef, {
+          driver: driverProfileId,
+          enrollment: enrollmentId,
+          lesson_id: lessonId,
+          status: 'completed',
+          completed_at: serverTimestamp(),
+        }, { merge: true });
+
+        // 2. Update the main enrollment document
+        const enrollmentRef = doc(db, 'course_enrollments', enrollmentId);
+        const newCompletedCount = currentCompletedCount + 1;
+        const newPercentage = Math.round((newCompletedCount / totalLessons) * 100);
+
+        await updateDoc(enrollmentRef, {
+          completed_lessons: newCompletedCount,
+          progress_percentage: newPercentage,
+          last_accessed: serverTimestamp(),
+          status: newPercentage === 100 ? 'Completed' : 'In Progress',
+          completion_date: newPercentage === 100 ? serverTimestamp() : null
+        });
+
+        // 3. Mutate caches
+        mutate(['enrollment', courseId, driverProfileId]);
+        mutate(query(lessonProgressCollection, 
+            where('driver', '==', driverProfileId),
+            where('enrollment', '==', enrollmentId)));
+
+      } catch (e) {
+        console.error("Failed to update lesson progress:", e);
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return { markAsComplete, loading };
   };
 
   const useLessonProgress = (
@@ -204,12 +280,13 @@ export const useElimika = () => {
         )
       : null;
 
-    const { data, error } = useSWR(q, fetcher);
+    const { data, error, mutate } = useSWR(q, fetcher);
 
     return {
       data: data as LessonProgress[] | undefined,
       isLoading: !error && !data && !!q,
       isError: error,
+      mutate,
     };
   };
 
@@ -250,6 +327,67 @@ export const useElimika = () => {
     return { saveQuiz, loading };
   };
 
+  const useCoursePayment = () => {
+    const [loading, setLoading] = useState(false);
+    const { currentUser } = useAuth();
+    const proxyUrl = import.meta.env.VITE_PAYMENT_PROXY_URL || 'https://elimika-payment-proxy-service-something.a.run.app';
+
+    const initiatePayment = async (courseId: string, driverId: string, amount: number, email: string, phone: string) => {
+      setLoading(true);
+      try {
+        const orderId = `ELIM-${Date.now()}`;
+        
+        // 1. Create payment record in Firestore
+        const paymentData = {
+          userId: currentUser?.uid,
+          driverId,
+          courseId,
+          amount,
+          currency: 'TZS',
+          status: 'Pending',
+          selcomOrderId: orderId,
+          type: 'elimika_course',
+          createdAt: serverTimestamp(),
+          lastUpdated: serverTimestamp(),
+        };
+        
+        const paymentRef = await addDoc(collection(db, 'payments'), paymentData);
+
+        // 2. Call Cloud Run Proxy to create Selcom order
+        const response = await fetch(`${proxyUrl}/create-order`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount,
+            order_id: orderId,
+            customer_email: email,
+            customer_phone: phone,
+          }),
+        });
+
+        if (!response.ok) {
+           throw new Error('Failed to initiate payment with Selcom');
+        }
+
+        const result = await response.json();
+        
+        // Return the checkout URL from Selcom
+        return {
+           paymentId: paymentRef.id,
+           checkoutUrl: result.data?.[0]?.checkout_url || result.checkout_url
+        };
+
+      } catch (e) {
+        console.error("Payment initiation failed:", e);
+        throw e;
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    return { initiatePayment, loading };
+  };
+
   return {
     useCourses,
     useCourse,
@@ -257,9 +395,12 @@ export const useElimika = () => {
     useLesson,
     useDriverProfileByUser,
     useEnrollmentStatus,
+    useDriverEnrollments,
     useEnrollInCourse,
     useLessonProgress,
+    useUpdateLessonProgress,
     useQuiz,
     useSaveQuiz,
+    useCoursePayment,
   };
 };

@@ -13,12 +13,15 @@ export interface Course {
     enrollment_count: number;
     rating: number;
     author: string;
-    status: string;
+    status: 'Draft' | 'Published' | string;
     is_active: number;
-    level: string;
+    level: 'Basic' | 'Intermediate' | 'Advanced' | string;
     thumbnail_emoji?: string;
     total_lessons?: number;
     duration_hours?: number;
+    is_free?: number;
+    price?: number;
+    modified?: any;
 }
 
 export interface CourseFilters {
@@ -26,6 +29,7 @@ export interface CourseFilters {
   sortBy?: 'rating' | 'enrollment_count' | 'created_at';
   order?: 'asc' | 'desc';
   level?: string;
+  search?: string;
 }
 
 export interface CourseEnrollment {
@@ -49,17 +53,21 @@ export interface Lesson {
     lesson_id: string;
     lesson_title_en: string;
     lesson_title_sw: string;
-    content_en: string;
-    content_sw: string;
+    summary_en?: string;
+    summary_sw?: string;
+    content_en?: string;
+    content_sw?: string;
     video_url?: string;
-    lesson_type: 'video' | 'text';
+    lesson_type?: 'video' | 'text';
     lesson_order: number;
-    course_id: string;
+    course_id?: string;
+    course?: string;
     is_active: number;
     is_locked?: boolean;
     unlock_after_lesson?: string | null;
     content_type?: string;
     duration_minutes?: number;
+    image_url?: string;
 }
 
 export interface Quiz {

@@ -33,7 +33,7 @@ const generateSignature = (timestamp: string, params: Record<string, any>) => {
 
     let dataToSign = `timestamp=${timestamp}`;
     for (const key of sortedKeys) {
-        dataToSign += `&${key}=${encodeURIComponent(params[key])}`;
+        dataToSign += `&${key}=${params[key]}`;
     }
 
     const hmac = crypto.createHmac('sha256', SELCOM_API_SECRET);
@@ -157,9 +157,15 @@ export const initiateLicensePayment = onCall({
         }
         logger.info("Selcom order created successfully.", createOrderResult);
         
-        const transid = createOrderResult.data[0].transid;
+        const transid = createOrderResult.data[0]?.payment_token;
+        if (!transid) {
+            logger.error("Could not extract payment_token from Selcom response", { response: createOrderResult });
+            throw new HttpsError("internal", "Failed to retrieve payment token from provider.");
+        }
+        logger.info(`Extracted transid (payment_token): ${transid}`);
+
         const walletTimestamp = getEATTimestamp();
-        const walletJson = { transid: transid, msisdn: phone };
+        const walletJson = { order_id: orderId, transid: transid, msisdn: phone };
         const { digest: walletDigest, signedFields: walletSignedFields } = generateSignature(walletTimestamp, walletJson);
 
         const walletResponse = await fetch(`${SELCOM_BASE_URL}/checkout/wallet-payment`, {
@@ -177,9 +183,15 @@ export const initiateLicensePayment = onCall({
         const walletResult = await walletResponse.json();
 
         if (walletResult.result !== "SUCCESS") {
-            logger.error("Failed to initiate wallet payment", walletResult);
+            logger.error("Failed to initiate wallet payment", { response: walletResult });
             throw new HttpsError("internal", walletResult.message || "Failed to initiate USSD push.");
         }
+        
+        await paymentDocRef.update({ 
+            selcomPaymentToken: transid, 
+            status: "processing" 
+        });
+
         logger.info("Selcom wallet payment initiated successfully.", walletResult);
 
         logger.info(`--- initiateLicensePayment: Success ---`, { applicationId: applicationId });

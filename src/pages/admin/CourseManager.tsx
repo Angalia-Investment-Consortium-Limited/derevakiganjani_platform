@@ -58,7 +58,7 @@ const CourseManager = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    let q = query(collection(db, "Course"), orderBy("modified", "desc"));
+    let q = query(collection(db, "courses"));
 
     if (statusFilter !== "all") {
       q = query(q, where("status", "==", statusFilter === 'published' ? 'Published' : 'Draft'));
@@ -106,13 +106,16 @@ const CourseManager = () => {
   // Format price display
   const formatPrice = (course: Course) => {
     if (course.is_free === 1) return "Free";
-    return course.price ? `KES ${course.price.toLocaleString()}` : "Free";
+    return course.price ? `TZS ${course.price.toLocaleString()}` : "Free";
   };
 
   // Format date
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
+  const formatDate = (dateData?: any) => {
+    if (!dateData) return "N/A";
+    if (dateData.toDate && typeof dateData.toDate === 'function') {
+      return dateData.toDate().toLocaleDateString();
+    }
+    const date = new Date(dateData);
     if (isNaN(date.getTime())) {
       return "N/A";
     }
@@ -123,7 +126,7 @@ const CourseManager = () => {
     if (!courseToDelete) return;
     setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, "Course", courseToDelete));
+      await deleteDoc(doc(db, "courses", courseToDelete));
       toast({
         title: "Course Deleted",
         description: "The course has been successfully deleted.",
@@ -147,7 +150,7 @@ const CourseManager = () => {
 
     try {
       selectedCourses.forEach(id => {
-        const docRef = doc(db, "Course", id);
+        const docRef = doc(db, "courses", id);
         if (action === "delete") {
           batch.delete(docRef);
         } else {
@@ -311,7 +314,7 @@ const CourseManager = () => {
                         {course.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{formatDate(course.modified)}</TableCell>
+                    <TableCell>{formatDate(course.modified || (course as any).published_date || (course as any).created)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/course/${course.name}`)}>

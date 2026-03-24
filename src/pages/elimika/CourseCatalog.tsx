@@ -21,7 +21,8 @@ const CourseCatalog = () => {
   const { language } = useLanguage();
   const { useCourses } = useElimika();
   
-  const [searchQuery, setSearchQuery] = useDebounce("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 500);
   const [levelFilter, setLevelFilter] = useState<"all" | "Basic" | "Intermediate" | "Advanced">("all");
 
   // Build filters
@@ -29,12 +30,12 @@ const CourseCatalog = () => {
   if (levelFilter !== "all") {
     filters.level = levelFilter;
   }
-  if (searchQuery) {
-    filters.search = searchQuery;
+  if (debouncedSearchQuery) {
+    filters.search = debouncedSearchQuery;
   }
 
   // Fetch courses with filters
-  const { data: courses, isLoading, error } = useCourses(filters);
+  const { data: courses, isLoading, isError: error } = useCourses(filters);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -113,6 +114,8 @@ const CourseCatalog = () => {
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>
               Failed to load courses. Please try again later.
+              <br />
+              {String(error)}
             </AlertDescription>
           </Alert>
         )}
