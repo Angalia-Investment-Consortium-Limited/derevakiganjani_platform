@@ -9,60 +9,20 @@ import { Badge } from '@/components/ui/badge';
 import { Search, Eye, UserCheck, Calendar, XCircle, MessageSquare, ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { useJobApplicants } from '@/hooks/useJobs';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 
 const JobApplicants = () => {
   const navigate = useNavigate();
-  const { jobId: _jobId } = useParams();
+  const { jobId } = useParams();
   const { toast } = useToast();
+  const { applicants, job, isLoading, error, refresh } = useJobApplicants(jobId || null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  const jobTitle = "Experienced Truck Driver"; // TODO: Fetch from API
-
-  const applicants = [
-    { 
-      id: 1, 
-      name: 'John Mwamba', 
-      category: 'D', 
-      experience: '5 yrs', 
-      region: 'Dar es Salaam',
-      status: 'Submitted', 
-      lastUpdate: '2 hours ago',
-      jiTestiPassed: true,
-      elimikaCert: false
-    },
-    { 
-      id: 2, 
-      name: 'Mary Kamara', 
-      category: 'D', 
-      experience: '3 yrs', 
-      region: 'Arusha',
-      status: 'Viewed', 
-      lastUpdate: '1 day ago',
-      jiTestiPassed: true,
-      elimikaCert: true
-    },
-    { 
-      id: 3, 
-      name: 'David Luka', 
-      category: 'D', 
-      experience: '7 yrs', 
-      region: 'Mwanza',
-      status: 'Shortlisted', 
-      lastUpdate: '2 days ago',
-      jiTestiPassed: true,
-      elimikaCert: true
-    },
-    { 
-      id: 4, 
-      name: 'Sarah Juma', 
-      category: 'D', 
-      experience: '4 yrs', 
-      region: 'Dar es Salaam',
-      status: 'Interview', 
-      lastUpdate: '3 days ago',
-      jiTestiPassed: true,
-      elimikaCert: false
-    },
-  ];
+  const jobTitle = job?.job_title || "Loading...";
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,11 +43,21 @@ const JobApplicants = () => {
     }
   };
 
-  const handleAction = (_applicantId: number, action: string, applicantName: string) => {
-    toast({
-      title: `${action} Successful`,
-      description: `${applicantName} has been ${action.toLowerCase()}.`,
-    });
+  const handleAction = async (applicationId: string, actionStatus: string, applicantName: string) => {
+    setUpdatingId(applicationId);
+    try {
+      const appRef = doc(db, 'job_applications', applicationId);
+      await updateDoc(appRef, { status: actionStatus });
+      toast({
+        title: `${actionStatus} Successful`,
+        description: `${applicantName} has been marked as ${actionStatus}.`,
+      });
+      refresh();
+    } catch (e: any) {
+      toast({ title: 'Error', description: 'Failed to update application status.', variant: 'destructive' });
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   return (
@@ -178,74 +148,96 @@ const JobApplicants = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {applicants.map((applicant) => (
-                    <TableRow key={applicant.id}>
-                      <TableCell className="font-medium">{applicant.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">Cat {applicant.category}</Badge>
-                      </TableCell>
-                      <TableCell>{applicant.experience}</TableCell>
-                      <TableCell>{applicant.region}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {applicant.jiTestiPassed && (
-                            <Badge variant="secondary" className="text-xs">JiTesti</Badge>
-                          )}
-                          {applicant.elimikaCert && (
-                            <Badge variant="secondary" className="text-xs">Elimika</Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={getStatusColor(applicant.status)}>{applicant.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{applicant.lastUpdate}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => navigate(`/employer/drivers/${applicant.id}`)}
-                            title="View Profile"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleAction(applicant.id, 'Shortlisted', applicant.name)}
-                            title="Add to Shortlist"
-                          >
-                            <UserCheck className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => navigate(`/employer/interviews?applicant=${applicant.id}`)}
-                            title="Schedule Interview"
-                          >
-                            <Calendar className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => navigate(`/employer/messages?driver=${applicant.id}`)}
-                            title="Send Message"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
-                            onClick={() => handleAction(applicant.id, 'Not Selected', applicant.name)}
-                            title="Reject"
-                          >
-                            <XCircle className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                  {isLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : applicants.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        No applications found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    applicants.map((app: any) => {
+                      const driver = app.driver || {};
+                      const driverName = driver.fullName || driver.full_name || (driver.first_name ? `${driver.first_name} ${driver.last_name}` : 'Unknown Driver');
+                      return (
+                      <TableRow key={app.id}>
+                        <TableCell className="font-medium">{driverName}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">Cat {driver.license_category?.join(', ')}</Badge>
+                        </TableCell>
+                        <TableCell>{driver.years_of_experience ? `${driver.years_of_experience} yrs` : 'N/A'}</TableCell>
+                        <TableCell>{driver.region}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            {driver.verification_status === 'verified' && (
+                              <Badge variant="secondary" className="text-xs">Verified</Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={getStatusColor(app.status)}>{app.status}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {app.application_date ? new Date(app.application_date.seconds * 1000).toLocaleDateString() : 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {updatingId === app.id ? (
+                              <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                            ) : (
+                              <>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => navigate(`/employer/drivers/${app.driverId}`)}
+                                  title="View Profile"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => handleAction(app.id, 'Shortlisted', driverName)}
+                                  title="Add to Shortlist"
+                                >
+                                  <UserCheck className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => navigate(`/employer/interviews?applicant=${app.id}`)}
+                                  title="Schedule Interview"
+                                >
+                                  <Calendar className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => navigate(`/employer/messages?driver=${app.driverId}`)}
+                                  title="Send Message"
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => handleAction(app.id, 'Rejected', driverName)}
+                                  title="Reject"
+                                >
+                                  <XCircle className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )})
+                  )}
                 </TableBody>
               </Table>
             </div>

@@ -24,7 +24,7 @@ export const useAdminJobs = () => {
     }
 
     if (searchQuery) {
-      q = query(q, where('title', '>=', searchQuery), where('title', '<=', searchQuery + '\uf8ff'));
+      q = query(q, where('job_title', '>=', searchQuery), where('job_title', '<=', searchQuery + '\uf8ff'));
     }
 
     return q;
@@ -40,7 +40,7 @@ export const useAdminJobs = () => {
       const countSnapshot = await getCountFromServer(q);
       setTotal(countSnapshot.data().count);
 
-      let pageQuery = query(q, orderBy('postedOn', 'desc'), limit(PAGE_SIZE));
+      let pageQuery = query(q, orderBy('posted_date', 'desc'), limit(PAGE_SIZE));
       if (currentPage > 0 && lastDoc) {
         pageQuery = query(pageQuery, startAfter(lastDoc));
       }
@@ -135,7 +135,7 @@ export const useCreateJob = () => {
         try {
             await addDoc(collection(db, 'jobs'), {
                 ...jobData,
-                postedOn: Timestamp.now(),
+                posted_date: Timestamp.now(),
             });
         } catch (error) {
             console.error("Error creating job: ", error);

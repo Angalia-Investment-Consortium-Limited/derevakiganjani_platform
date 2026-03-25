@@ -31,7 +31,7 @@ export const useEmployerDashboard = (): EmployerDashboardData => {
         const jobsSnapshot = await getDocs(jobsQuery);
         const totalJobPosts = jobsSnapshot.size;
 
-        const allAppsQuery = query(collection(db, 'applications'), where('employerId', '==', employerId));
+        const allAppsQuery = query(collection(db, 'job_applications'), where('employerId', '==', employerId));
         const allAppsSnapshot = await getDocs(allAppsQuery);
         const totalApplicants = allAppsSnapshot.size;
         const shortlisted = allAppsSnapshot.docs.filter(doc => doc.data().status === 'Shortlisted').length;
@@ -45,9 +45,9 @@ export const useEmployerDashboard = (): EmployerDashboardData => {
         
         const recentJobsData = await Promise.all(
           allJobsData.slice(0, 5).map(async (job) => {
-            const appsCountQuery = query(collection(db, 'applications'), where('jobId', '==', job.id));
+            const appsCountQuery = query(collection(db, 'job_applications'), where('jobId', '==', job.id));
             const appsCountSnapshot = await getCountFromServer(appsCountQuery);
-            const status = job.status === 'Open' ? 'Published' : job.status === 'draft' ? 'Draft' : job.status;
+            const status = job.status === 'Open' ? 'Published' : (job.status as string) === 'draft' || job.status === 'Draft' ? 'Draft' : job.status;
             return {
               id: job.id,
               title: job.job_title,
@@ -60,8 +60,8 @@ export const useEmployerDashboard = (): EmployerDashboardData => {
         setRecentJobPosts(recentJobsData);
 
         // --- Recent Applicants (enriched with driver and job details) ---
-        const allAppsData = allAppsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Application));
-        allAppsData.sort((a, b) => (b.appliedOn as Timestamp).toMillis() - (a.appliedOn as Timestamp).toMillis());
+        const allAppsData = allAppsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+        allAppsData.sort((a, b) => ((b.application_date || b.appliedOn) as Timestamp)?.toMillis() - ((a.application_date || a.appliedOn) as Timestamp)?.toMillis());
 
         const recentAppsData = await Promise.all(
           allAppsData.slice(0, 5).map(async (app) => {
@@ -70,7 +70,12 @@ export const useEmployerDashboard = (): EmployerDashboardData => {
               const driverRef = doc(db, 'driver_profiles', app.driverId);
               const driverSnap = await getDoc(driverRef);
               if (driverSnap.exists()) {
-                driverName = driverSnap.data().fullName || 'N/A';
+                const driverData = driverSnap.data();
+                driverName = driverData.fullName || driverData.full_name || (driverData.first_name ? `${driverData.first_name} ${driverData.last_name}` : 'Unknown Driver');
+                
+                const lic = driverData.license_category || driverData.categories || 'N/A';
+                app.licenseCategory = Array.isArray(lic) ? lic.join(', ') : lic;
+                app.driverExperience = driverData.experience_years || driverData.experience || 0;
               }
             }
             let jobTitle = 'Unknown Job';
@@ -88,7 +93,7 @@ export const useEmployerDashboard = (): EmployerDashboardData => {
               jobTitle,
               licenseCategory: app.licenseCategory,
               driverExperience: app.driverExperience,
-              appliedOn: app.appliedOn,
+              appliedOn: app.application_date || (app as any).appliedOn,
               status: app.status,
             } as RecentApplicant;
           })

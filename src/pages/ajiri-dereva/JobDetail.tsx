@@ -6,63 +6,21 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Briefcase, MapPin, DollarSign, CheckCircle2, Award, MessageCircle, UserPlus, Eye } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useJobApplicants } from '@/hooks/useJobs';
+import { Loader2 } from 'lucide-react';
 
 const JobDetail = () => {
   const navigate = useNavigate();
-  const { jobId: _jobId } = useParams();
+  const { jobId } = useParams();
+  const { job, applicants, isLoading, error } = useJobApplicants(jobId || null);
 
-  const jobDetails = {
-    title: 'Experienced Truck Driver',
-    vehicleType: 'Truck',
-    licenseCategory: 'D',
-    jobType: 'Full-time',
-    positions: 2,
-    salary: '500,000 - 800,000 TZS',
-    location: 'Dar es Salaam, Kinondoni',
-    startDate: '2025-02-01',
-    postedOn: '2025-01-20',
-    applications: 8,
-    description: 'We are seeking experienced truck drivers for our logistics operations...',
-    requirements: 'Valid Category D license, 3+ years experience, clean driving record...',
-  };
-
-  const suggestedDrivers = [
-    {
-      id: 1,
-      name: 'John Mwamba',
-      license: 'D',
-      experience: '5 years',
-      location: 'Dar es Salaam',
-      badges: ['JiTesti Passed', 'Elimika Certified'],
-      avatar: '',
-      verified: true,
-    },
-    {
-      id: 2,
-      name: 'Sarah Kimaro',
-      license: 'D',
-      experience: '4 years',
-      location: 'Dar es Salaam',
-      badges: ['JiTesti Passed'],
-      avatar: '',
-      verified: true,
-    },
-    {
-      id: 3,
-      name: 'Mohamed Ali',
-      license: 'D',
-      experience: '6 years',
-      location: 'Mwanza',
-      badges: ['Elimika Certified'],
-      avatar: '',
-      verified: false,
-    },
-  ];
-
-  const handleContact = (_driverId: number) => {
+  const handleContact = (driverId: string) => {
     const whatsappNumber = '255700000000'; // placeholder
     window.open(`https://wa.me/${whatsappNumber}?text=Hello, I'm interested in your driver profile`, '_blank');
   };
+
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  if (error || !job) return <div className="min-h-screen flex items-center justify-center">Error loading job details.</div>;
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -79,10 +37,10 @@ const JobDetail = () => {
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <div>
-                    <CardTitle className="text-2xl">{jobDetails.title}</CardTitle>
-                    <CardDescription className="mt-2">Posted on {jobDetails.postedOn}</CardDescription>
+                    <CardTitle className="text-2xl">{job.job_title}</CardTitle>
+                    <CardDescription className="mt-2">Posted {job.posted_date && typeof job.posted_date === 'object' && 'seconds' in job.posted_date ? new Date((job.posted_date as any).seconds * 1000).toLocaleDateString() : typeof job.posted_date === 'string' ? job.posted_date : 'N/A'}</CardDescription>
                   </div>
-                  <Badge className="bg-success/10 text-success">Published</Badge>
+                  <Badge className={job.status === 'Open' ? 'bg-success/10 text-success' : 'bg-secondary text-secondary-foreground'}>{job.status}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -91,58 +49,58 @@ const JobDetail = () => {
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">Vehicle</p>
-                      <p className="font-medium">{jobDetails.vehicleType}</p>
+                      <p className="font-medium">{job.vehicleType}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <Award className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">License</p>
-                      <p className="font-medium">Category {jobDetails.licenseCategory}</p>
+                      <p className="font-medium">Category {Array.isArray(job.required_license_category) ? job.required_license_category.join(', ') : (job.required_license_category || 'Any')}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">Location</p>
-                      <p className="font-medium">{jobDetails.location}</p>
+                      <p className="font-medium">{job.region}{job.district ? `, ${job.district}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <DollarSign className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <p className="text-xs text-muted-foreground">Salary</p>
-                      <p className="font-medium">{jobDetails.salary}</p>
+                      <p className="font-medium">{job.salary && typeof job.salary === 'object' && job.salary.from && job.salary.to ? `TZS ${job.salary.from.toLocaleString()} - ${job.salary.to.toLocaleString()}` : typeof job.salary === 'string' ? job.salary : 'Not specified'}</p>
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <h3 className="font-semibold mb-2">Job Description</h3>
-                  <p className="text-muted-foreground">{jobDetails.description}</p>
+                  <p className="text-muted-foreground whitespace-pre-line">{job.job_description}</p>
                 </div>
 
                 <div>
                   <h3 className="font-semibold mb-2">Requirements</h3>
-                  <p className="text-muted-foreground">{jobDetails.requirements}</p>
+                  <p className="text-muted-foreground whitespace-pre-line">{Array.isArray(job.required_skills) ? job.required_skills.join('\n') : job.required_skills}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
                     <p className="text-sm text-muted-foreground">Job Type</p>
-                    <p className="font-medium">{jobDetails.jobType}</p>
+                    <p className="font-medium">{job.job_type}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Positions</p>
-                    <p className="font-medium">{jobDetails.positions}</p>
+                    <p className="font-medium">{job.positions || 1}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Start Date</p>
-                    <p className="font-medium">{jobDetails.startDate}</p>
+                    <p className="font-medium">{job.startDate && typeof job.startDate === 'object' && 'seconds' in job.startDate ? new Date((job.startDate as any).seconds * 1000).toLocaleDateString() : typeof job.startDate === 'string' ? job.startDate : 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Applications</p>
-                    <p className="font-medium">{jobDetails.applications}</p>
+                    <p className="font-medium">{job.applicationCount || applicants.length}</p>
                   </div>
                 </div>
               </CardContent>
@@ -150,34 +108,33 @@ const JobDetail = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Suggested Drivers</CardTitle>
-                <CardDescription>Matched by license category and location</CardDescription>
+                <CardTitle>Applications</CardTitle>
+                <CardDescription>Drivers who have applied for this position</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {suggestedDrivers.map((driver) => (
-                    <div key={driver.id} className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors">
+                  {applicants.slice(0, 5).map((app: any) => {
+                    const driver = app.driver || {};
+                    const driverName = driver.first_name ? `${driver.first_name} ${driver.last_name}` : 'Unknown Driver';
+                    return (
+                    <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors gap-4">
                       <div className="flex items-center gap-4">
                         <Avatar>
-                          <AvatarImage src={driver.avatar} />
-                          <AvatarFallback>{driver.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                          <AvatarImage src={driver.photo_url || ''} />
+                          <AvatarFallback>{driverName.substring(0,2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h4 className="font-semibold">{driver.name}</h4>
-                            {driver.verified && (
+                            <h4 className="font-semibold">{driverName}</h4>
+                            {driver.verification_status === 'verified' && (
                               <CheckCircle2 className="h-4 w-4 text-success" />
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            License {driver.license} • {driver.experience} • {driver.location}
+                            Category {driver.license_category?.join(',')} • {driver.region}
                           </p>
                           <div className="flex gap-2 mt-2">
-                            {driver.badges.map((badge, i) => (
-                              <Badge key={i} variant="outline" className="text-xs">
-                                {badge}
-                              </Badge>
-                            ))}
+                            <Badge variant="outline" className="text-xs">{app.status}</Badge>
                           </div>
                         </div>
                       </div>
@@ -197,13 +154,18 @@ const JobDetail = () => {
                           <UserPlus className="h-4 w-4 mr-1" />
                           Shortlist
                         </Button>
-                        <Button size="sm" onClick={() => handleContact(driver.id)}>
+                        <Button size="sm" onClick={() => handleContact(app.driverId)}>
                           <MessageCircle className="h-4 w-4 mr-1" />
                           Contact
                         </Button>
                       </div>
                     </div>
-                  ))}
+                  )})}
+                  {applicants.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No applications received yet.
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -234,19 +196,15 @@ const JobDetail = () => {
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Total Applications</span>
-                  <span className="font-semibold">{jobDetails.applications}</span>
+                  <span className="font-semibold">{applicants.length}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Shortlisted</span>
-                  <span className="font-semibold">3</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Contacted</span>
-                  <span className="font-semibold">2</span>
+                  <span className="font-semibold">{applicants.filter((a: any) => a.status === 'Shortlisted').length}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Interviewed</span>
-                  <span className="font-semibold">1</span>
+                  <span className="font-semibold">{applicants.filter((a: any) => a.status === 'Interview').length}</span>
                 </div>
               </CardContent>
             </Card>

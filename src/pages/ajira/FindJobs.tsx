@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,14 +14,26 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const FindJobs = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [filters, setFilters] = useState({ searchTerm: '', vehicleType: '', licenseCategory: '', region: '', jobType: '' });
-  const { jobs, loading: jobsLoading } = useJobs(filters);
-  const { regions, loading: regionsLoading } = useRegions();
+  // Since useJobs expects an array of Filter objects, we map our state to it:
+  const jobFilters = useMemo(() => {
+    const arr = [];
+    if (filters.searchTerm) arr.push({ field: 'job_title', operator: '>=', value: filters.searchTerm });
+    if (filters.vehicleType) arr.push({ field: 'vehicleType', operator: '==', value: filters.vehicleType });
+    if (filters.licenseCategory) arr.push({ field: 'required_license_category', operator: 'array-contains', value: filters.licenseCategory });
+    if (filters.region) arr.push({ field: 'region', operator: '==', value: filters.region });
+    if (filters.jobType) arr.push({ field: 'job_type', operator: '==', value: filters.jobType });
+    return arr as any;
+  }, [filters]);
+  
+  const { jobs, isLoading: jobsLoading } = useJobs(jobFilters);
+  const { regions, isLoading: regionsLoading } = useRegions();
   const [applying, setApplying] = useState<string | null>(null);
 
   const handleFilterChange = (filterName: string, value: string) => {
@@ -39,9 +51,9 @@ const FindJobs = () => {
       await addDoc(collection(db, 'applications'), {
         jobId,
         driverId: currentUser.uid,
-        employerId: jobs.find(j => j.id === jobId)?.employerId, // You need to make sure employerId is on the job object
+        employerId: jobs.find(j => j.id === jobId)?.employerId, 
         status: 'Submitted',
-        appliedOn: Timestamp.now(),
+        application_date: Timestamp.now(),
       });
       toast({ title: 'Success', description: 'Application submitted successfully!' });
     } catch (error) {
@@ -77,7 +89,7 @@ const FindJobs = () => {
                   <SelectValue placeholder="Vehicle Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Vehicles</SelectItem>
+                  <SelectItem value="all">All Vehicles</SelectItem>
                   <SelectItem value="Car">Car</SelectItem>
                   <SelectItem value="Motorcycle">Motorcycle</SelectItem>
                   <SelectItem value="Bus">Bus</SelectItem>
@@ -89,7 +101,7 @@ const FindJobs = () => {
                   <SelectValue placeholder="License Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="A">Category A</SelectItem>
                   <SelectItem value="B">Category B</SelectItem>
                   <SelectItem value="C">Category C</SelectItem>
@@ -102,7 +114,7 @@ const FindJobs = () => {
                   <SelectValue placeholder="Region" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Regions</SelectItem>
+                  <SelectItem value="all">All Regions</SelectItem>
                   {regions.map(region => (
                     <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
                   ))}
@@ -115,7 +127,7 @@ const FindJobs = () => {
                   <SelectValue placeholder="Job Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="Full-time">Full-time</SelectItem>
                   <SelectItem value="Contract">Contract</SelectItem>
                   <SelectItem value="Temporary">Temporary</SelectItem>
@@ -148,31 +160,31 @@ const FindJobs = () => {
                   <CardContent className="pt-6">
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <h3 className="text-xl font-semibold mb-1">{job.title}</h3>
+                        <h3 className="text-xl font-semibold mb-1">{job.job_title}</h3>
                         <div className="flex items-center gap-2 text-muted-foreground">
                           <Building2 className="h-4 w-4" />
                           <span>{job.employerName}</span>
                         </div>
                       </div>
-                      <Badge variant="outline">Category {job.licenseRequired}</Badge>
+                      <Badge variant="outline">Category {Array.isArray(job.required_license_category) ? job.required_license_category.join(', ') : (job.required_license_category || 'Any')}</Badge>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 text-sm">
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{job.location}</span>
+                        <span>{job.region}{job.district ? `, ${job.district}` : ''}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        <span>{job.vehicleType} • {job.jobType}</span>
+                        <span>{job.vehicleType} • {job.job_type}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
-                        <span>{job.salary}</span>
+                        <span>{job.salary && typeof job.salary === 'object' && job.salary.from && job.salary.to ? `TZS ${job.salary.from.toLocaleString()} - ${job.salary.to.toLocaleString()}` : typeof job.salary === 'string' ? job.salary : 'Not specified'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>Posted {new Date(job.postedOn.seconds * 1000).toLocaleDateString()}</span>
+                        <span>Posted {job.posted_date && typeof job.posted_date === 'object' && 'seconds' in job.posted_date ? new Date((job.posted_date as any).seconds * 1000).toLocaleDateString() : typeof job.posted_date === 'string' ? job.posted_date : 'N/A'}</span>
                       </div>
                     </div>
 
@@ -180,9 +192,8 @@ const FindJobs = () => {
                       <span className="text-sm text-muted-foreground">
                         {/* Application count not available on job object yet */}
                       </span>
-                      <Button size="sm" onClick={(e) => { e.stopPropagation(); handleApply(job.id); }} disabled={applying === job.id}>
-                        {applying === job.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        {applying === job.id ? 'Applying...' : 'Apply Now'}
+                      <Button size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/ajira/job/${job.id}`); }}>
+                        View Job Details
                       </Button>
                     </div>
                   </CardContent>
@@ -244,4 +255,10 @@ const FindJobs = () => {
   );
 };
 
-export default FindJobs;
+export default function FindJobsWrapped() {
+  return (
+    <ErrorBoundary>
+      <FindJobs />
+    </ErrorBoundary>
+  );
+}

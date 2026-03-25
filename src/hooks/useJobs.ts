@@ -131,6 +131,50 @@ const useJobsHook = (initialFilters: Filter[] = []) => {
 export const useJobs = useJobsHook;
 export const useJobManagement = () => useJobsHook([{ field: 'status', operator: '==', value: 'all' }]);
 
+export const useJob = (jobId: string | null) => {
+  const [job, setJob] = useState<Job | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchJob = async () => {
+      if (!jobId) {
+        setIsLoading(false);
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const jobRef = doc(db, 'jobs', jobId);
+        const jobSnap = await getDoc(jobRef);
+        if (jobSnap.exists()) {
+          const fetchedJob = { id: jobSnap.id, ...jobSnap.data() } as Job;
+          if (!fetchedJob.company_name && fetchedJob.employerId) {
+            try {
+              const employerRef = doc(db, 'employer_profiles', fetchedJob.employerId);
+              const employerSnap = await getDoc(employerRef);
+              fetchedJob.company_name = employerSnap.exists() ? employerSnap.data().company_name : 'Unknown';
+            } catch (e) {
+              console.error(`Failed to fetch employer for job ${fetchedJob.id}`, e);
+            }
+          }
+          setJob(fetchedJob);
+        } else {
+          setError('Job not found');
+        }
+      } catch (err: any) {
+        console.error("Error fetching job details:", err);
+        setError(err.message || 'Failed to fetch job details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchJob();
+  }, [jobId]);
+
+  return { job, isLoading, error };
+};
+
 export const useJobApplicants = (jobId: string | null) => {
   const [applicants, setApplicants] = useState<any[]>([]);
   const [job, setJob] = useState<any | null>(null);
@@ -153,9 +197,23 @@ export const useJobApplicants = (jobId: string | null) => {
         throw new Error('Job not found');
       }
 
-      const q = query(collection(db, 'job_applications'), where('job_id', '==', jobId), orderBy('applied_at', 'desc'));
+      const q = query(collection(db, 'job_applications'), where('jobId', '==', jobId), orderBy('application_date', 'desc'));
       const querySnapshot = await getDocs(q);
-      const applicantsData = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const applicantsData = await Promise.all(querySnapshot.docs.map(async (d) => {
+        const app: any = { id: d.id, ...d.data() };
+        if (app.driverId) {
+          try {
+            const driverRef = doc(db, 'driver_profiles', app.driverId);
+            const driverSnap = await getDoc(driverRef);
+            if (driverSnap.exists()) {
+              app.driver = { id: driverSnap.id, ...driverSnap.data() };
+            }
+          } catch (e) {
+            console.error(`Failed to fetch driver profile for driverId: ${app.driverId}`, e);
+          }
+        }
+        return app;
+      }));
       setApplicants(applicantsData);
 
     } catch (err: any) {

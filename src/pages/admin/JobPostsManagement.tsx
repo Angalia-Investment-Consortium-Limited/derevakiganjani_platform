@@ -137,18 +137,18 @@ const JobPostsManagement = () => {
                 ) : (
                   jobs.map((job) => (
                     <TableRow key={job.id}>
-                      <TableCell className="font-medium">{job.title}</TableCell>
+                      <TableCell className="font-medium">{job.job_title}</TableCell>
                       <TableCell>{job.employerId}</TableCell>
                       <TableCell>
                         <Badge variant={job.status === 'Open' ? 'default' : 'secondary'}>{STATUS_TRANSLATIONS[job.status] ? STATUS_TRANSLATIONS[job.status][language] : job.status}</Badge>
                       </TableCell>
                       <TableCell className="text-center">{0}</TableCell>
-                      <TableCell>{new Date((job.postedOn as any).seconds * 1000).toLocaleDateString()}</TableCell>
+                      <TableCell>{job.posted_date ? new Date((job.posted_date as any).seconds * 1000).toLocaleDateString() : 'N/A'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/jobs/${job.id}`)}><Eye className="h-4 w-4" /></Button>
                           <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/jobs/${job.id}/edit`)}><Edit className="h-4 w-4" /></Button>
-                          <Button size="sm" variant="ghost" onClick={() => handleDeleteClick(job.id, job.title)} disabled={deleting}>
+                          <Button size="sm" variant="ghost" onClick={() => handleDeleteClick(job.id, job.job_title)} disabled={deleting}>
                             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                           </Button>
                         </div>

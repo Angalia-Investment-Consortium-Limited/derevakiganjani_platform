@@ -6,20 +6,82 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, Mail, Phone, MapPin, CheckCircle2 } from 'lucide-react';
+import { Building2, Mail, Phone, MapPin, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 const EmployerRegistration = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { currentUser } = useAuth();
+  
   const [isVerified, setIsVerified] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
-    toast({
-      title: "Profile Saved",
-      description: "Your employer profile has been saved successfully.",
-    });
+  const [formData, setFormData] = useState({
+    companyName: '',
+    companyType: '',
+    contactPerson: '',
+    phone: '',
+    email: '',
+    region: '',
+    district: '',
+    notes: ''
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.id]: e.target.value }));
   };
+
+  const handleSelectChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!currentUser) {
+      toast({ title: 'Error', description: 'You must be logged in to register.', variant: 'destructive' });
+      return;
+    }
+    
+    if (!formData.companyName || !formData.companyType || !formData.contactPerson || !formData.phone || !formData.email || !formData.region || !formData.district) {
+      toast({ title: 'Error', description: 'Please fill in all required fields.', variant: 'destructive' });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await setDoc(doc(db, 'employer_profiles', currentUser.uid), {
+        company_name: formData.companyName,
+        company_type: formData.companyType,
+        contact_person: formData.contactPerson,
+        phone: formData.phone,
+        email: formData.email,
+        region: formData.region,
+        district: formData.district,
+        notes: formData.notes,
+        verificationStatus: 'pending',
+        user_id: currentUser.uid,
+        created_at: new Date()
+      }, { merge: true });
+
+      toast({
+        title: "Registration Successful",
+        description: "Your employer profile has been submitted for verification.",
+      });
+      // Verification Guard will handle routing them to pending page
+      navigate('/ajiri-dereva/my-jobs');
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to save profile.', variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
 
   const handleVerifyEmail = () => {
     setIsVerified(true);
@@ -52,13 +114,13 @@ const EmployerRegistration = () => {
                     <Label htmlFor="companyName">Company Name *</Label>
                     <div className="relative">
                       <Building2 className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="companyName" placeholder="ABC Transport Ltd" className="pl-10" />
+                      <Input id="companyName" value={formData.companyName} onChange={handleInputChange} placeholder="ABC Transport Ltd" className="pl-10" />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="companyType">Company Type *</Label>
-                    <Select>
+                    <Select value={formData.companyType} onValueChange={(val) => handleSelectChange('companyType', val)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select type" />
                       </SelectTrigger>
@@ -76,14 +138,14 @@ const EmployerRegistration = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="contactPerson">Contact Person *</Label>
-                    <Input id="contactPerson" placeholder="John Doe" />
+                    <Input id="contactPerson" value={formData.contactPerson} onChange={handleInputChange} placeholder="John Doe" />
                   </div>
 
                   <div className="space-y-2">
                     <Label htmlFor="phone">Phone Number *</Label>
                     <div className="relative">
                       <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input id="phone" placeholder="+255 XXX XXX XXX" className="pl-10" />
+                      <Input id="phone" value={formData.phone} onChange={handleInputChange} placeholder="+255 XXX XXX XXX" className="pl-10" />
                     </div>
                   </div>
                 </div>
@@ -92,7 +154,7 @@ const EmployerRegistration = () => {
                   <Label htmlFor="email">Email Address *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input id="email" type="email" placeholder="contact@company.co.tz" className="pl-10" />
+                    <Input id="email" type="email" value={formData.email} onChange={handleInputChange} placeholder="contact@company.co.tz" className="pl-10" />
                   </div>
                   {isVerified && (
                     <div className="flex items-center gap-2 text-sm text-success">
@@ -107,7 +169,7 @@ const EmployerRegistration = () => {
                     <Label htmlFor="region">Region *</Label>
                     <div className="relative">
                       <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Select>
+                      <Select value={formData.region} onValueChange={(val) => handleSelectChange('region', val)}>
                         <SelectTrigger className="pl-10">
                           <SelectValue placeholder="Select region" />
                         </SelectTrigger>
@@ -124,7 +186,7 @@ const EmployerRegistration = () => {
 
                   <div className="space-y-2">
                     <Label htmlFor="district">District *</Label>
-                    <Select>
+                    <Select value={formData.district} onValueChange={(val) => handleSelectChange('district', val)}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select district" />
                       </SelectTrigger>
@@ -141,13 +203,16 @@ const EmployerRegistration = () => {
                   <Label htmlFor="notes">Additional Notes</Label>
                   <Textarea 
                     id="notes" 
+                    value={formData.notes}
+                    onChange={handleInputChange}
                     placeholder="Any additional information about your company..."
                     rows={4}
                   />
                 </div>
 
                 <div className="flex gap-3">
-                  <Button onClick={handleSave} className="flex-1">
+                  <Button onClick={handleSave} className="flex-1" disabled={isSaving}>
+                    {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Save Profile
                   </Button>
                   {!isVerified && (

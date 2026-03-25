@@ -55,7 +55,7 @@ export default function JobApplicants() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                  <Briefcase className="h-6 w-6 text-primary" />
-                 <CardTitle className="text-2xl">{job?.title}</CardTitle>
+                 <CardTitle className="text-2xl">{job?.job_title}</CardTitle>
               </div>
               <CardDescription>{t('applicantsForThisJob')}</CardDescription>
             </div>
@@ -78,22 +78,25 @@ export default function JobApplicants() {
                 </TableHeader>
                 <TableBody>
                   {applicants.length === 0 ? (
-                    <TableRow><TableCell colSpan={4} className="h-24 text-center"><Users className="h-12 w-12 mx-auto text-muted-foreground" /><p className="mt-2">{t('noApplicantsFound')}</p></TableCell></TableRow>
+                    <TableRow><TableCell colSpan={5} className="h-24 text-center"><Users className="h-12 w-12 mx-auto text-muted-foreground" /><p className="mt-2">{t('noApplicantsFound')}</p></TableCell></TableRow>
                   ) : (
-                    applicants.map((applicant) => (
-                      <TableRow key={applicant.id}>
-                        <TableCell className="font-medium">{applicant.full_name}</TableCell>
-                        <TableCell>{applicant.email}</TableCell>
-                        <TableCell>{formatDate(applicant.applied_at)}</TableCell>
+                    applicants.map((app: any) => {
+                      const driver = app.driver || {};
+                      const driverName = driver.fullName || driver.full_name || (driver.first_name ? `${driver.first_name} ${driver.last_name}` : 'Unknown Driver');
+                      return (
+                      <TableRow key={app.id}>
+                        <TableCell className="font-medium">{driverName}</TableCell>
+                        <TableCell>{driver.phone || driver.email || 'N/A'}</TableCell>
+                        <TableCell>{formatDate(app.application_date)}</TableCell>
                         <TableCell className="text-right">
                           <Button asChild variant="outline" size="sm">
-                            <a href={applicant.cv_url} target="_blank" rel="noopener noreferrer">
-                                <Download className="h-4 w-4 mr-2" /> {t('viewCV')}
+                            <a href={`mailto:${driver.email || ''}`}>
+                                <FileText className="h-4 w-4 mr-2" /> Contact
                             </a>
                           </Button>
                         </TableCell>
                       </TableRow>
-                    ))
+                    )})
                   )}
                 </TableBody>
               </Table>

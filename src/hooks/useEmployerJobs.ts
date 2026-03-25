@@ -18,19 +18,19 @@ export const useEmployerJobs = (filters: any) => {
     const fetchJobs = async () => {
       setLoading(true);
       try {
-        let q = query(collection(db, 'jobs'), where('employerId', '==', currentUser.uid), orderBy('postedOn', 'desc'));
+        let q = query(collection(db, 'jobs'), where('employerId', '==', currentUser.uid), orderBy('posted_date', 'desc'));
 
         if (filters.searchTerm) {
-          q = query(q, where('title', '>=', filters.searchTerm), where('title', '<=', filters.searchTerm + '\uf8ff'));
+          q = query(q, where('job_title', '>=', filters.searchTerm), where('job_title', '<=', filters.searchTerm + '\uf8ff'));
         }
-        if (filters.status) {
+        if (filters.status && filters.status !== 'all') {
           q = query(q, where('status', '==', filters.status));
         }
-        if (filters.vehicleType) {
+        if (filters.vehicleType && filters.vehicleType !== 'all') {
           q = query(q, where('vehicleType', '==', filters.vehicleType));
         }
-        if (filters.region) {
-          q = query(q, where('location', '==', filters.region));
+        if (filters.region && filters.region !== 'all') {
+          q = query(q, where('region', '==', filters.region));
         }
 
         const querySnapshot = await getDocs(q);

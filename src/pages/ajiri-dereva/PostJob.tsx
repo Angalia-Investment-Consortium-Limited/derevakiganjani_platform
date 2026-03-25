@@ -37,21 +37,26 @@ const PostJob = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   
-  const initialFormData: Partial<Job> = {
-    title: '',
-    jobType: 'full-time',
+  type PostJobFormData = Omit<Job, 'salary' | 'posted_date'> & {
+    salaryMin?: number;
+    salaryMax?: number;
+  };
+
+  const initialFormData: Partial<PostJobFormData> = {
+    job_title: '',
+    job_type: 'Full-time',
     region: '',
     district: '',
-    minExperience: 0,
+    minimum_experience_years: 0,
     salaryMin: undefined,
     salaryMax: undefined,
-    description: '',
-    skills: [],
+    job_description: '',
+    required_skills: [],
     benefits: [],
-    licenseCategory: [],
-    deadline: '',
+    required_license_category: [],
+    application_deadline: '',
   };
-  const [formData, setFormData] = useState<Partial<Job>>(initialFormData);
+  const [formData, setFormData] = useState<Partial<PostJobFormData>>(initialFormData);
   const [newSkill, setNewSkill] = useState('');
   const [newBenefit, setNewBenefit] = useState('');
 
@@ -74,37 +79,37 @@ const PostJob = () => {
     setFormData(prev => ({ ...prev, [id]: type === 'number' ? Number(value) : value }));
   };
 
-  const handleSelectChange = (id: keyof Job, value: string) => {
+  const handleSelectChange = (id: keyof PostJobFormData, value: string) => {
     setFormData(prev => ({ ...prev, [id]: value }));
     if (id === 'region') {
       setFormData(prev => ({ ...prev, district: '' }));
     }
   };
 
-  const handleAddItem = (field: 'skills' | 'benefits', value: string) => {
+  const handleAddItem = (field: 'required_skills' | 'benefits', value: string) => {
     if (value.trim()) {
       setFormData(prev => ({...prev, [field]: [...(prev[field] || []), value.trim()]}));
-      if (field === 'skills') setNewSkill('');
+      if (field === 'required_skills') setNewSkill('');
       if (field === 'benefits') setNewBenefit('');
     }
   };
 
-  const handleRemoveItem = (field: 'skills' | 'benefits', index: number) => {
-    setFormData(prev => ({...prev, [field]: (prev[field] || []).filter((_, i) => i !== index)}));
+  const handleRemoveItem = (field: 'required_skills' | 'benefits', index: number) => {
+    setFormData(prev => ({...prev, [field]: (prev[field] || []).filter((_: any, i: any) => i !== index)}));
   };
 
   const handleLicenseCategoryChange = (category: string) => {
     setFormData(prev => {
-      const existing = prev.licenseCategory || [];
+      const existing = prev.required_license_category || [];
       if (existing.includes(category)) {
-        return { ...prev, licenseCategory: existing.filter(c => c !== category) };
+        return { ...prev, required_license_category: existing.filter(c => c !== category) };
       } else {
-        return { ...prev, licenseCategory: [...existing, category] };
+        return { ...prev, required_license_category: [...existing, category] };
       }
     });
   };
 
-  const requiredFields: (keyof Job)[] = ['title', 'jobType', 'region', 'district', 'description', 'deadline', 'licenseCategory'];
+  const requiredFields: (keyof PostJobFormData)[] = ['job_title', 'job_type', 'region', 'district', 'job_description', 'application_deadline', 'required_license_category'];
   const isFormValid = useMemo(() => {
     return requiredFields.every(field => formData[field] && (Array.isArray(formData[field]) ? (formData[field] as any[]).length > 0 : true));
   }, [formData]);
@@ -121,11 +126,16 @@ const PostJob = () => {
 
     setIsSaving(true);
     try {
+      const { salaryMin, salaryMax, ...jobData } = formData;
       await addDoc(collection(db, 'jobs'), {
-        ...formData,
+        ...jobData,
+        salary: {
+            from: salaryMin || 0,
+            to: salaryMax || 0
+        },
         employerId: employerProfile.userId,
         employerName: employerProfile.company_name,
-        postedOn: Timestamp.now(),
+        posted_date: Timestamp.now(),
         status,
       });
       if (status === 'Published') {
@@ -178,17 +188,17 @@ const PostJob = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="title">Job Title *</Label>
-                <Input id="title" value={formData.title} onChange={handleInputChange} disabled={isSaving} />
+                <Input id="job_title" value={formData.job_title} onChange={handleInputChange} disabled={isSaving} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="jobType">Job Type *</Label>
-                <Select onValueChange={(v) => handleSelectChange('jobType', v)} value={formData.jobType} disabled={isSaving}>
+                <Select onValueChange={(v) => handleSelectChange('job_type', v)} value={formData.job_type} disabled={isSaving}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="full-time">Full-time</SelectItem>
-                    <SelectItem value="contract">Contract</SelectItem>
-                    <SelectItem value="temporary">Temporary</SelectItem>
-                    <SelectItem value="part-time">Part-time</SelectItem>
+                    <SelectItem value="Full-time">Full-time</SelectItem>
+                    <SelectItem value="Contract">Contract</SelectItem>
+                    <SelectItem value="Temporary">Temporary</SelectItem>
+                    <SelectItem value="Part-time">Part-time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -226,11 +236,11 @@ const PostJob = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="minExperience">Minimum Experience (Years)</Label>
-                <Input id="minExperience" type="number" value={formData.minExperience} onChange={handleInputChange} disabled={isSaving} />
+                <Input id="minimum_experience_years" type="number" value={formData.minimum_experience_years} onChange={handleInputChange} disabled={isSaving} />
               </div>
                <div className="space-y-2">
                 <Label htmlFor="deadline">Application Deadline *</Label>
-                <Input id="deadline" type="date" value={formatDeadline(formData.deadline)} onChange={handleInputChange} disabled={isSaving} />
+                <Input id="application_deadline" type="date" value={formatDeadline(formData.application_deadline)} onChange={handleInputChange} disabled={isSaving} />
               </div>
             </div>
 
@@ -241,7 +251,7 @@ const PostJob = () => {
                   <div key={category.id} className="flex items-center space-x-2">
                     <Checkbox
                       id={`license-${category.id}`}
-                      checked={formData.licenseCategory?.includes(category.id)}
+                      checked={formData.required_license_category?.includes(category.id)}
                       onCheckedChange={() => handleLicenseCategoryChange(category.id)}
                       disabled={isSaving}
                     />
@@ -255,22 +265,22 @@ const PostJob = () => {
 
             <div className="space-y-2">
               <Label htmlFor="description">Job Description *</Label>
-              <Textarea id="description" rows={6} value={formData.description} onChange={handleInputChange} disabled={isSaving} />
+              <Textarea id="job_description" rows={6} value={formData.job_description} onChange={handleInputChange} disabled={isSaving} />
             </div>
 
             <div className="space-y-4">
               <Label>Skills Required</Label>
               <div className="flex flex-wrap gap-2">
-                {formData.skills?.map((skill, i) => (
+                {formData.required_skills?.map((skill, i) => (
                   <Badge key={i} variant="secondary" className="flex items-center gap-1">
                     {skill}
-                    <XCircle className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveItem('skills', i)} />
+                    <XCircle className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveItem('required_skills', i)} />
                   </Badge>
                 ))}
               </div>
               <div className="flex gap-2">
                 <Input value={newSkill} onChange={(e) => setNewSkill(e.target.value)} placeholder="e.g., Defensive Driving" />
-                <Button variant="outline" size="icon" onClick={() => handleAddItem('skills', newSkill)}><PlusCircle className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" onClick={() => handleAddItem('required_skills', newSkill)}><PlusCircle className="h-4 w-4" /></Button>
               </div>
             </div>
 
@@ -291,7 +301,7 @@ const PostJob = () => {
             </div>
 
             <div className="flex gap-3 pt-4 border-t">
-              <Button onClick={() => handleSubmit('Draft')} variant="outline" className="flex-1" disabled={isSaving || !formData.title}>
+              <Button onClick={() => handleSubmit('Draft')} variant="outline" className="flex-1" disabled={isSaving || !formData.job_title}>
                 {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save as Draft
               </Button>
               <Button onClick={() => handleSubmit('Published')} className="flex-1" disabled={isSaving || !isFormValid}>

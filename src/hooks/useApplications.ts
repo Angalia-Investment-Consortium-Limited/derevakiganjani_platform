@@ -42,9 +42,36 @@ export const useApplications = () => {
     const fetchApplications = async () => {
       setLoading(true);
       try {
-        const q = query(collection(db, 'job_applications'), where('driverId', '==', currentUser.uid), orderBy('appliedOn', 'desc'));
+        const q = query(collection(db, 'job_applications'), where('driverId', '==', currentUser.uid));
         const querySnapshot = await getDocs(q);
-        const appsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Application));
+        const appsData = await Promise.all(querySnapshot.docs.map(async (document) => {
+          const app = { id: document.id, ...document.data() } as any;
+          if (app.jobId) {
+            try {
+              const jobSnap = await getDoc(doc(db, 'jobs', app.jobId));
+              if (jobSnap.exists()) {
+                const jobData = jobSnap.data();
+                app.jobTitle = jobData.job_title || 'Unknown Job';
+                app.employerName = jobData.company_name || jobData.employerName || 'Unknown Employer';
+              }
+            } catch (e) {
+              console.error("Failed to fetch job context for application:", e);
+            }
+          }
+          // Align fields to what MyApplications.tsx expects
+          app.appliedOn = app.application_date || app.appliedOn;
+          app.lastUpdate = app.application_date;
+          app.timeline = [{ status: 'completed', event: 'Application Submitted', date: app.application_date ? new Date(app.application_date.seconds * 1000).toLocaleDateString() : 'N/A' }];
+          return app as Application;
+        }));
+        
+        // Sort client-side to avoid requiring a composite index in Firestore
+        appsData.sort((a: any, b: any) => {
+          const timeA = a.appliedOn?.seconds || 0;
+          const timeB = b.appliedOn?.seconds || 0;
+          return timeB - timeA;
+        });
+
         setApplications(appsData);
       } catch (error) {
         console.error("Error fetching job applications:", error);

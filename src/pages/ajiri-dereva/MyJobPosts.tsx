@@ -83,7 +83,7 @@ const MyJobPosts = () => {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="Published">Published</SelectItem>
                   <SelectItem value="Draft">Draft</SelectItem>
                   <SelectItem value="Closed">Closed</SelectItem>
@@ -94,7 +94,7 @@ const MyJobPosts = () => {
                   <SelectValue placeholder="Vehicle Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Vehicles</SelectItem>
+                  <SelectItem value="all">All Vehicles</SelectItem>
                   <SelectItem value="Car">Car</SelectItem>
                   <SelectItem value="Motorcycle">Motorcycle</SelectItem>
                   <SelectItem value="Bus">Bus</SelectItem>
@@ -106,7 +106,7 @@ const MyJobPosts = () => {
                   <SelectValue placeholder="Region" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Regions</SelectItem>
+                  <SelectItem value="all">All Regions</SelectItem>
                   {regions.map(region => (
                     <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
                   ))}
@@ -140,7 +140,7 @@ const MyJobPosts = () => {
                         <TableCell className="font-medium">{job.job_title}</TableCell>
                         <TableCell>{job.vehicleType}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">Category {job.required_license_class}</Badge>
+                          <Badge variant="outline">Category {job.required_license_category?.join(', ')}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(job.status)}>{job.status}</Badge>

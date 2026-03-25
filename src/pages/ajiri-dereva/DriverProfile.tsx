@@ -10,35 +10,112 @@ import {
   FileText, UserCheck, MessageSquare, ArrowLeft, Download 
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
 
 const DriverProfile = () => {
   const navigate = useNavigate();
   const { driverId } = useParams();
 
-  // TODO: Fetch driver data from API
-  const driver = {
-    id: driverId,
-    name: 'John Mwamba',
-    phone: '+255 712 345 678',
-    email: 'john.mwamba@email.com',
-    region: 'Dar es Salaam',
-    district: 'Kinondoni',
-    licenseCategory: ['D', 'E'],
-    experienceYears: 5,
-    jiTestiPassed: true,
-    elimikaCertified: true,
-    cvUrl: '/cv/john-mwamba.pdf',
-    bio: 'Experienced truck driver with 5 years of driving heavy vehicles across East Africa. Strong safety record and excellent navigation skills.',
-    recentJobs: [
-      { company: 'ABC Transport', position: 'Truck Driver', period: '2020 - 2024' },
-      { company: 'XYZ Logistics', position: 'Delivery Driver', period: '2018 - 2020' },
-    ],
-    certificates: [
-      { name: 'JiTesti - Category D', date: '2024-01-15', score: '92%' },
-      { name: 'Elimika - Defensive Driving', date: '2023-12-10', progress: '100%' },
-    ],
-    skills: ['Heavy Vehicle Operation', 'Route Planning', 'Vehicle Maintenance', 'Safety Compliance'],
-  };
+  const [driver, setDriver] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDriverData = async () => {
+      if (!driverId) return;
+      try {
+        setLoading(true);
+        const driverRef = doc(db, 'driver_profiles', driverId);
+        const driverSnap = await getDoc(driverRef);
+        
+        if (driverSnap.exists()) {
+          const data = driverSnap.data();
+          const driverName = data.fullName || data.full_name || (data.first_name ? `${data.first_name} ${data.last_name}` : 'Unknown Driver');
+          let lic = data.license_category || data.categories || [];
+          if (typeof lic === 'string') lic = [lic];
+
+          let jiTestiPassed = false;
+          let elimikaCertified = false;
+          let certsList = data.certificates || [];
+
+          try {
+             const certsQ = query(collection(db, 'certificates'), where('userId', '==', driverId));
+             const certsSnap = await getDocs(certsQ);
+             jiTestiPassed = !certsSnap.empty;
+             certsSnap.docs.forEach(d => {
+               certsList.push({ name: 'JiTesti Certificate', date: new Date((d.data().issuedAt || d.data().date)?.seconds * 1000).toLocaleDateString() || 'Recent', score: d.data().score || 'Passed' });
+             });
+          } catch(e) { console.error("Error checking certificates", e) }
+
+          try {
+             // Let's just check course_enrollments instead of elimika specific because of schemas
+             const enrollQ = query(collection(db, 'course_enrollments'), where('userId', '==', driverId));
+             const enrollSnap = await getDocs(enrollQ);
+             if (!enrollSnap.empty) {
+                // If they have any enrollments that are completed
+                elimikaCertified = enrollSnap.docs.some(d => d.data().status === 'completed' || d.data().status === 'Completed' || d.data().progress === 100);
+             }
+          } catch(e) { console.error("Error checking enrollments", e) }
+
+          setDriver({
+            id: driverId,
+            name: driverName,
+            phone: data.phone || data.mobile || 'N/A',
+            email: data.email || 'N/A',
+            region: data.region || 'N/A',
+            district: data.district || '',
+            licenseCategory: lic,
+            experienceYears: data.experience_years || data.experience || 0,
+            jiTestiPassed,
+            elimikaCertified,
+            bio: data.bio || data.about || 'Professional driver registered on Dereva Kiganjani.',
+            skills: data.skills || ['Driving', 'Safety Compliance', 'Vehicle Maintenance'],
+            certificates: certsList,
+            recentJobs: data.recentJobs || data.work_experience || [],
+            cvUrl: data.cvUrl || null
+          });
+        } else {
+          setError("Driver profile not found.");
+        }
+      } catch (err: any) {
+        console.error(err);
+        setError("Failed to load driver details.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDriverData();
+  }, [driverId]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container py-8 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !driver) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container py-8 text-center mt-20">
+          <h2 className="text-2xl font-bold mb-4">Error</h2>
+          <p className="text-muted-foreground mb-6">{error || "Could not load profile."}</p>
+          <Button onClick={() => navigate(-1)}>Go Back</Button>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -157,18 +234,20 @@ const DriverProfile = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {driver.recentJobs.map((job, index) => (
+                  {driver.recentJobs.length > 0 ? driver.recentJobs.map((job: any, index: number) => (
                     <div key={index} className="flex gap-4">
                       <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                         <Briefcase className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1">
-                        <h4 className="font-semibold">{job.position}</h4>
-                        <p className="text-sm text-muted-foreground">{job.company}</p>
-                        <p className="text-sm text-muted-foreground">{job.period}</p>
+                        <h4 className="font-semibold">{job.position || job.title}</h4>
+                        <p className="text-sm text-muted-foreground">{job.company || job.company_name}</p>
+                        <p className="text-sm text-muted-foreground">{job.period || job.duration}</p>
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="text-muted-foreground">No specific work experience listed.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -182,7 +261,7 @@ const DriverProfile = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {driver.certificates.map((cert, index) => (
+                  {driver.certificates.length > 0 ? driver.certificates.map((cert: any, index: number) => (
                     <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
@@ -202,7 +281,9 @@ const DriverProfile = () => {
                         )}
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <p className="text-muted-foreground">No certificates uploaded.</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -216,7 +297,7 @@ const DriverProfile = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {driver.skills.map((skill, index) => (
+                  {driver.skills.map((skill: string, index: number) => (
                     <Badge key={index} variant="secondary">
                       {skill}
                     </Badge>
@@ -233,9 +314,9 @@ const DriverProfile = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Button variant="outline" className="w-full md:w-auto">
+                <Button variant="outline" className="w-full md:w-auto" disabled={!driver.cvUrl} onClick={() => driver.cvUrl && window.open(driver.cvUrl, '_blank')}>
                   <Download className="h-4 w-4 mr-2" />
-                  Download CV
+                  {driver.cvUrl ? 'Download CV' : 'No CV Uploaded'}
                 </Button>
               </CardContent>
             </Card>
