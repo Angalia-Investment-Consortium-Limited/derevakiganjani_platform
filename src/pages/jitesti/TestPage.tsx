@@ -27,7 +27,7 @@ type TestAttempt = {
     startTime: { toDate: () => Date };
     durationInMinutes: number;
     passMark: number;
-    status: 'started' | 'completed';
+    status: 'not_started' | 'started' | 'completed';
     score?: number;
 };
 
@@ -125,7 +125,7 @@ const TestPage: React.FC = () => {
     });
 
     useEffect(() => {
-        if (!testAttempt || testAttempt.status === 'completed') return;
+        if (!testAttempt || testAttempt.status === 'completed' || !testAttempt.startTime) return;
         const endTime = testAttempt.startTime.toDate().getTime() + testAttempt.durationInMinutes * 60 * 1000;
         const timer = setInterval(() => {
             const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
@@ -181,6 +181,38 @@ const TestPage: React.FC = () => {
     if (isLoadingAttempt) return <div>Loading test...</div>;
     if (attemptError || !testAttempt) return <div className="text-red-500">Error loading test. It may be invalid.</div>;
     if (!user || user.uid !== testAttempt.userId) return <div className="text-red-500">You are not authorized to take this test.</div>;
+
+    if (testAttempt.status === 'not_started' || !testAttempt.startTime) {
+        return (
+            <div className="min-h-screen flex flex-col bg-background">
+                <Header />
+                <main className="flex-grow flex items-center justify-center container mx-auto px-4 py-8">
+                    <Card className="max-w-md w-full p-6 text-center shadow-lg border-2 border-indigo-100">
+                         <CardHeader>
+                             <CardTitle className="text-2xl font-bold mb-2">Ready to begin?</CardTitle>
+                             <CardDescription className="text-lg text-gray-600 mt-2">
+                                 You have <span className="font-bold text-gray-900">{testAttempt.durationInMinutes} minutes</span> to complete this test.<br/><br/>
+                                 The evaluation timer will start immediately after you confirm below.
+                             </CardDescription>
+                         </CardHeader>
+                         <CardContent>
+                             <Button onClick={async () => {
+                                 try {
+                                     await updateDoc(doc(db, 'test_attempts', testAttemptId), { status: 'started', startTime: serverTimestamp() });
+                                     await queryClient.invalidateQueries({ queryKey: ['test-attempt', testAttemptId] });
+                                 } catch (e: any) {
+                                     toast({ title: "Error starting test", description: e.message, variant: "destructive" });
+                                 }
+                             }} size="lg" className="w-full text-lg py-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
+                                 Start Test Now
+                             </Button>
+                         </CardContent>
+                    </Card>
+                </main>
+                <Footer />
+            </div>
+        );
+    }
 
     const currentQuestion = questions[currentQuestionIndex];
     const progress = questions.length ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;

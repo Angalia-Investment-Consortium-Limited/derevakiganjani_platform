@@ -13,50 +13,50 @@ export const STATUS_COLORS: { [key: string]: string } = {
 };
 
 export const STATUS_TRANSLATIONS: { [key: string]: string } = {
-    'pending-review': 'Inasubiri Uhakiki',
-    'pending-payment': 'Inasubiri Malipo',
-    'approved': 'Imeidhinishwa',
-    'rejected': 'Imekataliwa',
-    'requires-changes': 'Inahitaji Mabadiliko',
-    'payment-failed': 'Malipo Yameshindikana',
-  };
+  'pending-review': 'Inasubiri Uhakiki',
+  'pending-payment': 'Inasubiri Malipo',
+  'approved': 'Imeidhinishwa',
+  'rejected': 'Imekataliwa',
+  'requires-changes': 'Inahitaji Mabadiliko',
+  'payment-failed': 'Malipo Yameshindikana',
+};
 
 export const APPLICATION_TYPES = [
-    'New License', 
-    'License Renewal', 
-    'LATRA Exam'
+  'New License',
+  'License Renewal',
+  'LATRA Exam'
 ] as const;
 
 export const APPLICATION_FEES: { [key in ApplicationType]: number } = {
-    'New License': 3000,
-    'License Renewal': 3000,
-    'LATRA Exam': 2000,
+  'New License': 300,
+  'License Renewal': 3000,
+  'LATRA Exam': 2000,
 };
 
 export const LICENSE_CATEGORIES = [
-    'A', 'A1', 'A2', 'A3', 
-    'B', 'B1', 
-    'C', 'C1', 'C2', 'C3', 
-    'D', 'E'
+  'A', 'A1', 'A2', 'A3',
+  'B', 'B1',
+  'C', 'C1', 'C2', 'C3',
+  'D', 'E'
 ] as const;
 
 export const DOCUMENT_TYPE_TRANSLATIONS: { [key: string]: string } = {
-    nationalId: 'National ID',
-    drivingLicense: 'Driving License',
-    passport: 'Passport Photo',
-    utilityBill: 'Utility Bill',
-    psvCertificate: 'PSV Certificate',
-    hgvCertificate: 'HGV Certificate',
+  nationalId: 'National ID',
+  drivingLicense: 'Driving License',
+  passport: 'Passport Photo',
+  utilityBill: 'Utility Bill',
+  psvCertificate: 'PSV Certificate',
+  hgvCertificate: 'HGV Certificate',
 };
 
 // This is the source of truth for the document types
 export const DOCUMENT_TYPES = [
-    'nationalId',
-    'drivingLicense',
-    'passport',
-    'utilityBill',
-    'psvCertificate',
-    'hgvCertificate'
+  'nationalId',
+  'drivingLicense',
+  'passport',
+  'utilityBill',
+  'psvCertificate',
+  'hgvCertificate'
 ] as const;
 
 export type DocumentType = typeof DOCUMENT_TYPES[number];
@@ -88,12 +88,12 @@ export const FILE_UPLOAD_CONFIG: FileUploadConfig = {
       allowedTypes: ['application/pdf', 'image/jpeg'],
     },
     psvCertificate: {
-        maxSize: 1024 * 1024 * 5,
-        allowedTypes: ['application/pdf'],
+      maxSize: 1024 * 1024 * 5,
+      allowedTypes: ['application/pdf'],
     },
     hgvCertificate: {
-        maxSize: 1024 * 1024 * 5,
-        allowedTypes: ['application/pdf'],
+      maxSize: 1024 * 1024 * 5,
+      allowedTypes: ['application/pdf'],
     }
   },
 };
@@ -119,13 +119,13 @@ export type LatraType = 'PSV' | 'HGV';
 // --- INTERFACES ---
 
 export interface FileUploadConfig {
-    allowedFileTypes: {
-        // This makes sure all document types are covered in the config
-        [key in DocumentType]: {
-            maxSize: number;
-            allowedTypes: string[];
-        }
+  allowedFileTypes: {
+    // This makes sure all document types are covered in the config
+    [key in DocumentType]: {
+      maxSize: number;
+      allowedTypes: string[];
     }
+  }
 }
 
 export interface DocumentUpload {
@@ -148,11 +148,11 @@ export interface LicenseApplicationFormData {
 }
 
 export interface SubmitApplicationResponse {
-    success: boolean;
-    message: string;
-    applicationId?: string;
-    paymentId?: string;
-    error?: any;
+  success: boolean;
+  message: string;
+  applicationId?: string;
+  paymentId?: string;
+  error?: any;
 }
 
 // Firestore Document Structure for `license_applications`
@@ -179,14 +179,14 @@ export interface LicenseApplication {
 }
 
 export interface LicenseRequest {
-    id: string;
-    userId: string;
-    subject: string;
-    fullName: string; 
-    email: string;
-    status: 'submitted' | 'in-review' | 'resolved' | 'closed';
-    submittedOn: Timestamp;
-    lastUpdated: Timestamp;
-    details?: string;
-    adminNotes?: string;
+  id: string;
+  userId: string;
+  subject: string;
+  fullName: string;
+  email: string;
+  status: 'submitted' | 'in-review' | 'resolved' | 'closed';
+  submittedOn: Timestamp;
+  lastUpdated: Timestamp;
+  details?: string;
+  adminNotes?: string;
 }

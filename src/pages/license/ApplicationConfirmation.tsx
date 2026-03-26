@@ -1,20 +1,15 @@
-
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { usePaymentProcessing } from '@/hooks/usePayments';
 import { useApplicationDetails } from '@/hooks/useApplications';
-import { CheckCircle, AlertTriangle, Loader2, Home, FileText } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 
-// This is the page the user lands on after submitting their application form.
-// It immediately triggers the payment process.
 export default function ApplicationConfirmation() {
   const { refNo } = useParams<{ refNo: string }>();
-  const [searchParams] = useSearchParams();
   const { t } = useLanguage();
   const navigate = useNavigate();
 
@@ -29,37 +24,8 @@ export default function ApplicationConfirmation() {
     error: applicationError 
   } = useApplicationDetails(refNo);
 
-  const { 
-    createPaymentOrder, 
-    pollPaymentStatus, 
-    isLoading: isProcessingPayment, 
-    error: paymentError, 
-    paymentStatus 
-  } = usePaymentProcessing(refNo);
-
-  const selcomOrderId = searchParams.get('order_id');
-  const [pollAttempted, setPollAttempted] = useState(false);
-
-  // Effect to handle the payment flow
-  useEffect(() => {
-    if (application) {
-      // If there's a selcom_order_id in the URL, it means the user is returning from Selcom.
-      // We should poll the status.
-      if (selcomOrderId && !pollAttempted) {
-        setPollAttempted(true);
-        pollPaymentStatus(selcomOrderId);
-      }
-      // If the application status is still pending payment and there's no order_id in the URL,
-      // it means we need to create the payment order for the first time.
-      else if (application.status === 'pending-payment' && !selcomOrderId) {
-        createPaymentOrder();
-      }
-    }
-  }, [application, selcomOrderId, pollAttempted, createPaymentOrder, pollPaymentStatus]);
-
   const renderStatus = () => {
-    // Loading states
-    if (isLoadingApplication || isProcessingPayment) {
+    if (isLoadingApplication) {
       return (
         <div className="flex flex-col items-center justify-center text-center p-8">
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
@@ -69,30 +35,28 @@ export default function ApplicationConfirmation() {
       );
     }
 
-    // Error states
-    if (applicationError || paymentError) {
+    if (applicationError) {
         return (
             <div className="flex flex-col items-center justify-center text-center p-8">
                 <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
                 <h1 className="text-2xl font-bold">{t('payment_error_title')}</h1>
                 <p className="text-muted-foreground max-w-md">
-                    {t('Payment Error Message')}: {applicationError || paymentError}
+                    {t('Payment Error Message')}: {applicationError}
                 </p>
-                <Button onClick={() => createPaymentOrder()} className="mt-6">{t('Try Again')}</Button>
+                <Button onClick={() => window.location.reload()} className="mt-6">{t('Try Again')}</Button>
             </div>
         );
     }
 
-    // Final status based on polling or application data
-    const finalStatus = paymentStatus || application?.status;
+    const finalStatus = application?.status;
 
     switch (finalStatus) {
-      case 'completed':
       case 'pending-review':
+      case 'approved':
         return (
            <div className="text-center p-8">
-                <CheckCircle className="h-16 w-16 text-success mx-auto mb-4" />
-                <h1 className="text-2xl font-bold">{t('payment_successful')}</h1>
+                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+                <h1 className="text-2xl font-bold text-green-700">{t('payment_successful')}</h1>
                 <p className="text-muted-foreground mb-6">{t('application_under_review')}</p>
                 <div className="flex gap-4 justify-center">
                     <Button asChild><Link to="/license/my-applications">{t('view_my_applications')}</Link></Button>
@@ -101,24 +65,23 @@ export default function ApplicationConfirmation() {
             </div>
         );
 
-      case 'failed':
       case 'payment-failed':
+      case 'rejected':
         return (
             <div className="flex flex-col items-center justify-center text-center p-8">
                 <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
                 <h1 className="text-2xl font-bold">{t('payment_failed_title')}</h1>
                 <p className="text-muted-foreground">{t('payment_failed_message')}</p>
-                <Button onClick={() => createPaymentOrder()} className="mt-6">{t('try_again_payment')}</Button>
+                <Button asChild className="mt-6"><Link to="/license/my-applications">{t('Try Again')}</Link></Button>
             </div>
         );
 
-      case 'pending':
       case 'pending-payment':
         return (
              <div className="flex flex-col items-center justify-center text-center p-8">
                 <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
                 <h1 className="text-2xl font-bold">{t('redirecting_to_payment')}</h1>
-                <p className="text-muted-foreground">{t('follow_instructions_on_payment_page')}</p>
+                <p className="text-muted-foreground">{t('A USSD prompt has been sent to your phone. Please enter your PIN to authorize the payment.')}</p>
             </div>
         );
 

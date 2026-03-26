@@ -29,7 +29,7 @@ export const columns: ColumnDef<JitestiResultRow>[] = [
     header: ({ column }) => (
         <DataTableColumnHeader column={column} title="Score" />
     ),
-    cell: ({ row }) => <span className="font-medium">{row.original.score}%</span>
+    cell: ({ row }) => <span className="font-medium">{row.original.score !== null && row.original.score !== undefined ? `${row.original.score}%` : '--'}</span>
   },
   {
     accessorKey: "status",

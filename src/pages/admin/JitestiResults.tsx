@@ -15,7 +15,7 @@ export interface JitestiResultRow {
   userName: string;
   userEmail: string;
   categoryTitle: string;
-  score: number;
+  score: number | null;
   totalQuestions: number;
   status: string;
   completedAt: Date | null;
@@ -33,17 +33,29 @@ const fetchJitestiResults = async (): Promise<JitestiResultRow[]> => {
   const results: JitestiResultRow[] = attemptsSnapshot.docs.map(doc => {
     const attempt = doc.data();
     const user = usersMap.get(attempt.userId);
-    const status = attempt.isPassed ? 'Passed' : 'Failed';
+    
+    let totalQuestions = 0;
+    if (attempt.answers) {
+      if (Array.isArray(attempt.answers)) totalQuestions = attempt.answers.length;
+      else totalQuestions = Object.keys(attempt.answers).length;
+    }
+
+    const isCompleted = attempt.status === 'completed';
+    const scoreCount = attempt.score || 0;
+    const percentage = totalQuestions > 0 ? Math.round((scoreCount / totalQuestions) * 100) : 0;
+    
+    const isPassed = attempt.isPassed !== undefined ? attempt.isPassed : percentage >= (attempt.passMark || 0);
+    const status = isCompleted ? (isPassed ? 'Passed' : 'Failed') : 'In Progress';
 
     return {
       id: doc.id,
       userName: user?.full_name || 'N/A',
       userEmail: user?.email || 'N/A',
-      categoryTitle: attempt.categoryTitle,
-      score: attempt.score,
-      totalQuestions: attempt.answers.length,
-      status: attempt.status === 'completed' ? status : 'In Progress',
-      completedAt: attempt.endTime?.toDate() || null,
+      categoryTitle: attempt.categoryTitle || 'Unknown category',
+      score: isCompleted ? percentage : null,
+      totalQuestions: totalQuestions,
+      status: status,
+      completedAt: attempt.completedAt?.toDate() || attempt.endTime?.toDate() || attempt.startTime?.toDate() || null,
     };
   });
 

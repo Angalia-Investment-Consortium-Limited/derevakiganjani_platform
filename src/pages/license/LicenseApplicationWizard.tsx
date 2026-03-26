@@ -11,42 +11,42 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Progress } from '@/components/ui/progress';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  useApplicationForm, 
-  useSubmitApplication, 
-  useFileValidation 
+import {
+  useApplicationForm,
+  useSubmitApplication,
+  useFileValidation
 } from '@/hooks/useApplications';
-import { 
-  MultiDocumentUpload, 
+import {
+  MultiDocumentUpload,
 } from '@/components/license/DocumentUpload';
 import type { ApplicationType, LicenseCategory, LatraType } from '@/types/license';
-import { 
-  LICENSE_CATEGORIES, 
-  APPLICATION_TYPES, 
-  REQUIRED_DOCUMENTS, 
+import {
+  LICENSE_CATEGORIES,
+  APPLICATION_TYPES,
+  REQUIRED_DOCUMENTS,
   FILE_UPLOAD_CONFIG,
   APPLICATION_FEES
 } from '@/types/license';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  User, 
-  MapPin, 
-  Upload, 
-  FileText, 
-  Loader2 
+import {
+  ChevronLeft,
+  ChevronRight,
+  User,
+  MapPin,
+  Upload,
+  FileText,
+  Loader2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const MOCK_REGIONS = ['Dar es Salaam', 'Mwanza', 'Arusha', 'Dodoma', 'Mbeya'];
 const MOCK_DISTRICTS: { [key: string]: string[] } = {
-    'Dar es Salaam': ['Ilala', 'Temeke', 'Kinondoni', 'Ubungo', 'Kigamboni'],
-    'Mwanza': ['Nyamagana', 'Ilemela', 'Sengerema'],
-    'Arusha': ['Arusha City', 'Arusha Rural', 'Meru'],
-    'Dodoma': ['Dodoma Urban', 'Bahi', 'Chamwino'],
-    'Mbeya': ['Mbeya Urban', 'Rungwe', 'Kyela'],
-  };
+  'Dar es Salaam': ['Ilala', 'Temeke', 'Kinondoni', 'Ubungo', 'Kigamboni'],
+  'Mwanza': ['Nyamagana', 'Ilemela', 'Sengerema'],
+  'Arusha': ['Arusha City', 'Arusha Rural', 'Meru'],
+  'Dodoma': ['Dodoma Urban', 'Bahi', 'Chamwino'],
+  'Mbeya': ['Mbeya Urban', 'Rungwe', 'Kyela'],
+};
 
 export default function LicenseApplicationWizard() {
   const { type } = useParams<{ type: string }>();
@@ -118,18 +118,18 @@ export default function LicenseApplicationWizard() {
         if (formData.email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(formData.email)) newErrors.email = t('invalid_email');
         break;
       case 1:
-        if (!formData.region) newErrors.region = t('region_required');
-        if (!formData.district) newErrors.district = t('district_required');
-        if (!formData.license_category) newErrors.license_category = t('license_category_required');
-        if (applicationType === 'LATRA Exam' && !formData.latra_type) newErrors.latra_type = t('latra_type_required');
-        if (applicationType === 'License Renewal' && !formData.current_license_number?.trim()) newErrors.current_license_number = t('current_license_required');
+        if (!formData.region) newErrors.region = t('Region Required');
+        if (!formData.district) newErrors.district = t('District Required');
+        if (!formData.license_category) newErrors.license_category = t('License Category Required');
+        if (applicationType === 'LATRA Exam' && !formData.latra_type) newErrors.latra_type = t('LATRA Type Required');
+        if (applicationType === 'License Renewal' && !formData.current_license_number?.trim()) newErrors.current_license_number = t('Current License Required');
         break;
       case 2:
         const requiredDocs = REQUIRED_DOCUMENTS[applicationType];
         const uploadedDocTypes = uploadedFiles.map(f => f.documentType);
         const missingDocs = requiredDocs.filter(doc => !uploadedDocTypes.includes(doc));
         if (missingDocs.length > 0) {
-          toast.error(`${t('missing_documents')}: ${missingDocs.join(', ')}`);
+          toast.error(`${t('Missing Documents')}: ${missingDocs.join(', ')}`);
           return false;
         }
         break;
@@ -156,39 +156,39 @@ export default function LicenseApplicationWizard() {
       return;
     }
 
-    toast.info(t('application_submitted_redirecting_to_payment'));
+    toast.info(t('Application Submitted Redirecting to Payment'));
     setIsProcessingPayment(true);
 
     // 2. Call the Cloud Function to initiate payment
     try {
-        const functions = getFunctions();
-        const initiateLicensePayment = httpsCallable(functions, 'initiateLicensePayment');
-        
-        const fee = APPLICATION_FEES[applicationType];
+      const functions = getFunctions();
+      const initiateLicensePayment = httpsCallable(functions, 'initiateLicensePayment');
 
-        const paymentResult = await initiateLicensePayment({
-            applicationId: creationResult.applicationId,
-            phone: formData.phone_number,
-            application: {
-                id: creationResult.applicationId,
-                type: applicationType,
-                fee: fee
-            }
-        });
+      const fee = APPLICATION_FEES[applicationType];
 
-        const resultData = paymentResult.data as { success: boolean; applicationId?: string; message?: string };
-
-        if (resultData.success) {
-            toast.success(t('payment_initiated_successfully'));
-            navigate(`/license/confirmation/${creationResult.applicationId}`);
-        } else {
-            throw new Error(resultData.message || t('payment_initiation_failed'));
+      const paymentResult = await initiateLicensePayment({
+        applicationId: creationResult.applicationId,
+        phone: formData.phone_number,
+        application: {
+          id: creationResult.applicationId,
+          type: applicationType,
+          fee: fee
         }
+      });
+
+      const resultData = paymentResult.data as { success: boolean; applicationId?: string; message?: string };
+
+      if (resultData.success) {
+        toast.success(t('Payment Initiated Successfully'));
+        navigate(`/license/confirmation/${creationResult.applicationId}`);
+      } else {
+        throw new Error(resultData.message || t('Payment Initiation Failed'));
+      }
     } catch (error: any) {
-        console.error("Payment initiation error:", error);
-        toast.error(error.message || t('an_error_occurred_during_payment'));
-        // Optionally revert application status or let user retry payment
-        setIsProcessingPayment(false);
+      console.error("Payment initiation error:", error);
+      toast.error(error.message || t('An Error Occurred During Payment'));
+      // Optionally revert application status or let user retry payment
+      setIsProcessingPayment(false);
     }
   };
 
@@ -206,27 +206,27 @@ export default function LicenseApplicationWizard() {
         return (
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="full_name">{t('full_name')}</Label>
+              <Label htmlFor="full_name">{t('Full Name')}</Label>
               <Input id="full_name" value={formData.full_name} onChange={(e) => updateFormData({ full_name: e.target.value })} />
               {errors.full_name && <p className="text-sm text-destructive">{errors.full_name}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="nida_number">{t('nida_number')}</Label>
+              <Label htmlFor="nida_number">{t('NIDA Number')}</Label>
               <Input id="nida_number" value={formData.nida_number} onChange={(e) => updateFormData({ nida_number: e.target.value })} />
               {errors.nida_number && <p className="text-sm text-destructive">{errors.nida_number}</p>}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="date_of_birth">{t('date_of_birth')}</Label>
+              <Label htmlFor="date_of_birth">{t('Date of Birth')}</Label>
               <Input id="date_of_birth" type="date" value={formData.date_of_birth} onChange={(e) => updateFormData({ date_of_birth: e.target.value })} />
               {errors.date_of_birth && <p className="text-sm text-destructive">{errors.date_of_birth}</p>}
             </div>
-             <div className="space-y-2">
-              <Label htmlFor="phone_number">{t('phone_number_for_payment')}</Label>
-              <Input 
-                id="phone_number" 
+            <div className="space-y-2">
+              <Label htmlFor="phone_number">{t('Phone Number for Payment')}</Label>
+              <Input
+                id="phone_number"
                 placeholder="255xxxxxxxxx"
-                value={formData.phone_number} 
-                onChange={(e) => updateFormData({ phone_number: e.target.value })} 
+                value={formData.phone_number}
+                onChange={(e) => updateFormData({ phone_number: e.target.value })}
               />
               {errors.phone_number && <p className="text-sm text-destructive">{errors.phone_number}</p>}
             </div>
@@ -239,60 +239,60 @@ export default function LicenseApplicationWizard() {
         );
       case 1:
         return (
-            <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>{t('region')}</Label>
-                        <Select value={formData.region} onValueChange={(value) => updateFormData({ region: value, district: '' })}>
-                            <SelectTrigger><SelectValue placeholder={t('select_region')} /></SelectTrigger>
-                            <SelectContent>
-                                {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                         {errors.region && <p className="text-sm text-destructive">{errors.region}</p>}
-                    </div>
-                    <div className="space-y-2">
-                        <Label>{t('district')}</Label>
-                        <Select value={formData.district} onValueChange={(value) => updateFormData({ district: value })} disabled={!formData.region}>
-                            <SelectTrigger><SelectValue placeholder={t('select_district')} /></SelectTrigger>
-                            <SelectContent>
-                                {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        {errors.district && <p className="text-sm text-destructive">{errors.district}</p>}
-                    </div>
-                </div>
-                <div className="space-y-2">
-                    <Label>{t('license_category')}</Label>
-                    <Select value={formData.license_category?.join(',')} onValueChange={(value) => updateFormData({ license_category: value.split(',') as LicenseCategory[] })}>
-                        <SelectTrigger><SelectValue placeholder={t('select_license_category')} /></SelectTrigger>
-                        <SelectContent>
-                            {LICENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {errors.license_category && <p className="text-sm text-destructive">{errors.license_category}</p>}
-                </div>
-                {applicationType === 'License Renewal' && (
-                    <div className="space-y-2">
-                        <Label htmlFor="current_license_number">{t('current_license_number')}</Label>
-                        <Input id="current_license_number" value={formData.current_license_number || ''} onChange={(e) => updateFormData({ current_license_number: e.target.value })} />
-                        {errors.current_license_number && <p className="text-sm text-destructive">{errors.current_license_number}</p>}
-                    </div>
-                )}
-                 {applicationType === 'LATRA Exam' && (
-                    <div className="space-y-2">
-                         <Label>{t('latra_type')}</Label>
-                        <Select value={formData.latra_type} onValueChange={(value) => updateFormData({ latra_type: value as LatraType })}>
-                            <SelectTrigger><SelectValue placeholder={t('select_latra_type')} /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="PSV">PSV</SelectItem>
-                                <SelectItem value="HGV">HGV</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        {errors.latra_type && <p className="text-sm text-destructive">{errors.latra_type}</p>}
-                    </div>
-                )}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('Region')}</Label>
+                <Select value={formData.region} onValueChange={(value) => updateFormData({ region: value, district: '' })}>
+                  <SelectTrigger><SelectValue placeholder={t('Select Region')} /></SelectTrigger>
+                  <SelectContent>
+                    {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {errors.region && <p className="text-sm text-destructive">{errors.region}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label>{t('District')}</Label>
+                <Select value={formData.district} onValueChange={(value) => updateFormData({ district: value })} disabled={!formData.region}>
+                  <SelectTrigger><SelectValue placeholder={t('Select District')} /></SelectTrigger>
+                  <SelectContent>
+                    {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {errors.district && <p className="text-sm text-destructive">{errors.district}</p>}
+              </div>
             </div>
+            <div className="space-y-2">
+              <Label>{t('License Category')}</Label>
+              <Select value={formData.license_category?.join(',')} onValueChange={(value) => updateFormData({ license_category: value.split(',') as LicenseCategory[] })}>
+                <SelectTrigger><SelectValue placeholder={t('Select License Category')} /></SelectTrigger>
+                <SelectContent>
+                  {LICENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {errors.license_category && <p className="text-sm text-destructive">{errors.license_category}</p>}
+            </div>
+            {applicationType === 'License Renewal' && (
+              <div className="space-y-2">
+                <Label htmlFor="current_license_number">{t('Current License Number')}</Label>
+                <Input id="current_license_number" value={formData.current_license_number || ''} onChange={(e) => updateFormData({ current_license_number: e.target.value })} />
+                {errors.current_license_number && <p className="text-sm text-destructive">{errors.current_license_number}</p>}
+              </div>
+            )}
+            {applicationType === 'LATRA Exam' && (
+              <div className="space-y-2">
+                <Label>{t('LATRA Type')}</Label>
+                <Select value={formData.latra_type} onValueChange={(value) => updateFormData({ latra_type: value as LatraType })}>
+                  <SelectTrigger><SelectValue placeholder={t('Select LATRA Type')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="PSV">PSV</SelectItem>
+                    <SelectItem value="HGV">HGV</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.latra_type && <p className="text-sm text-destructive">{errors.latra_type}</p>}
+              </div>
+            )}
+          </div>
         );
       case 2:
         const requiredDocs = REQUIRED_DOCUMENTS[applicationType] || [];
@@ -313,26 +313,26 @@ export default function LicenseApplicationWizard() {
         );
       case 3:
         return (
-           <div>
-             <h3 className="text-lg font-semibold mb-2">{t('review_your_application')}</h3>
-             <div className="space-y-2 rounded-lg border p-4">
-               <p><strong>{t('full_name')}:</strong> {formData.full_name}</p>
-               <p><strong>{t('nida_number')}:</strong> {formData.nida_number}</p>
-               <p><strong>{t('date_of_birth')}:</strong> {formData.date_of_birth}</p>
-               <p><strong>{t('phone_number')}:</strong> {formData.phone_number}</p>
-               <p><strong>{t('email')}:</strong> {formData.email}</p>
-               <p><strong>{t('region')}:</strong> {formData.region}</p>
-               <p><strong>{t('district')}:</strong> {formData.district}</p>
-               <p><strong>{t('license_category')}:</strong> {formData.license_category?.join(', ')}</p>
-               <p><strong>{t('application_type')}:</strong> {applicationType}</p>
-               <div className="pt-2">
-                <h4 className="font-semibold">{t('uploaded_documents')}:</h4>
+          <div>
+            <h3 className="text-lg font-semibold mb-2">{t('Review Your Application')}</h3>
+            <div className="space-y-2 rounded-lg border p-4">
+              <p><strong>{t('Full Name')}:</strong> {formData.full_name}</p>
+              <p><strong>{t('NIDA Number')}:</strong> {formData.nida_number}</p>
+              <p><strong>{t('Date of Birth')}:</strong> {formData.date_of_birth}</p>
+              <p><strong>{t('Phone Number')}:</strong> {formData.phone_number}</p>
+              <p><strong>{t('Email')}:</strong> {formData.email}</p>
+              <p><strong>{t('Region')}:</strong> {formData.region}</p>
+              <p><strong>{t('District')}:</strong> {formData.district}</p>
+              <p><strong>{t('License Category')}:</strong> {formData.license_category?.join(', ')}</p>
+              <p><strong>{t('Application Type')}:</strong> {applicationType}</p>
+              <div className="pt-2">
+                <h4 className="font-semibold">{t('Uploaded Documents')}:</h4>
                 <ul className="list-disc pl-5">
-                    {uploadedFiles.map(f => <li key={f.documentType}>{f.documentType}</li>)}
+                  {uploadedFiles.map(f => <li key={f.documentType}>{f.documentType}</li>)}
                 </ul>
-               </div>
-             </div>
-           </div>
+              </div>
+            </div>
+          </div>
         );
       default:
         return null;
@@ -344,9 +344,9 @@ export default function LicenseApplicationWizard() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-12">
         <div className="max-w-3xl mx-auto">
-          <h1 className="text-3xl font-bold text-center mb-2">{t('license_application_wizard')}</h1>
+          <h1 className="text-3xl font-bold text-center mb-2">{t('License Application Wizard')}</h1>
           <p className="text-center text-muted-foreground mb-8">{applicationType}</p>
-          
+
           <div className="mb-8">
             <Progress value={progress} className="w-full" />
             <div className="flex justify-between mt-2 text-sm text-muted-foreground">
@@ -371,19 +371,19 @@ export default function LicenseApplicationWizard() {
 
           <div className="flex justify-between mt-8">
             <Button onClick={previousStep} disabled={currentStep === 0 || isSubmitting || isProcessingPayment}>
-              <ChevronLeft className="mr-2 h-4 w-4" /> {t('previous')}
+              <ChevronLeft className="mr-2 h-4 w-4" /> {t('Previous')}
             </Button>
             {currentStep === steps.length - 1 ? (
               <Button onClick={handleSubmitAndPay} disabled={isSubmitting || isProcessingPayment}>
                 {isProcessingPayment ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('processing_payment')}</>
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t('Processing Payment')}</>
                 ) : (
-                  <>{t('submit_proceed_to_payment')} <ChevronRight className="ml-2 h-4 w-4" /></>
+                  <>{t('Submit and Proceed to Payment')} <ChevronRight className="ml-2 h-4 w-4" /></>
                 )}
               </Button>
             ) : (
               <Button onClick={handleNext} disabled={isSubmitting || isProcessingPayment}>
-                {t('next')} <ChevronRight className="ml-2 h-4 w-4" />
+                {t('Next')} <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             )}
           </div>

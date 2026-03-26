@@ -111,6 +111,8 @@ export const initiateSelcomPayment = onCall({
 
         const orderTimestamp = getEATTimestamp();
         const encodedApiKey = Buffer.from(SELCOM_API_KEY).toString('base64');
+        const webhookUrl = "https://selcomwebhook-jjncpkwfrq-uc.a.run.app";
+        const base64Webhook = Buffer.from(webhookUrl).toString('base64');
         const orderJson = {
             vendor: "TILL61231447",
             order_id: orderId,
@@ -122,6 +124,7 @@ export const initiateSelcomPayment = onCall({
             no_of_items: 1,
             buyer_remarks: `Payment for JiTesti: ${category.title}`,
             merchant_remarks: "JiTesti Payment",
+            webhook: base64Webhook,
         };
         
         const { digest: orderDigest, signedFields: orderSignedFields } = generateSignature(orderTimestamp, orderJson);

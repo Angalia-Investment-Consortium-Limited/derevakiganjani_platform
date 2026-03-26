@@ -53,18 +53,18 @@ export default function TrackStatus() {
         <div className="w-full max-w-md">
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl text-center">{t('track_application_status')}</CardTitle>
-              <CardDescription className="text-center">{t('enter_ref_no_prompt')}</CardDescription>
+              <CardTitle className="text-2xl text-center">{t('Track Application Status')}</CardTitle>
+              <CardDescription className="text-center">{t('Enter Ref No Prompt')}</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleTrack} className="space-y-4">
                 <Input
                   type="text"
-                  placeholder={t('reference_number_placeholder')}
+                  placeholder={t('Reference Number')}
                   value={refNo}
                   onChange={(e) => setRefNo(e.target.value)}
                   className="text-center"
-                  aria-label={t('reference_number_placeholder')}
+                  aria-label={t('Reference Number')}
                 />
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
@@ -81,27 +81,27 @@ export default function TrackStatus() {
 
               {application && (
                 <div className="mt-6 p-4 border rounded-md animate-in fade-in">
-                    <h3 className="font-semibold text-lg mb-4 text-center">{t('application_status')}</h3>
-                    <div className="space-y-3">
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t('application_type')}</span>
-                            <span className="font-semibold">{application.applicationType}</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-muted-foreground">{t('submitted_on')}</span>
-                            <span>{application.submittedOn ? format(application.submittedOn.toDate(), 'PPP') : 'N/A'}</span>
-                        </div>
-                         <div className="flex justify-between items-center">
-                            <span className="text-muted-foreground">{t('status')}</span>
-                            <Badge className={STATUS_COLORS[application.status]}>{t(application.status.replace(/-/g, '_'))}</Badge>
-                        </div>
-                        {application.applicantAdvice && (
-                            <div className="pt-2 border-t mt-3">
-                                 <p className="text-sm text-muted-foreground font-medium">{t('admin_feedback')}:</p>
-                                 <p className="text-sm text-amber-800 bg-amber-50 p-2 rounded-md">{application.applicantAdvice}</p>
-                            </div>
-                        )}
+                  <h3 className="font-semibold text-lg mb-4 text-center">{t('Application Status')}</h3>
+                  <div className="space-y-3">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t('Application Type')}</span>
+                      <span className="font-semibold">{application.applicationType}</span>
                     </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">{t('submitted_on')}</span>
+                      <span>{application.submittedOn ? format(application.submittedOn.toDate(), 'PPP') : 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">{t('status')}</span>
+                      <Badge className={STATUS_COLORS[application.status]}>{t(application.status.replace(/-/g, '_'))}</Badge>
+                    </div>
+                    {application.applicantAdvice && (
+                      <div className="pt-2 border-t mt-3">
+                        <p className="text-sm text-muted-foreground font-medium">{t('Admin Feedback')}:</p>
+                        <p className="text-sm text-amber-800 bg-amber-50 p-2 rounded-md">{application.applicantAdvice}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </CardContent>

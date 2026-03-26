@@ -11,7 +11,8 @@ import {
   addDoc, 
   updateDoc,
   Timestamp, 
-  getCountFromServer 
+  getCountFromServer,
+  onSnapshot
 } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { db } from '@/lib/firebase';
@@ -137,24 +138,27 @@ export const useApplicationDetails = (applicationId: string) => {
             setError("Application ID is required.");
             return;
         }
-        const fetchApplication = async () => {
-            setIsLoading(true);
-            try {
-                const docRef = doc(db, "license_applications", applicationId);
-                const docSnap = await getDoc(docRef);
+        setIsLoading(true);
+        const docRef = doc(db, "license_applications", applicationId);
+        
+        const unsubscribe = onSnapshot(
+            docRef,
+            (docSnap) => {
                 if (docSnap.exists()) {
                     setApplication({ id: docSnap.id, ...docSnap.data() } as LicenseApplication);
+                    setError(null);
                 } else {
                     setError("Application not found.");
                 }
-            } catch (err: any) {
+                setIsLoading(false);
+            },
+            (err: any) => {
                 setError(err.message || "Failed to fetch application details.");
-            } finally {
                 setIsLoading(false);
             }
-        };
+        );
 
-        fetchApplication();
+        return () => unsubscribe();
     }, [applicationId]);
 
     return { application, isLoading, error };

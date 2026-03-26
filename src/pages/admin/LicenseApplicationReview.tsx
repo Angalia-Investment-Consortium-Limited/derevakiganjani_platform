@@ -23,10 +23,9 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink, Banknote } from 'lucide-react';
-import { REQUEST_STATUS_COLORS } from '@/components/admin/requests/Columns';
-import { DOCUMENT_TYPE_TRANSLATIONS } from '@/types/license';
+import { STATUS_COLORS, DOCUMENT_TYPE_TRANSLATIONS } from '@/types/license';
 
 const LicenseApplicationReview = () => {
   const { id } = useParams<{ id: string }>();
@@ -112,6 +111,18 @@ const LicenseApplicationReview = () => {
     return <Badge className={color}>{`${paymentStatus}`.replace(/_/g, ' ')}</Badge>;
   };
 
+  const safeFormatDate = (dateVal: any) => {
+    if (!dateVal) return 'N/A';
+    try {
+        let d = dateVal;
+        if (typeof dateVal.toDate === 'function') d = dateVal.toDate();
+        else if (typeof dateVal === 'string' || typeof dateVal === 'number') d = new Date(dateVal);
+        return isValid(d) ? format(d, 'PPP') : 'Invalid Date';
+    } catch (e) {
+        return 'Invalid Date';
+    }
+  };
+
   if (isLoading) {
     return <AdminLayout><div className="p-6 space-y-4"><Skeleton className="h-24 w-full" /><Skeleton className="h-64 w-full" /></div></AdminLayout>;
   }
@@ -133,14 +144,14 @@ const LicenseApplicationReview = () => {
                     <CardTitle className="text-2xl">{application.applicationType} Application</CardTitle>
                     <CardDescription>Submitted by {application.fullName}</CardDescription>
                 </div>
-                <Badge className={REQUEST_STATUS_COLORS[application.status]}>{`${application.status}`.replace(/-/g, ' ')}</Badge>
+                <Badge className={STATUS_COLORS[application.status] || "bg-gray-100 text-gray-800"}>{`${application.status}`.replace(/-/g, ' ')}</Badge>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <DetailItem icon={User} label="Full Name" value={application.fullName} />
                     <DetailItem icon={FileText} label="NIDA Number" value={application.nidaNumber} />
-                    <DetailItem icon={Calendar} label="Date of Birth" value={application.dateOfBirth ? format(new Date(application.dateOfBirth), 'PPP') : 'N/A'} />
-                    <DetailItem icon={Calendar} label="Submitted On" value={application.submittedOn ? format(application.submittedOn.toDate(), 'PPP') : 'N/A'} />
+                    <DetailItem icon={Calendar} label="Date of Birth" value={safeFormatDate(application.dateOfBirth)} />
+                    <DetailItem icon={Calendar} label="Submitted On" value={safeFormatDate(application.submittedOn)} />
                     <DetailItem icon={Banknote} label="Payment Status" value={getPaymentStatusBadge()} />
                 </div>
             </CardContent>
@@ -149,18 +160,21 @@ const LicenseApplicationReview = () => {
           <Card>
             <CardHeader><CardTitle>Uploaded Documents</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(application.documents || []).map((doc, index) => (
-                    <a href={doc.url} target="_blank" rel="noopener noreferrer" key={index} className="block p-4 border rounded-lg hover:bg-muted">
-                        <div className="flex items-center gap-4">
-                            <FileText className="h-8 w-8 text-primary" />
-                            <div className="flex-1">
-                                <p className="font-semibold">{DOCUMENT_TYPE_TRANSLATIONS[doc.name] || doc.name}</p>
-                                <p className="text-sm text-muted-foreground">Click to view</p>
+                {(application.documents || []).map((doc, index) => {
+                    if (!doc) return null;
+                    return (
+                        <a href={doc.url || "#"} target="_blank" rel="noopener noreferrer" key={index} className="block p-4 border rounded-lg hover:bg-muted">
+                            <div className="flex items-center gap-4">
+                                <FileText className="h-8 w-8 text-primary" />
+                                <div className="flex-1">
+                                    <p className="font-semibold">{doc.name ? (DOCUMENT_TYPE_TRANSLATIONS[doc.name] || doc.name) : 'Unknown Document'}</p>
+                                    <p className="text-sm text-muted-foreground">Click to view</p>
+                                </div>
+                                <ExternalLink className="h-4 w-4 text-muted-foreground"/>
                             </div>
-                            <ExternalLink className="h-4 w-4 text-muted-foreground"/>
-                        </div>
-                    </a>
-                ))}
+                        </a>
+                    );
+                })}
             </CardContent>
           </Card>
         </div>
@@ -209,20 +223,22 @@ const LicenseApplicationReview = () => {
                         </AlertDialog>
 
                         <AlertDialog>
-                            <TooltipTrigger>
-                                <div className="w-full">
-                                <AlertDialogTrigger asChild>
-                                        <Button variant="default" className="w-full" disabled={isApprovalDisabled}>
-                                            <CheckCircle className="mr-2 h-4 w-4"/>Approve
-                                        </Button>
-                                </AlertDialogTrigger>
-                                </div>
-                            </TooltipTrigger>
-                            {isApprovalDisabled && (
-                                <TooltipContent>
-                                    <p>Approval is disabled until payment is completed.</p>
-                                </TooltipContent>
-                            )}
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <div className="w-full">
+                                    <AlertDialogTrigger asChild>
+                                            <Button variant="default" className="w-full" disabled={isApprovalDisabled}>
+                                                <CheckCircle className="mr-2 h-4 w-4"/>Approve
+                                            </Button>
+                                    </AlertDialogTrigger>
+                                    </div>
+                                </TooltipTrigger>
+                                {isApprovalDisabled && (
+                                    <TooltipContent>
+                                        <p>Approval is disabled until payment is completed.</p>
+                                    </TooltipContent>
+                                )}
+                            </Tooltip>
                              <AlertDialogContent>
                                 <AlertDialogHeader>
                                 <AlertDialogTitle>Are you sure you want to approve?</AlertDialogTitle>

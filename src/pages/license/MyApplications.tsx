@@ -30,11 +30,7 @@ export default function MyApplications() {
   const debouncedSearch = useDebounce(searchTerm, 500);
 
   // Use the new hook
-  const { applications, isLoading, error, refetch } = useMyApplications({
-    status: statusFilter,
-    application_type: typeFilter,
-    search: debouncedSearch,
-  });
+  const { applications, isLoading, error } = useMyApplications();
 
   const handleStatusFilter = (status: string) => {
     setStatusFilter(status === 'all' ? '' : status);
@@ -122,7 +118,7 @@ export default function MyApplications() {
       {!isLoading && !error && applications && applications.length > 0 && (
         <div className="space-y-4">
           {applications.map((application) => (
-            <Card key={application.name} className="hover:shadow-md transition-shadow">
+            <Card key={application.id} className="hover:shadow-md transition-shadow">
               <CardContent className="pt-6">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                   <div className="flex-1">
@@ -133,7 +129,7 @@ export default function MyApplications() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => navigate(`/license/application/${application.name}`)}
+                      onClick={() => navigate(`/license/application/${application.id}`)}
                     >
                       <Eye className="h-4 w-4 mr-2" />
                       {language === 'sw' ? 'Angalia' : 'View'}

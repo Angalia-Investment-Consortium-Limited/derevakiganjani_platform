@@ -1,7 +1,7 @@
 
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield, Briefcase } from 'lucide-react';
+import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield, Briefcase, FileText, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 const DerevaLogo = "/logo.png";
@@ -159,6 +159,14 @@ export const Header = () => {
                         <Briefcase className="mr-2 h-4 w-4" />
                         <span>My Job Applications</span>
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/license/my-applications')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span>My License Applications</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/license/my-requests')}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        <span>Contact Support</span>
+                      </DropdownMenuItem>
                     </>
                   )}
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
@@ -247,14 +255,32 @@ export const Header = () => {
                   {t('notifications')}
                 </Button>
                 {user?.roles?.[0] === 'Driver' && (
-                  <Button
-                    variant="outline"
-                    onClick={() => { navigate('/ajira/applications'); setMobileMenuOpen(false); }}
-                    className="w-full justify-start"
-                  >
-                    <Briefcase className="mr-2 h-4 w-4" />
-                    My Job Applications
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => { navigate('/ajira/applications'); setMobileMenuOpen(false); }}
+                      className="w-full justify-start"
+                    >
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      My Job Applications
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { navigate('/license/my-applications'); setMobileMenuOpen(false); }}
+                      className="w-full justify-start"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      My License Applications
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { navigate('/license/my-requests'); setMobileMenuOpen(false); }}
+                      className="w-full justify-start"
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Contact Support
+                    </Button>
+                  </>
                 )}
                 <Button
                   variant="outline"

@@ -47,34 +47,44 @@ export const selcomWebhook = onRequest({ region: 'us-central1' }, async (req, re
         // 3. Determine the new status and update the 'payments' document
         const newPaymentStatus = resultcode === '000' && result === 'SUCCESS' ? 'completed' : 'failed';
         
-        await paymentDoc.ref.update({
+        const updateData: any = {
             status: newPaymentStatus,
-            selcomResultCode: resultcode,
-            selcomResultMessage: message,
-            selcomTransactionId: transid, // Update with the final transaction ID from Selcom
             updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
+        };
+
+        if (resultcode !== undefined) updateData.selcomResultCode = String(resultcode);
+        if (message !== undefined) updateData.selcomResultMessage = String(message);
+        if (transid !== undefined) updateData.selcomTransactionId = String(transid);
+
+        await paymentDoc.ref.update(updateData);
 
         logger.info(`Updated payment ${paymentDoc.id} to status: ${newPaymentStatus}`);
 
-        // 4. Update the corresponding 'test_attempts' document
-        const testAttemptsRef = db.collection("test_attempts");
-        const testAttemptQuery = await testAttemptsRef.where("paymentId", "==", paymentDoc.id).limit(1).get();
-
-        if (!testAttemptQuery.empty) {
-            const testAttemptDoc = testAttemptQuery.docs[0];
-            const newTestAttemptStatus = newPaymentStatus === 'completed' ? 'not_started' : 'payment_failed';
-            await testAttemptDoc.ref.update({ status: newTestAttemptStatus });
-            logger.info(`Updated test_attempt ${testAttemptDoc.id} to status: ${newTestAttemptStatus}`);
+        // 4. Update the corresponding 'test_attempts' or 'license_applications' document
+        if (paymentData.service === 'Leseni' && paymentData.applicationId) {
+            const appRef = db.collection("license_applications").doc(paymentData.applicationId);
+            const newAppStatus = newPaymentStatus === 'completed' ? 'pending-review' : 'payment-failed';
+            await appRef.update({ status: newAppStatus });
+            logger.info(`Updated license_application ${paymentData.applicationId} to status: ${newAppStatus}`);
         } else {
-            logger.error(`Could not find a matching test_attempt for payment ${paymentDoc.id}`);
+            const testAttemptsRef = db.collection("test_attempts");
+            const testAttemptQuery = await testAttemptsRef.where("paymentId", "==", paymentDoc.id).limit(1).get();
+
+            if (!testAttemptQuery.empty) {
+                const testAttemptDoc = testAttemptQuery.docs[0];
+                const newTestAttemptStatus = newPaymentStatus === 'completed' ? 'not_started' : 'payment_failed';
+                await testAttemptDoc.ref.update({ status: newTestAttemptStatus });
+                logger.info(`Updated test_attempt ${testAttemptDoc.id} to status: ${newTestAttemptStatus}`);
+            } else {
+                logger.error(`Could not find a matching document for payment ${paymentDoc.id}`);
+            }
         }
 
         // 5. Respond to Selcom to acknowledge receipt
         res.status(200).send("Webhook processed successfully");
 
     } catch (error: any) {
-        logger.error("Error processing Selcom webhook:", { error, order_id });
+        logger.error("Error processing Selcom webhook:", { error: error.message || error, stack: error.stack, order_id });
         // Respond with 500 to signal an internal error, Selcom might retry.
         res.status(500).send("Internal Server Error");
     }

@@ -57,7 +57,7 @@ export default function LicenseRequest() {
       setIsLoading(false);
     }
   };
-  
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -65,73 +65,73 @@ export default function LicenseRequest() {
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/dashboard">{t('dashboard')}</BreadcrumbLink>
+              <BreadcrumbLink href="/dashboard">{t('Dashboard')}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-                <BreadcrumbLink href="/license">{t('license_services')}</BreadcrumbLink>
+              <BreadcrumbLink href="/license">{t('License Services')}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{t('general_request')}</BreadcrumbPage>
+              <BreadcrumbPage>{t('General Request')}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
 
         {isSuccess ? (
-            <Card className="w-full max-w-lg mx-auto text-center">
-                <CardContent className="p-10">
-                    <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
-                    <h2 className="text-2xl font-bold mb-2">{t('request_submitted_successfully')}</h2>
-                    <p className="text-muted-foreground mb-6">{t('request_submitted_desc')}</p>
-                    <div className="flex gap-4">
-                        <Button onClick={() => navigate('/license/my-requests')} className="flex-1">{t('view_my_requests')}</Button>
-                        <Button onClick={() => navigate('/license')} variant="outline" className="flex-1">{t('back_to_dashboard')}</Button>
-                    </div>
-                </CardContent>
-            </Card>
+          <Card className="w-full max-w-lg mx-auto text-center">
+            <CardContent className="p-10">
+              <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
+              <h2 className="text-2xl font-bold mb-2">{t('request_submitted_successfully')}</h2>
+              <p className="text-muted-foreground mb-6">{t('request_submitted_desc')}</p>
+              <div className="flex gap-4">
+                <Button onClick={() => navigate('/license/my-requests')} className="flex-1">{t('View My Requests')}</Button>
+                <Button onClick={() => navigate('/license')} variant="outline" className="flex-1">{t('Back to Dashboard')}</Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : (
-            <div className="max-w-2xl mx-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-2xl">{t('submit_general_request')}</CardTitle>
-                  <CardDescription>{t('general_request_desc')}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-2">
-                      <label htmlFor="subject" className="font-medium">{t('subject')}</label>
-                      <Input
-                        id="subject"
-                        type="text"
-                        placeholder={t('subject_placeholder')}
-                        value={subject}
-                        onChange={(e) => setSubject(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                       <label htmlFor="details" className="font-medium">{t('details')}</label>
-                      <Textarea
-                        id="details"
-                        placeholder={t('details_placeholder')}
-                        value={details}
-                        onChange={(e) => setDetails(e.target.value)}
-                        required
-                        rows={8}
-                      />
-                    </div>
-                    
-                    {error && <p className="text-sm text-destructive">{error}</p>}
-    
-                    <Button type="submit" className="w-full" disabled={isLoading || !subject || !details}>
-                      {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                      {t('submit_request')}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
+          <div className="max-w-2xl mx-auto">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-2xl">{t('Submit General Request')}</CardTitle>
+                <CardDescription>{t('General Request Desc')}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <label htmlFor="subject" className="font-medium">{t('Subject')}</label>
+                    <Input
+                      id="subject"
+                      type="text"
+                      placeholder={t('Subject Placeholder')}
+                      value={subject}
+                      onChange={(e) => setSubject(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="details" className="font-medium">{t('Details')}</label>
+                    <Textarea
+                      id="details"
+                      placeholder={t('Details Placeholder')}
+                      value={details}
+                      onChange={(e) => setDetails(e.target.value)}
+                      required
+                      rows={8}
+                    />
+                  </div>
+
+                  {error && <p className="text-sm text-destructive">{error}</p>}
+
+                  <Button type="submit" className="w-full" disabled={isLoading || !subject || !details}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    {t('Submit Request')}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </main>
       <Footer />

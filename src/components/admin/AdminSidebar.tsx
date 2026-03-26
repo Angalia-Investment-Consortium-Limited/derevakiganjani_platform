@@ -58,7 +58,12 @@ const navigationGroups = [
   {
     label: 'Leseni (Licenses)',
     items: [
-      { title: 'Applications', icon: FileText, href: '/admin/license-applications', badge: '12' },
+      { title: 'Applications', icon: FileText, href: '/admin/license-applications', badge: '12' }
+    ]
+  },
+  {
+    label: 'Support',
+    items: [
       { title: 'General Requests', icon: MessageSquare, href: '/admin/license-requests', badge: null }
     ]
   },

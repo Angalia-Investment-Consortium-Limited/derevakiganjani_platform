@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { GraduationCap, FileText, BookOpen, TrendingUp, Bell } from 'lucide-react';
+import { GraduationCap, FileText, BookOpen, TrendingUp, Bell, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,7 @@ const Dashboard = () => {
     { icon: BookOpen, label: t('elimika'), description: 'Continue learning', href: '/elimika', color: 'text-accent' },
     { icon: FileText, label: t('leseni'), description: 'Renew license', href: '/license', color: 'text-primary' },
     { icon: TrendingUp, label: 'Ajira ya Udereva', description: 'Find driver jobs', href: '/ajira/jobs', color: 'text-success' },
+    { icon: MessageSquare, label: 'Support', description: 'Contact us', href: '/license/my-requests', color: 'text-indigo-500' },
   ];
 
   return (
@@ -41,7 +42,7 @@ const Dashboard = () => {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (

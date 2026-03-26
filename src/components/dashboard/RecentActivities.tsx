@@ -13,10 +13,11 @@ import { useNavigate } from 'react-router-dom';
 interface TestAttempt {
     id: string;
     categoryTitle: string;
-    startTime: { toDate: () => Date };
-    score: number;
+    startTime?: { toDate: () => Date };
+    score?: number;
     passMark: number;
-    answers: object;
+    answers?: object;
+    isPassed?: boolean;
 }
 
 // --- Data Fetching Hook ---
@@ -81,8 +82,12 @@ const RecentActivities: React.FC = () => {
                     )}
 
                     {!isLoading && activities.map((activity) => {
-                        const status = activity.score >= activity.passMark ? 'Passed' : 'Failed';
+                        const isCompleted = activity.score !== undefined && activity.score !== null;
                         const totalQuestions = activity.answers ? Object.keys(activity.answers).length : 0;
+                        const scoreCount = activity.score || 0;
+                        const percentage = totalQuestions > 0 ? Math.round((scoreCount / totalQuestions) * 100) : 0;
+                        const isPassed = activity.isPassed !== undefined ? activity.isPassed : percentage >= activity.passMark;
+                        const status = isCompleted ? (isPassed ? 'Passed' : 'Failed') : 'Pending';
 
                         return (
                             <div 
@@ -93,14 +98,16 @@ const RecentActivities: React.FC = () => {
                                 <div className="flex-1">
                                     <p className="font-medium">Jitesti - {activity.categoryTitle}</p>
                                     <p className="text-sm text-muted-foreground">
-                                        {activity.startTime.toDate().toLocaleDateString()}
+                                        {activity.startTime?.toDate ? activity.startTime.toDate().toLocaleDateString() : 'N/A'}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-4">
-                                    <span className="text-sm font-medium">
-                                       {activity.score}%
-                                    </span>
-                                    <Badge variant={status === 'Passed' ? 'default' : 'destructive'}>
+                                    {isCompleted && (
+                                        <span className="text-sm font-medium">
+                                           {percentage}%
+                                        </span>
+                                    )}
+                                    <Badge variant={status === 'Passed' ? 'default' : status === 'Pending' ? 'secondary' : 'destructive'}>
                                         {status}
                                     </Badge>
                                 </div>

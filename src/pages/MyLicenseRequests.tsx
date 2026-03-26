@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Loader2, AlertTriangle, FilePlus, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
@@ -45,6 +45,7 @@ export default function MyLicenseRequests() {
   const [requests, setRequests] = useState<LicenseRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchRequests = async () => {
@@ -57,15 +58,22 @@ export default function MyLicenseRequests() {
       try {
         const q = query(
           collection(db, 'license_requests'), 
-          where('userId', '==', user.uid), 
-          orderBy('submittedOn', 'desc')
+          where('userId', '==', user.uid)
         );
         const querySnapshot = await getDocs(q);
         const fetchedRequests = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LicenseRequest));
+        
+        // Client-side sort to avoid missing Firestore index errors
+        fetchedRequests.sort((a, b) => {
+            const timeA = a.submittedOn ? a.submittedOn.toMillis() : 0;
+            const timeB = b.submittedOn ? b.submittedOn.toMillis() : 0;
+            return timeB - timeA;
+        });
+
         setRequests(fetchedRequests);
       } catch (err) {
         console.error(err);
-        setError(t('error_fetching_requests'));
+        setError(t('Error Fetching Requests'));
       } finally {
         setIsLoading(false);
       }
@@ -74,12 +82,16 @@ export default function MyLicenseRequests() {
     fetchRequests();
   }, [user, t]);
 
+  const toggleExpand = (id: string) => {
+      setExpandedId(prev => prev === id ? null : id);
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
         <div className="text-center py-16">
           <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
-           <p className="mt-4 text-muted-foreground">{t('loading_requests')}</p>
+           <p className="mt-4 text-muted-foreground">{t('Loading Requests')}</p>
         </div>
       );
     }
@@ -97,9 +109,9 @@ export default function MyLicenseRequests() {
       return (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
           <FilePlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-xl font-semibold mb-2">{t('no_requests_found')}</h3>
-          <p className="text-muted-foreground mb-6">{t('submit_general_request_prompt')}</p>
-          <Button onClick={() => navigate('/license-request')}>{t('submit_new_request')}</Button>
+          <h3 className="text-xl font-semibold mb-2">{t('No Requests Found')}</h3>
+          <p className="text-muted-foreground mb-6">{t('Submit General Request Prompt')}</p>
+          <Button onClick={() => navigate('/license-request')}>{t('Submit New Request')}</Button>
         </div>
       );
     }
@@ -107,21 +119,43 @@ export default function MyLicenseRequests() {
     return (
       <div className="space-y-3">
         {requests.map((req) => (
-          <Card key={req.id} className="hover:shadow-md transition-shadow cursor-pointer">
-             <CardContent className="p-4 grid grid-cols-1 md:grid-cols-4 items-center gap-4">
-                <div className="md:col-span-2">
-                    <p className="font-semibold truncate text-primary">{req.subject}</p>
-                    <p className="text-sm text-muted-foreground">
-                        {t('submitted')}: {req.submittedOn ? format(req.submittedOn.toDate(), 'PPP') : 'N/A'}
-                    </p>
+          <Card 
+            key={req.id} 
+            className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => toggleExpand(req.id)}
+          >
+             <CardContent className="p-4 flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 items-center gap-4 w-full">
+                    <div className="md:col-span-2">
+                        <p className="font-semibold text-primary break-words">{req.subject}</p>
+                        <p className="text-sm text-muted-foreground">
+                            {t('Submitted')}: {req.submittedOn ? format(req.submittedOn.toDate(), 'PPP') : 'N/A'}
+                        </p>
+                    </div>
+                     <div>
+                        <p className="text-sm font-medium text-muted-foreground">{t('Last Update')}</p>
+                        <p className="text-sm">{req.lastUpdated ? format(req.lastUpdated.toDate(), 'PPP') : 'N/A'}</p>
+                    </div>
+                    <div className="flex items-center justify-end">
+                       <Badge className={STATUS_BADGE_COLORS[req.status]}>{t(req.status.replace(/-/g, '_'))}</Badge>
+                    </div>
                 </div>
-                 <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t('last_update')}</p>
-                    <p className="text-sm">{req.lastUpdated ? format(req.lastUpdated.toDate(), 'PPP') : 'N/A'}</p>
-                </div>
-                <div className="flex items-center justify-end">
-                   <Badge className={STATUS_BADGE_COLORS[req.status]}>{t(req.status.replace(/-/g, '_'))}</Badge>
-                </div>
+                {expandedId === req.id && (
+                    <div className="pt-4 border-t w-full animate-in fade-in slide-in-from-top-2">
+                        <div className="space-y-4">
+                            <div>
+                                <h4 className="text-sm font-semibold text-muted-foreground mb-1">{t('Your Message')}:</h4>
+                                <p className="text-sm whitespace-pre-wrap">{req.details || 'No details provided.'}</p>
+                            </div>
+                            {req.adminNotes && (
+                                <div className="bg-amber-50 p-4 rounded-md border border-amber-100">
+                                    <h4 className="text-sm font-semibold text-amber-900 mb-1">{t('Admin Response')}:</h4>
+                                    <p className="text-sm text-amber-800 whitespace-pre-wrap">{req.adminNotes}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
             </CardContent>
           </Card>
         ))}
@@ -136,15 +170,15 @@ export default function MyLicenseRequests() {
         <Breadcrumb className="mb-6">
             <BreadcrumbList>
                 <BreadcrumbItem>
-                <BreadcrumbLink href="/dashboard">{t('dashboard')}</BreadcrumbLink>
+                <BreadcrumbLink href="/dashboard">{t('Dashboard')}</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                    <BreadcrumbLink href="/license">{t('license_services')}</BreadcrumbLink>
+                    <BreadcrumbLink href="/license">{t('License Services')}</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                <BreadcrumbPage>{t('my_general_requests')}</BreadcrumbPage>
+                <BreadcrumbPage>{t('My General Requests')}</BreadcrumbPage>
                 </BreadcrumbItem>
             </BreadcrumbList>
         </Breadcrumb>
@@ -153,12 +187,12 @@ export default function MyLicenseRequests() {
           <Card>
             <CardHeader className="flex flex-row justify-between items-center">
                 <div>
-                    <CardTitle className="text-2xl">{t('my_general_requests')}</CardTitle>
-                    <CardDescription>{t('my_general_requests_desc')}</CardDescription>
+                    <CardTitle className="text-2xl">{t('My General Requests')}</CardTitle>
+                    <CardDescription>{t('Track all inquiries and support messages sent to admin')}</CardDescription>
                 </div>
                 <Button onClick={() => navigate('/license-request')} variant="outline">
                     <FilePlus className="mr-2 h-4 w-4" />
-                    {t('submit_new_request')}
+                    {t('Submit New Request')}
                 </Button>
             </CardHeader>
             <CardContent>

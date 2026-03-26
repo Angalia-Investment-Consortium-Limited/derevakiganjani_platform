@@ -22,7 +22,7 @@ export default function ApplicationDetails() {
         <main className="flex-1 container mx-auto px-4 py-10">
           <div className="text-center py-20">
             <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
-            <p className="mt-4 text-lg font-semibold text-destructive">{t('invalid_application_id')}</p>
+            <p className="mt-4 text-lg font-semibold text-destructive">{t('Invalid Application ID')}</p>
           </div>
         </main>
         <Footer />
@@ -40,13 +40,13 @@ export default function ApplicationDetails() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-amber-900">
             <MessageSquare className="h-5 w-5" />
-            {t('feedback_from_admin')}
+            {t('Feedback From Admin')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {application.applicantAdvice && (
             <div>
-              <h4 className="font-semibold">{t('advice_for_you')}</h4>
+              <h4 className="font-semibold">{t('Advice For You')}</h4>
               <p className="text-sm text-amber-800">{application.applicantAdvice}</p>
             </div>
           )}
@@ -64,7 +64,7 @@ export default function ApplicationDetails() {
       return (
         <div className="text-center py-20 bg-red-50 rounded-lg">
           <AlertTriangle className="h-12 w-12 mx-auto text-destructive" />
-          <p className="mt-4 text-lg font-semibold text-destructive">{t('error_fetching_details')}</p>
+          <p className="mt-4 text-lg font-semibold text-destructive">{t('Error Fetching Details')}</p>
           <p className="text-muted-foreground">{error}</p>
         </div>
       );
@@ -74,11 +74,11 @@ export default function ApplicationDetails() {
       return (
         <div className="text-center py-20">
           <FileText className="h-12 w-12 mx-auto text-muted-foreground" />
-          <p className="mt-4 text-lg font-semibold">{t('application_not_found')}</p>
+          <p className="mt-4 text-lg font-semibold">{t('Application Not Found')}</p>
         </div>
       );
     }
-    
+
     const status = String(application.status) as ApplicationStatus;
     const badgeColor = STATUS_COLORS[status] || 'bg-gray-100 text-gray-800';
 
@@ -90,30 +90,30 @@ export default function ApplicationDetails() {
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>{t('application_details')}</CardTitle>
-                <CardDescription>{t('ref_no')}: {application.id}</CardDescription>
+                <CardTitle>{t('Application Details')}</CardTitle>
+                <CardDescription>{t('Ref No')}: {application.id}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t('application_type')}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('Application Type')}</p>
                     <p className="font-semibold">{application.applicationType}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t('status')}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('Status')}</p>
                     <Badge className={badgeColor}>{t(status.replace(/-/g, '_'))}</Badge>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t('submitted_on')}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('Submitted On')}</p>
                     <p>{application.submittedOn ? format(application.submittedOn.toDate(), 'PPPpp') : 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">{t('last_updated')}</p>
+                    <p className="text-sm font-medium text-muted-foreground">{t('Last Updated')}</p>
                     <p>{application.lastUpdated ? format(application.lastUpdated.toDate(), 'PPPpp') : 'N/A'}</p>
                   </div>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{t('license_categories')}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('License Categories')}</p>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {application.categories.map(cat => <Badge key={cat} variant="secondary">{cat}</Badge>)}
                   </div>
@@ -122,22 +122,22 @@ export default function ApplicationDetails() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>{t('applicant_information')}</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('Applicant Information')}</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{t('full_name')}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('Full Name')}</p>
                   <p>{application.fullName}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{t('email')}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('Email')}</p>
                   <p>{application.email}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{t('phone_number')}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('Phone Number')}</p>
                   <p>{application.phoneNumber}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">{t('region_district')}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{t('Region District')}</p>
                   <p>{application.region}, {application.district}</p>
                 </div>
               </CardContent>
@@ -146,7 +146,7 @@ export default function ApplicationDetails() {
 
           <div className="space-y-6">
             <Card>
-              <CardHeader><CardTitle>{t('submitted_documents')}</CardTitle></CardHeader>
+              <CardHeader><CardTitle>{t('Submitted Documents')}</CardTitle></CardHeader>
               <CardContent>
                 <ul className="space-y-3">
                   {application.documents.map(doc => (
@@ -155,7 +155,7 @@ export default function ApplicationDetails() {
                       <Button variant="outline" size="sm" asChild>
                         <a href={doc.url} target="_blank" rel="noopener noreferrer">
                           <Download className="mr-2 h-4 w-4" />
-                          {t('view')}
+                          {t('View')}
                         </a>
                       </Button>
                     </li>
@@ -165,11 +165,11 @@ export default function ApplicationDetails() {
             </Card>
             {application.status === 'payment-failed' && (
               <Card className="border-destructive">
-                <CardHeader><CardTitle className="text-destructive">{t('payment_required')}</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="text-destructive">{t('Payment Required')}</CardTitle></CardHeader>
                 <CardContent>
-                  <p className="text-sm mb-4">{t('payment_failed_prompt')}</p>
+                  <p className="text-sm mb-4">{t('Payment Failed Prompt')}</p>
                   <Button asChild className="w-full">
-                    <Link to={`/license/confirmation/${application.id}`}>{t('retry_payment')}</Link>
+                    <Link to={`/license/confirmation/${application.id}`}>{t('Retry Payment')}</Link>
                   </Button>
                 </CardContent>
               </Card>
@@ -189,7 +189,7 @@ export default function ApplicationDetails() {
             <Button variant="outline" asChild>
               <Link to="/license/my-applications" className="flex items-center gap-2">
                 <ArrowLeft className="h-4 w-4" />
-                {t('back_to_applications')}
+                {t('Back to Applications')}
               </Link>
             </Button>
           </div>

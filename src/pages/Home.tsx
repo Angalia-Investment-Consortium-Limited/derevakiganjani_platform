@@ -17,7 +17,7 @@ const Home = () => {
       icon: FileText,
       title: t('leseni'),
       description: t('leseniDesc'),
-      href: '/license-request',
+      href: '/license',
       iconColor: 'text-primary',
     },
     {
@@ -53,9 +53,9 @@ const Home = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       {/* Hero Section */}
-      <section 
+      <section
         className="relative py-20 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${heroImage})` }}
       >
@@ -92,7 +92,7 @@ const Home = () => {
               Access all driver services in one place
             </p>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {services.map((service) => (
               <ServiceCard key={service.title} {...service} />
@@ -102,7 +102,7 @@ const Home = () => {
       </section>
 
       {/* CTA Section */}
-      <section 
+      <section
         className="relative py-16 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${ctaImage})` }}
       >

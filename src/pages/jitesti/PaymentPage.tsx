@@ -106,7 +106,7 @@ const PaymentPage: React.FC = () => {
                 const data = snapshot.data();
                 if (data) {
                     setStatus(`Payment status: ${data.status}`);
-                    if (data.status === 'started') {
+                    if (data.status === 'started' || data.status === 'not_started') {
                         unsubscribe();
                         navigate(`/jitesti/test/${testAttemptId}`);
                     } else if (data.status === 'failed' || data.status === 'payment_failed') {
