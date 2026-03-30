@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, MessageCircle, Search, Loader2, AlertTriangle } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Breadcrumb,
@@ -42,6 +43,9 @@ interface Message {
 
 const Messages = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlDriverId = searchParams.get('driverId');
+  const urlDriverName = searchParams.get('driverName');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -75,7 +79,42 @@ const Messages = () => {
     });
 
     return () => unsubscribe();
-  }, [user, selectedConversation]);
+  }, [user]);
+
+  // Deep linking logic
+  useEffect(() => {
+    if (!loadingConvos && user && urlDriverId) {
+      const existing = conversations.find(c => c.driverId === urlDriverId);
+      
+      if (existing) {
+        setSelectedConversation(existing);
+        setSearchParams(new URLSearchParams());
+      } else if (urlDriverName) {
+        // Create new conversation document
+        const startNew = async () => {
+          try {
+            await addDoc(collection(db, 'conversations'), {
+              employerId: user.uid,
+              driverId: urlDriverId,
+              driverName: decodeURIComponent(urlDriverName),
+              jobTitle: 'Application Inquiry',
+              lastMessage: 'Conversation started',
+              lastMessageTimestamp: serverTimestamp(),
+              unread: 0,
+              jobId: 'direct'
+            });
+            // Let the onSnapshot pick it up and next render loop will find 'existing'
+          } catch (e) {
+            console.error(e);
+          }
+        };
+        startNew();
+      }
+    } else if (!loadingConvos && conversations.length > 0 && !selectedConversation && !urlDriverId) {
+      // Default to first conversation if no URL params
+      setSelectedConversation(conversations[0]);
+    }
+  }, [loadingConvos, conversations, urlDriverId, urlDriverName, user]);
 
   useEffect(() => {
     if (!selectedConversation) return;

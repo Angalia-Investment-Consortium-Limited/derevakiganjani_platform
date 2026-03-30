@@ -11,7 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useJobApplicants } from '@/hooks/useJobs';
 import { db } from '@/lib/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
@@ -43,11 +43,32 @@ const JobApplicants = () => {
     }
   };
 
-  const handleAction = async (applicationId: string, actionStatus: string, applicantName: string) => {
-    setUpdatingId(applicationId);
+  const handleAction = async (app: any, actionStatus: string, applicantName: string) => {
+    setUpdatingId(app.id);
     try {
-      const appRef = doc(db, 'job_applications', applicationId);
+      const appRef = doc(db, 'job_applications', app.id);
       await updateDoc(appRef, { status: actionStatus });
+
+      if (actionStatus === 'Shortlisted') {
+        // Check if already shortlisted to prevent duplicates
+        const shortlistQ = query(
+          collection(db, "shortlists"),
+          where("employerId", "==", job?.employerId || ''),
+          where("driverId", "==", app.driverId),
+          where("jobId", "==", app.jobId)
+        );
+        const shortlistSnap = await getDocs(shortlistQ);
+        if (shortlistSnap.empty) {
+          await addDoc(collection(db, 'shortlists'), {
+            employerId: job?.employerId || '',
+            driverId: app.driverId,
+            jobId: app.jobId,
+            status: 'Pending',
+            createdAt: serverTimestamp()
+          });
+        }
+      }
+
       toast({
         title: `${actionStatus} Successful`,
         description: `${applicantName} has been marked as ${actionStatus}.`,
@@ -202,7 +223,7 @@ const JobApplicants = () => {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => handleAction(app.id, 'Shortlisted', driverName)}
+                                  onClick={() => handleAction(app, 'Shortlisted', driverName)}
                                   title="Add to Shortlist"
                                 >
                                   <UserCheck className="h-4 w-4" />
@@ -210,7 +231,7 @@ const JobApplicants = () => {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => navigate(`/employer/interviews?applicant=${app.id}`)}
+                                  onClick={() => navigate(`/employer/interviews?driverId=${app.driverId}&jobId=${app.jobId}`)}
                                   title="Schedule Interview"
                                 >
                                   <Calendar className="h-4 w-4" />
@@ -218,7 +239,7 @@ const JobApplicants = () => {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => navigate(`/employer/messages?driver=${app.driverId}`)}
+                                  onClick={() => navigate(`/employer/messages?driverId=${app.driverId}&driverName=${encodeURIComponent(driverName)}`)}
                                   title="Send Message"
                                 >
                                   <MessageSquare className="h-4 w-4" />
@@ -226,7 +247,7 @@ const JobApplicants = () => {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => handleAction(app.id, 'Rejected', driverName)}
+                                  onClick={() => handleAction(app, 'Rejected', driverName)}
                                   title="Reject"
                                 >
                                   <XCircle className="h-4 w-4 text-destructive" />

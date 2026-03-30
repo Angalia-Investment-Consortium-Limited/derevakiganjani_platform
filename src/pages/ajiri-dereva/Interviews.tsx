@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, Plus, Edit, XCircle, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,8 @@ import type { Interview } from '@/types/interviews';
 const Interviews = () => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [shortlistedCandidates, setShortlistedCandidates] = useState<ShortlistItem[]>([]);
@@ -44,6 +47,23 @@ const Interviews = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [newInterview, setNewInterview] = useState({ candidateId: '', jobId: '', date: '', time: '', mode: 'Online', notes: '' });
+
+  useEffect(() => {
+    if (shortlistedCandidates.length > 0 && jobs.length > 0) {
+      const urlDriverId = searchParams.get('driverId');
+      const urlJobId = searchParams.get('jobId');
+      if (urlDriverId && urlJobId) {
+        const sh = shortlistedCandidates.find(c => c.driverId === urlDriverId && c.jobId === urlJobId);
+        if (sh) {
+             setNewInterview(prev => ({ ...prev, candidateId: sh.id, jobId: urlJobId }));
+             setShowScheduleModal(true);
+        } else {
+             toast({ title: 'Notice', description: 'Driver must be shortlisted first.', variant: 'default' });
+        }
+        setSearchParams(new URLSearchParams());
+      }
+    }
+  }, [shortlistedCandidates, jobs]);
 
   useEffect(() => {
     if (!user) {
@@ -94,12 +114,20 @@ const Interviews = () => {
         return;
     }
     try {
+        const candidate = shortlistedCandidates.find(c => c.id === newInterview.candidateId);
+        const job = jobs.find(j => j.id === newInterview.jobId);
+        const candData = candidate as any;
+        const candName = candData?.fullName || candData?.full_name || (candData?.first_name ? `${candData.first_name} ${candData.last_name}` : 'Unknown Candidate');
+
         await addDoc(collection(db, "interviews"), {
             ...newInterview,
             employerId: user?.uid,
+            candidateName: candName,
+            jobTitle: job?.job_title || 'Unknown Job',
             status: 'Requested'
         });
         setShowScheduleModal(false);
+        setNewInterview({ candidateId: '', jobId: '', date: '', time: '', mode: 'Online', notes: '' });
         toast({ title: "Success", description: "Interview scheduled successfully." });
     } catch (error) {
         toast({ title: "Error", description: "Failed to schedule interview.", variant: "destructive" });
@@ -182,16 +210,20 @@ const Interviews = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="candidate">Candidate *</Label>
-                <Select onValueChange={(value) => setNewInterview({...newInterview, candidateId: value})}>
+                <Select value={newInterview.candidateId} onValueChange={(value) => setNewInterview({...newInterview, candidateId: value})}>
                   <SelectTrigger><SelectValue placeholder="Select candidate" /></SelectTrigger>
                   <SelectContent>
-                    {shortlistedCandidates.map(c => <SelectItem key={c.id} value={c.id}>{c.fullName}</SelectItem>)}
+                    {shortlistedCandidates.map(c => {
+                       const cData = c as any;
+                       const name = cData.fullName || cData.full_name || (cData.first_name ? `${cData.first_name} ${cData.last_name}` : 'Unknown');
+                       return <SelectItem key={c.id} value={c.id}>{name}</SelectItem>
+                    })}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="job">Job Position *</Label>
-                <Select onValueChange={(value) => setNewInterview({...newInterview, jobId: value})}>
+                <Select value={newInterview.jobId} onValueChange={(value) => setNewInterview({...newInterview, jobId: value})}>
                   <SelectTrigger><SelectValue placeholder="Select job" /></SelectTrigger>
                   <SelectContent>
                     {jobs.map(j => <SelectItem key={j.id} value={j.id}>{j.job_title}</SelectItem>)}

@@ -7,20 +7,52 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Download, DollarSign, Award, GraduationCap, FileCheck } from 'lucide-react';
+import { Download, DollarSign, Award, GraduationCap, FileCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
+import { useAdminReports } from '@/hooks/useAdminReports';
+import { exportToCSV, exportToPDF } from '@/utils/exportUtils';
 
 const ReportsCenter = () => {
   const { toast } = useToast();
-  const [dateFrom, setDateFrom] = useState('2024-01-01');
-  const [dateTo, setDateTo] = useState('2024-01-31');
+  // Get start of current month and today for default dates
+  const today = new Date();
+  const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+  
+  const [dateFrom, setDateFrom] = useState(startOfMonth.toISOString().split('T')[0]);
+  const [dateTo, setDateTo] = useState(today.toISOString().split('T')[0]);
+  const [region, setRegion] = useState('all');
 
-  const handleExport = (reportType: string, format: 'csv' | 'pdf') => {
+  // Triggering a refetch when necessary handles state. In `useAdminReports` we bound it directly to variables.
+  const { data, isLoading, error, refetch } = useAdminReports(dateFrom, dateTo, region);
+
+  const handleApplyFilters = () => {
+    refetch();
+  };
+
+  const handleExport = async (reportType: string, format: 'csv' | 'pdf', tableData: any[], elementId?: string) => {
     toast({
       title: 'Export Started',
       description: `Exporting ${reportType} as ${format.toUpperCase()}...`,
     });
+
+    try {
+      if (format === 'csv') {
+        exportToCSV(tableData, `${reportType.replace(/\\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}`);
+      } else if (format === 'pdf' && elementId) {
+        await exportToPDF(elementId, `${reportType.replace(/\\s+/g, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}`);
+      }
+      toast({
+        title: 'Export Successful',
+        description: `Your ${format.toUpperCase()} file has been downloaded.`,
+      });
+    } catch (e: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: e.message || 'An error occurred while exporting',
+      });
+    }
   };
 
   const ReportCard = ({ 
@@ -32,8 +64,8 @@ const ReportsCenter = () => {
   }: { 
     icon: any; 
     title: string; 
-    value: string; 
-    description: string; 
+    value: string | number; 
+    description?: string; 
     color: string;
   }) => (
     <Card>
@@ -41,8 +73,10 @@ const ReportsCenter = () => {
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-sm text-muted-foreground">{title}</p>
-            <p className="text-3xl font-bold">{value}</p>
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className="text-3xl font-bold">
+              {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : value}
+            </p>
+            {description && !isLoading && <p className="text-xs text-muted-foreground">{description}</p>}
           </div>
           <div className={`p-3 rounded-full bg-primary/10 ${color}`}>
             <Icon className="h-6 w-6" />
@@ -76,30 +110,42 @@ const ReportsCenter = () => {
                 </div>
                 <div className="space-y-2">
                   <Label>Region</Label>
-                  <Select defaultValue="all">
+                  <Select value={region} onValueChange={setRegion}>
                     <SelectTrigger>
                       <SelectValue placeholder="All Regions"/>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Regions</SelectItem>
-                      <SelectItem value="nairobi">Nairobi</SelectItem>
-                      <SelectItem value="mombasa">Mombasa</SelectItem>
-                      <SelectItem value="kisumu">Kisumu</SelectItem>
+                      <SelectItem value="Dar es Salaam">Dar es Salaam</SelectItem>
+                      <SelectItem value="Mwanza">Mwanza</SelectItem>
+                      <SelectItem value="Arusha">Arusha</SelectItem>
+                      <SelectItem value="Dodoma">Dodoma</SelectItem>
+                      <SelectItem value="Mbeya">Mbeya</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <Button>Apply Filters</Button>
+                <Button onClick={handleApplyFilters} disabled={isLoading}>
+                  {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Apply Filters
+                </Button>
               </div>
             </CardContent>
           </Card>
 
+          {error && (
+            <Card className="border-red-500 bg-red-50">
+              <CardContent className="pt-6 text-red-700">
+                Failed to load reports. Please try again.
+              </CardContent>
+            </Card>
+          )}
+
           {/* Tabs for Different Report Categories */}
           <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="licenses">Licenses</TabsTrigger>
               <TabsTrigger value="tests">JiTesti</TabsTrigger>
-              <TabsTrigger value="courses">Elimika</TabsTrigger>
               <TabsTrigger value="recruitment">Jobs</TabsTrigger>
               <TabsTrigger value="finance">Finance</TabsTrigger>
             </TabsList>
@@ -110,29 +156,25 @@ const ReportsCenter = () => {
                 <ReportCard
                   icon={FileCheck}
                   title="Total License Requests"
-                  value="2,543"
-                  description="↑ 12% from last month"
+                  value={data?.licenses.total || 0}
                   color="text-blue-500"
                 />
                 <ReportCard
                   icon={GraduationCap}
                   title="Tests Taken"
-                  value="1,892"
-                  description="↑ 8% from last month"
+                  value={data?.jitesti.totalAttempts || 0}
                   color="text-purple-500"
                 />
                 <ReportCard
                   icon={Award}
-                  title="Certificates Issued"
-                  value="856"
-                  description="↑ 15% from last month"
+                  title="Active Jobs"
+                  value={data?.jobs.activePosts || 0}
                   color="text-green-500"
                 />
                 <ReportCard
                   icon={DollarSign}
                   title="Total Revenue"
-                  value="KSh 2.4M"
-                  description="↑ 18% from last month"
+                  value={`TZS ${data?.finance.totalRevenue.toLocaleString() || 0}`}
                   color="text-yellow-500"
                 />
               </div>
@@ -142,36 +184,36 @@ const ReportsCenter = () => {
                   <CardTitle>Quick Stats</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Active Drivers</span>
-                      <span className="font-bold">2,543</span>
+                  {isLoading ? (
+                    <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Total Active Drivers</span>
+                        <span className="font-bold">{data?.overview.totalActiveDrivers || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Pending License Approvals</span>
+                        <span className="font-bold">{data?.overview.pendingApprovals || 0}</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Active Job Posts</span>
+                        <span className="font-bold">{data?.overview.totalActivePosts || 0}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Pending Approvals</span>
-                      <span className="font-bold">45</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Active Job Posts</span>
-                      <span className="font-bold">32</span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Completed Courses</span>
-                      <span className="font-bold">856</span>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
             {/* License Reports Tab */}
-            <TabsContent value="licenses" className="space-y-4">
+            <TabsContent value="licenses" className="space-y-4" id="licenses-report-section">
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => handleExport('License Reports', 'csv')}>
+                <Button variant="outline" onClick={() => handleExport('License Reports', 'csv', Object.values(data?.licenses.byCategory || {}))} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
                 </Button>
-                <Button variant="outline" onClick={() => handleExport('License Reports', 'pdf')}>
+                <Button variant="outline" onClick={() => handleExport('License Reports', 'pdf', [], 'licenses-report-section')} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export PDF
                 </Button>
@@ -182,56 +224,51 @@ const ReportsCenter = () => {
                   <CardTitle>License Request Summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Category</TableHead>
-                        <TableHead>New Applications</TableHead>
-                        <TableHead>Renewals</TableHead>
-                        <TableHead>Approved</TableHead>
-                        <TableHead>Rejected</TableHead>
-                        <TableHead>Pending</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">Class A</TableCell>
-                        <TableCell>245</TableCell>
-                        <TableCell>123</TableCell>
-                        <TableCell>320</TableCell>
-                        <TableCell>18</TableCell>
-                        <TableCell>30</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Class B</TableCell>
-                        <TableCell>892</TableCell>
-                        <TableCell>456</TableCell>
-                        <TableCell>1,145</TableCell>
-                        <TableCell>52</TableCell>
-                        <TableCell>151</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Class C</TableCell>
-                        <TableCell>156</TableCell>
-                        <TableCell>78</TableCell>
-                        <TableCell>198</TableCell>
-                        <TableCell>12</TableCell>
-                        <TableCell>24</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                  {isLoading ? (
+                    <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead>New Applications</TableHead>
+                          <TableHead>Renewals</TableHead>
+                          <TableHead>Approved</TableHead>
+                          <TableHead>Rejected</TableHead>
+                          <TableHead>Pending</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.values(data?.licenses.byCategory || {}).map((cat: any) => (
+                          <TableRow key={cat.category}>
+                            <TableCell className="font-medium">Class {cat.category}</TableCell>
+                            <TableCell>{cat.new}</TableCell>
+                            <TableCell>{cat.renewals}</TableCell>
+                            <TableCell className="text-green-600">{cat.approved}</TableCell>
+                            <TableCell className="text-red-500">{cat.rejected}</TableCell>
+                            <TableCell className="text-yellow-600">{cat.pending}</TableCell>
+                          </TableRow>
+                        ))}
+                        {Object.keys(data?.licenses.byCategory || {}).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-4">No data found for this period.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
             {/* JiTesti Reports Tab */}
-            <TabsContent value="tests" className="space-y-4">
+            <TabsContent value="tests" className="space-y-4" id="tests-report-section">
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => handleExport('JiTesti Reports', 'csv')}>
+                <Button variant="outline" onClick={() => handleExport('JiTesti Reports', 'csv', Object.values(data?.jitesti.byCategory || {}))} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
                 </Button>
-                <Button variant="outline" onClick={() => handleExport('JiTesti Reports', 'pdf')}>
+                <Button variant="outline" onClick={() => handleExport('JiTesti Reports', 'pdf', [], 'tests-report-section')} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export PDF
                 </Button>
@@ -242,7 +279,9 @@ const ReportsCenter = () => {
                   <CardContent className="pt-6">
                     <div className="text-center space-y-2">
                       <p className="text-sm text-muted-foreground">Total Attempts</p>
-                      <p className="text-4xl font-bold">1,892</p>
+                      <p className="text-4xl font-bold">
+                        {isLoading ? <Loader2 className="h-8 w-8 mx-auto animate-spin" /> : data?.jitesti.totalAttempts || 0}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -250,7 +289,9 @@ const ReportsCenter = () => {
                   <CardContent className="pt-6">
                     <div className="text-center space-y-2">
                       <p className="text-sm text-muted-foreground">Pass Rate</p>
-                      <p className="text-4xl font-bold text-green-600">68.5%</p>
+                      <p className="text-4xl font-bold text-green-600">
+                        {isLoading ? <Loader2 className="h-8 w-8 mx-auto animate-spin" /> : `${data?.jitesti.passRate.toFixed(1) || 0}%`}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -258,7 +299,9 @@ const ReportsCenter = () => {
                   <CardContent className="pt-6">
                     <div className="text-center space-y-2">
                       <p className="text-sm text-muted-foreground">Average Score</p>
-                      <p className="text-4xl font-bold">72.3%</p>
+                      <p className="text-4xl font-bold">
+                        {isLoading ? <Loader2 className="h-8 w-8 mx-auto animate-spin" /> : `${data?.jitesti.avgScore.toFixed(1) || 0}%`}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -269,108 +312,49 @@ const ReportsCenter = () => {
                   <CardTitle>Test Performance by Category</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Attempts</TableHead>
-                        <TableHead>Pass Rate</TableHead>
-                        <TableHead>Avg. Score</TableHead>
-                        <TableHead>Avg. Time</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">Road Signs</TableCell>
-                        <TableCell>543</TableCell>
-                        <TableCell>72%</TableCell>
-                        <TableCell>75.2%</TableCell>
-                        <TableCell>18 min</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Traffic Rules</TableCell>
-                        <TableCell>489</TableCell>
-                        <TableCell>65%</TableCell>
-                        <TableCell>70.8%</TableCell>
-                        <TableCell>22 min</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Vehicle Controls</TableCell>
-                        <TableCell>421</TableCell>
-                        <TableCell>68%</TableCell>
-                        <TableCell>71.5%</TableCell>
-                        <TableCell>20 min</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* Elimika Reports Tab */}
-            <TabsContent value="courses" className="space-y-4">
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => handleExport('Elimika Reports', 'csv')}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export CSV
-                </Button>
-                <Button variant="outline" onClick={() => handleExport('Elimika Reports', 'pdf')}>
-                  <Download className="mr-2 h-4 w-4" />
-                  Export PDF
-                </Button>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Course Enrollment & Completion</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Course Name</TableHead>
-                        <TableHead>Enrolled</TableHead>
-                        <TableHead>In Progress</TableHead>
-                        <TableHead>Completed</TableHead>
-                        <TableHead>Completion Rate</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">Defensive Driving</TableCell>
-                        <TableCell>324</TableCell>
-                        <TableCell>145</TableCell>
-                        <TableCell>179</TableCell>
-                        <TableCell>55%</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Advanced Techniques</TableCell>
-                        <TableCell>256</TableCell>
-                        <TableCell>98</TableCell>
-                        <TableCell>158</TableCell>
-                        <TableCell>62%</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Vehicle Maintenance</TableCell>
-                        <TableCell>189</TableCell>
-                        <TableCell>67</TableCell>
-                        <TableCell>122</TableCell>
-                        <TableCell>65%</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                  {isLoading ? (
+                    <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Attempts</TableHead>
+                          <TableHead>Pass Rate</TableHead>
+                          <TableHead>Avg. Score</TableHead>
+                          <TableHead>Avg. Time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.values(data?.jitesti.byCategory || {}).map((cat: any) => (
+                           <TableRow key={cat.id}>
+                            <TableCell className="font-medium">{cat.name}</TableCell>
+                            <TableCell>{cat.attempts}</TableCell>
+                            <TableCell>{cat.passRate.toFixed(1)}%</TableCell>
+                            <TableCell>{cat.avgScore.toFixed(1)}%</TableCell>
+                            <TableCell>{Math.round(cat.avgTimeMinutes)} min</TableCell>
+                          </TableRow>
+                        ))}
+                        {Object.keys(data?.jitesti.byCategory || {}).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4">No data found for this period.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
 
             {/* Recruitment Reports Tab */}
-            <TabsContent value="recruitment" className="space-y-4">
+            <TabsContent value="recruitment" className="space-y-4" id="recruitment-report-section">
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => handleExport('Recruitment Reports', 'csv')}>
+                <Button variant="outline" onClick={() => handleExport('Recruitment Reports', 'csv', [data?.jobs || {}])} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
                 </Button>
-                <Button variant="outline" onClick={() => handleExport('Recruitment Reports', 'pdf')}>
+                <Button variant="outline" onClick={() => handleExport('Recruitment Reports', 'pdf', [], 'recruitment-report-section')} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export PDF
                 </Button>
@@ -382,24 +366,28 @@ const ReportsCenter = () => {
                     <CardTitle>Job Posts Summary</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Total Posts</span>
-                        <span className="font-bold">127</span>
+                    {isLoading ? (
+                      <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex justify-between border-b pb-2">
+                          <span className="text-sm">Total Posts</span>
+                          <span className="font-bold">{data?.jobs.totalPosts || 0}</span>
+                        </div>
+                        <div className="flex justify-between border-b pb-2">
+                          <span className="text-sm">Active Posts</span>
+                          <span className="font-bold text-green-600">{data?.jobs.activePosts || 0}</span>
+                        </div>
+                        <div className="flex justify-between border-b pb-2">
+                          <span className="text-sm">Filled Positions</span>
+                          <span className="font-bold">{data?.jobs.filledPositions || 0}</span>
+                        </div>
+                        <div className="flex justify-between pb-2">
+                          <span className="text-sm">Expired Posts</span>
+                          <span className="font-bold text-red-500">{data?.jobs.expiredPosts || 0}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Active Posts</span>
-                        <span className="font-bold">32</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Filled Positions</span>
-                        <span className="font-bold">78</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Expired Posts</span>
-                        <span className="font-bold">17</span>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
 
@@ -408,75 +396,69 @@ const ReportsCenter = () => {
                     <CardTitle>Applications Summary</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Total Applications</span>
-                        <span className="font-bold">1,456</span>
+                    {isLoading ? (
+                      <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex justify-between border-b pb-2">
+                          <span className="text-sm">Total Applications</span>
+                          <span className="font-bold">{data?.jobs.totalApplications || 0}</span>
+                        </div>
+                        <div className="flex justify-between border-b pb-2">
+                          <span className="text-sm">Pending Review</span>
+                          <span className="font-bold">{data?.jobs.pendingReview || 0}</span>
+                        </div>
+                        <div className="flex justify-between border-b pb-2">
+                          <span className="text-sm">Shortlisted</span>
+                          <span className="font-bold text-blue-500">{data?.jobs.shortlisted || 0}</span>
+                        </div>
+                        <div className="flex justify-between pb-2">
+                          <span className="text-sm">Hired</span>
+                          <span className="font-bold text-green-600">{data?.jobs.hired || 0}</span>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Pending Review</span>
-                        <span className="font-bold">234</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Shortlisted</span>
-                        <span className="font-bold">156</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Hired</span>
-                        <span className="font-bold">78</span>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
             </TabsContent>
 
             {/* Finance Reports Tab */}
-            <TabsContent value="finance" className="space-y-4">
+            <TabsContent value="finance" className="space-y-4" id="finance-report-section">
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => handleExport('Finance Reports', 'csv')}>
+                <Button variant="outline" onClick={() => handleExport('Finance Reports', 'csv', Object.values(data?.finance.byService || {}))} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
                 </Button>
-                <Button variant="outline" onClick={() => handleExport('Finance Reports', 'pdf')}>
+                <Button variant="outline" onClick={() => handleExport('Finance Reports', 'pdf', [], 'finance-report-section')} disabled={isLoading}>
                   <Download className="mr-2 h-4 w-4" />
                   Export PDF
                 </Button>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
+                <Card className="col-span-full md:col-span-1 border-primary/50 bg-primary/5">
                   <CardContent className="pt-6">
                     <div className="text-center space-y-2">
-                      <p className="text-sm text-muted-foreground">Total Revenue</p>
-                      <p className="text-3xl font-bold">KSh 2.4M</p>
+                      <p className="text-sm font-semibold text-primary">Total Revenue</p>
+                      <p className="text-2xl font-bold">
+                        {isLoading ? <Loader2 className="h-6 w-6 mx-auto animate-spin" /> : `TZS ${data?.finance.totalRevenue.toLocaleString() || 0}`}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center space-y-2">
-                      <p className="text-sm text-muted-foreground">JiTesti</p>
-                      <p className="text-3xl font-bold">KSh 946K</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center space-y-2">
-                      <p className="text-sm text-muted-foreground">Elimika</p>
-                      <p className="text-3xl font-bold">KSh 1.03M</p>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-center space-y-2">
-                      <p className="text-sm text-muted-foreground">Leseni</p>
-                      <p className="text-3xl font-bold">KSh 424K</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {Object.values(data?.finance.byService || {}).slice(0, 3).map((srv: any) => (
+                  <Card key={srv.service}>
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-2">
+                        <p className="text-sm text-muted-foreground">{srv.service}</p>
+                        <p className="text-2xl font-bold">
+                          TZS {srv.totalAmount.toLocaleString()}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
 
               <Card>
@@ -484,40 +466,35 @@ const ReportsCenter = () => {
                   <CardTitle>Revenue Breakdown by Service</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Service</TableHead>
-                        <TableHead>Transactions</TableHead>
-                        <TableHead>Revenue</TableHead>
-                        <TableHead>Avg. Transaction</TableHead>
-                        <TableHead>Growth</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <TableRow>
-                        <TableCell className="font-medium">JiTesti Tests</TableCell>
-                        <TableCell>1,892</TableCell>
-                        <TableCell>KSh 946,000</TableCell>
-                        <TableCell>KSh 500</TableCell>
-                        <TableCell className="text-green-600">+8%</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">Elimika Courses</TableCell>
-                        <TableCell>856</TableCell>
-                        <TableCell>KSh 1,027,200</TableCell>
-                        <TableCell>KSh 1,200</TableCell>
-                        <TableCell className="text-green-600">+15%</TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell className="font-medium">License Services</TableCell>
-                        <TableCell>141</TableCell>
-                        <TableCell>KSh 423,000</TableCell>
-                        <TableCell>KSh 3,000</TableCell>
-                        <TableCell className="text-green-600">+12%</TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                  {isLoading ? (
+                    <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Service</TableHead>
+                          <TableHead>Transactions</TableHead>
+                          <TableHead>Revenue</TableHead>
+                          <TableHead>Avg. Transaction</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {Object.values(data?.finance.byService || {}).map((srv: any) => (
+                          <TableRow key={srv.service}>
+                            <TableCell className="font-medium">{srv.service}</TableCell>
+                            <TableCell>{srv.transactions}</TableCell>
+                            <TableCell className="font-semibold text-green-700">TZS {srv.totalAmount.toLocaleString()}</TableCell>
+                            <TableCell>TZS {Math.round(srv.avgTransaction).toLocaleString()}</TableCell>
+                          </TableRow>
+                        ))}
+                        {Object.keys(data?.finance.byService || {}).length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={4} className="text-center py-4">No transactions found for this period.</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

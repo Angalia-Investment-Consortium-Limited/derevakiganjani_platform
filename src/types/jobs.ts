@@ -42,6 +42,10 @@ export interface Application {
     licenseCategory?: string;
     driverExperience?: number;
     driverName?: string; 
+    employerName?: string;
+    appliedOn?: any;
+    lastUpdate?: any;
+    timeline?: any[];
 }
 
 export interface EmployerVerification {

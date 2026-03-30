@@ -1,57 +1,55 @@
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Search, TrendingUp, Users, Target, Eye } from 'lucide-react';
+import { Search, TrendingUp, Users, Target, Eye, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useMatchingMonitor } from '@/hooks/useMatchingMonitor';
+import { useMemo, useState } from 'react';
 
 const MatchingMonitor = () => {
   const navigate = useNavigate();
+  const { jobsWithMatches, isLoading, calculateMatches, isCalculating } = useMatchingMonitor();
+  
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('all');
 
-  const stats = [
-    { title: 'Active Jobs', value: '45', icon: Target, color: 'text-primary' },
-    { title: 'Total Matches', value: '320', icon: Users, color: 'text-success' },
-    { title: 'Avg Match Score', value: '87%', icon: TrendingUp, color: 'text-blue-500' },
-  ];
+  const stats = useMemo(() => {
+    let activeJobs = jobsWithMatches.length;
+    let totalMatches = 0;
+    
+    let scoreSum = 0;
+    let totalScoreCount = 0;
 
-  const jobMatches = [
-    {
-      id: 1,
-      jobTitle: 'Experienced Truck Driver',
-      employer: 'ABC Transport',
-      totalMatches: 12,
-      topMatches: [
-        { name: 'John Mwamba', score: 95, category: 'D', experience: '5 yrs' },
-        { name: 'David Luka', score: 92, category: 'D', experience: '7 yrs' },
-        { name: 'Peter Juma', score: 88, category: 'D', experience: '4 yrs' },
-      ],
-    },
-    {
-      id: 2,
-      jobTitle: 'Company Car Driver',
-      employer: 'TechCorp Tanzania',
-      totalMatches: 18,
-      topMatches: [
-        { name: 'Mary Kamara', score: 96, category: 'B', experience: '3 yrs' },
-        { name: 'Sarah Ali', score: 94, category: 'B', experience: '6 yrs' },
-        { name: 'James Otieno', score: 90, category: 'B', experience: '4 yrs' },
-      ],
-    },
-    {
-      id: 3,
-      jobTitle: 'Bus Driver - Tourist Routes',
-      employer: 'Safari Adventures',
-      totalMatches: 8,
-      topMatches: [
-        { name: 'Robert Kioko', score: 93, category: 'C', experience: '8 yrs' },
-        { name: 'Hassan Musa', score: 89, category: 'C', experience: '5 yrs' },
-        { name: 'Daniel Wafula', score: 85, category: 'C', experience: '6 yrs' },
-      ],
-    },
-  ];
+    jobsWithMatches.forEach(job => {
+      if (job.matchData) {
+        totalMatches += job.matchData.totalMatchesFound || 0;
+        job.matchData.topMatches.forEach(match => {
+          scoreSum += match.score;
+          totalScoreCount++;
+        });
+      }
+    });
+
+    const avgScore = totalScoreCount > 0 ? Math.round(scoreSum / totalScoreCount) : 0;
+
+    return [
+      { title: 'Active Jobs', value: activeJobs.toString(), icon: Target, color: 'text-primary' },
+      { title: 'Total AI Matches', value: totalMatches.toString(), icon: Users, color: 'text-success' },
+      { title: 'Avg Match Score', value: `${avgScore}%`, icon: TrendingUp, color: 'text-blue-500' },
+    ];
+  }, [jobsWithMatches]);
+
+  const filteredJobs = useMemo(() => {
+    return jobsWithMatches.filter((job) => {
+      const matchesSearch = job.jobTitle.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            job.employer.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesSearch;
+    });
+  }, [jobsWithMatches, searchTerm]);
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'bg-success/10 text-success';
@@ -92,7 +90,12 @@ const MatchingMonitor = () => {
             <div className="flex flex-col md:flex-row gap-4 mb-6">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search jobs..." className="pl-10" />
+                <Input 
+                  placeholder="Search jobs or employers..." 
+                  className="pl-10" 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
               </div>
               <Select>
                 <SelectTrigger className="w-full md:w-[180px]">
@@ -121,72 +124,104 @@ const MatchingMonitor = () => {
             </div>
 
             <div className="space-y-6">
-              {jobMatches.map((job) => (
-                <Card key={job.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-lg">{job.jobTitle}</CardTitle>
-                        <CardDescription>
-                          {job.employer} • {job.totalMatches} total matches
-                        </CardDescription>
+              {isLoading ? (
+                <div className="flex justify-center p-8">
+                   <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredJobs.length === 0 ? (
+                <div className="text-center p-8 border rounded-md text-muted-foreground">
+                  No active jobs found matching your criteria.
+                </div>
+              ) : (
+                filteredJobs.map((job) => (
+                  <Card key={job.id}>
+                    <CardHeader>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            {job.jobTitle}
+                            <Badge variant={job.matchData ? "default" : "secondary"} className="ml-2 text-xs">
+                              {job.matchData ? `${job.matchData.totalMatchesFound} AI Matches` : 'No AI Matches Yet'}
+                            </Badge>
+                          </CardTitle>
+                          <CardDescription>
+                            {job.employer} • Posted: {job.postedDate ? new Date(job.postedDate.toMillis()).toLocaleDateString() : 'N/A'}
+                          </CardDescription>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button 
+                            variant="secondary" 
+                            size="sm"
+                            disabled={isCalculating}
+                            onClick={() => calculateMatches(job.id)}
+                          >
+                            {isCalculating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2 text-yellow-500" />}
+                            {job.matchData ? 'Recalculate Matches' : 'Find Best Matches'}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => navigate(`/admin/job-management`)}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Job
+                          </Button>
+                        </div>
                       </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => navigate(`/admin/jobs/${job.id}`)}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Job
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Rank</TableHead>
-                            <TableHead>Driver Name</TableHead>
-                            <TableHead>License</TableHead>
-                            <TableHead>Experience</TableHead>
-                            <TableHead>Match Score</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {job.topMatches.map((match, index) => (
-                            <TableRow key={index}>
-                              <TableCell>
-                                <Badge variant="outline">#{index + 1}</Badge>
-                              </TableCell>
-                              <TableCell className="font-medium">{match.name}</TableCell>
-                              <TableCell>
-                                <Badge variant="outline">Cat {match.category}</Badge>
-                              </TableCell>
-                              <TableCell>{match.experience}</TableCell>
-                              <TableCell>
-                                <Badge className={getScoreColor(match.score)}>
-                                  {match.score}%
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost"
-                                  onClick={() => navigate(`/driver/${index + 1}`)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    {job.matchData && job.matchData.topMatches.length > 0 && (
+                      <CardContent>
+                        <div className="rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="w-16">Rank</TableHead>
+                                <TableHead>Driver Name</TableHead>
+                                <TableHead>License</TableHead>
+                                <TableHead>Experience</TableHead>
+                                <TableHead>Match Score</TableHead>
+                                <TableHead className="hidden md:table-cell max-w-sm">AI Reasoning</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {job.matchData.topMatches.map((match, index) => (
+                                <TableRow key={match.driverId || index}>
+                                  <TableCell>
+                                    <Badge variant="outline">#{index + 1}</Badge>
+                                  </TableCell>
+                                  <TableCell className="font-medium">{match.name}</TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline">Cat {match.category}</Badge>
+                                  </TableCell>
+                                  <TableCell>{match.experience}</TableCell>
+                                  <TableCell>
+                                    <Badge className={getScoreColor(match.score)}>
+                                      {match.score}%
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-sm truncate" title={match.reasoning}>
+                                    {match.reasoning}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button 
+                                      size="sm" 
+                                      variant="ghost"
+                                      onClick={() => navigate(`/admin/driver/${match.driverId}`)}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </CardContent>
+                    )}
+                  </Card>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
