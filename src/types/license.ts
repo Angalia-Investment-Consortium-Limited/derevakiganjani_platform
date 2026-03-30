@@ -63,9 +63,9 @@ export type DocumentType = typeof DOCUMENT_TYPES[number];
 
 
 export const REQUIRED_DOCUMENTS: { [key in ApplicationType]: DocumentType[] } = {
-  'New License': ['nationalId', 'passport'],
-  'License Renewal': ['drivingLicense'],
-  'LATRA Exam': ['nationalId', 'passport', 'psvCertificate', 'hgvCertificate'],
+  'New License': [], // No documents uploaded
+  'License Renewal': [], // No documents uploaded
+  'LATRA Exam': ['nationalId', 'drivingLicense', 'psvCertificate', 'hgvCertificate'], // LATRA still requires these
 };
 
 // A more robust config allowing per-document validation, matching the hook's expectation.
@@ -136,12 +136,13 @@ export interface DocumentUpload {
 export interface LicenseApplicationFormData {
   application_type: ApplicationType;
   full_name: string;
-  nida_number: string;
-  date_of_birth: string;
+  nida_number?: string;    // Only for LATRA Exam
+  tin_number?: string;     // Only for New License / License Renewal
   phone_number: string;
   email: string;
   region: string;
   district: string;
+  street_address?: string; // Only for LATRA Exam
   license_category: LicenseCategory[];
   current_license_number?: string;
   latra_type?: LatraType;
@@ -164,12 +165,13 @@ export interface LicenseApplication {
   status: ApplicationStatus;
   fullName: string;
   fullNameNormalized: string;
-  nidaNumber: string;
-  dateOfBirth: string;
+  nidaNumber?: string;
+  tinNumber?: string;
   phoneNumber: string;
   email: string;
   region: string;
   district: string;
+  streetAddress?: string;
   categories: LicenseCategory[];
   documents: DocumentUpload[];
   submittedOn: Timestamp;

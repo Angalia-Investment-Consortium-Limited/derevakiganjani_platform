@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, Eye, Edit, XCircle, Loader2 } from 'lucide-react';
+import { Plus, Search, Eye, Edit, XCircle, Loader2, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployerJobs } from '@/hooks/useEmployerJobs';
 import { useState } from 'react';
@@ -154,9 +154,18 @@ const MyJobPosts = () => {
                             <Button 
                               size="sm" 
                               variant="ghost"
-                              onClick={() => navigate(`/employer/jobs/${job.id}/applicants`)}
+                              onClick={() => navigate(`/ajiri-dereva/job/${job.id}`)}
+                              title="View Job Post"
                             >
                               <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="ghost"
+                              onClick={() => navigate(`/employer/jobs/${job.id}/applicants`)}
+                              title="View Applicants"
+                            >
+                              <Users className="h-4 w-4 text-primary" />
                             </Button>
                             <Button 
                               size="sm" 

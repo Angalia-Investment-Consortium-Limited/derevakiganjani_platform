@@ -142,9 +142,12 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
         if (questionIds.length > 0) {
             // Corrected question collection name
             const questionsRef = collection(db, 'questions');
-            const q = query(questionsRef, where(documentId(), 'in', questionIds));
-            const questionsSnapshot = await getDocs(q);
-            questions = questionsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuestionForTest));
+            for (let i = 0; i < questionIds.length; i += 30) {
+                const chunk = questionIds.slice(i, i + 30);
+                const q = query(questionsRef, where(documentId(), 'in', chunk));
+                const questionsSnapshot = await getDocs(q);
+                questions = questions.concat(questionsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as QuestionForTest)));
+            }
         }
 
         return {
@@ -201,9 +204,16 @@ export const useJiTesti = (options?: UseJiTestiOptions) => {
 
         // Corrected question collection name
         const questionsRef = collection(db, 'questions');
-        const questionsQuery = query(questionsRef, where(documentId(), 'in', questionIds));
-        const questionsSnapshot = await getDocs(questionsQuery);
-        const correctAnswers = new Map(questionsSnapshot.docs.map(d => [d.id, d.data().correctAnswerIndex ?? d.data().correctAnswer]));
+        const correctAnswers = new Map<string, any>();
+        
+        for (let i = 0; i < questionIds.length; i += 30) {
+            const chunk = questionIds.slice(i, i + 30);
+            const questionsQuery = query(questionsRef, where(documentId(), 'in', chunk));
+            const questionsSnapshot = await getDocs(questionsQuery);
+            questionsSnapshot.docs.forEach(d => {
+                correctAnswers.set(d.id, d.data().correctAnswerIndex ?? d.data().correctAnswer);
+            });
+        }
 
         let score = 0;
         let correct = 0;

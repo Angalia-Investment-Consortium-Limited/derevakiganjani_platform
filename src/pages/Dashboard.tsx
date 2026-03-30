@@ -19,13 +19,13 @@ const Dashboard = () => {
     { icon: BookOpen, label: t('elimika'), description: 'Continue learning', href: '/elimika', color: 'text-accent' },
     { icon: FileText, label: t('leseni'), description: 'Renew license', href: '/license', color: 'text-primary' },
     { icon: TrendingUp, label: 'Ajira ya Udereva', description: 'Find driver jobs', href: '/ajira/jobs', color: 'text-success' },
-    { icon: MessageSquare, label: 'Support', description: 'Contact us', href: '/license/my-requests', color: 'text-indigo-500' },
+    { icon: MessageSquare, label: 'Support', description: 'Contact us', href: '/support/request', color: 'text-indigo-500' },
   ];
 
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1 container py-8">
         {/* Welcome Section */}
         <div className="mb-8">
@@ -46,7 +46,7 @@ const Dashboard = () => {
           {quickActions.map((action) => {
             const Icon = action.icon;
             return (
-              <Card 
+              <Card
                 key={action.label}
                 className="cursor-pointer hover:shadow-lg transition-all hover:-translate-y-1"
                 onClick={() => navigate(action.href)}

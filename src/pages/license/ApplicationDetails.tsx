@@ -140,6 +140,23 @@ export default function ApplicationDetails() {
                   <p className="text-sm font-medium text-muted-foreground">{t('Region District')}</p>
                   <p>{application.region}, {application.district}</p>
                 </div>
+                {application.applicationType === 'LATRA Exam' && application.streetAddress && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{t('Street Address')}</p>
+                    <p>{application.streetAddress}</p>
+                  </div>
+                )}
+                {application.applicationType === 'LATRA Exam' ? (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{t('NIDA Number')}</p>
+                    <p>{application.nidaNumber || 'N/A'}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{t('TIN Number')}</p>
+                    <p>{application.tinNumber || 'N/A'}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -3,3 +3,4 @@ export { selcomWebhook } from "./selcomWebhook";
 export { initiateLicensePayment } from "./initiateLicensePayment";
 export { getAdminReports } from "./aggregations/adminReports";
 export { calculateJobMatches } from "./calculateJobMatches";
+export * as logging from "./logging/auditLogs";

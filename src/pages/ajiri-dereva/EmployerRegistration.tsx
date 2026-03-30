@@ -73,7 +73,7 @@ const EmployerRegistration = () => {
         description: "Your employer profile has been submitted for verification.",
       });
       // Verification Guard will handle routing them to pending page
-      navigate('/ajiri-dereva/my-jobs');
+      navigate('/employer/jobs');
     } catch (e: any) {
       toast({ title: 'Error', description: e.message || 'Failed to save profile.', variant: 'destructive' });
     } finally {

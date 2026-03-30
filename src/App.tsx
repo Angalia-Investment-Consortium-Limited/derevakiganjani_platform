@@ -29,8 +29,8 @@ import TestCategory from "./pages/TestCategory";
 import TestQuestions from "./pages/TestQuestions";
 import TestResult from "./pages/TestResult";
 import Admin from "./pages/Admin";
-import LicenseRequest from "./pages/LicenseRequest";
-import MyLicenseRequests from "./pages/MyLicenseRequests";
+import SupportRequest from "./pages/SupportRequest";
+import MyGeneralRequests from "./pages/MyGeneralRequests";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import CourseCatalog from "./pages/elimika/CourseCatalog";
@@ -107,6 +107,7 @@ import JitestiResultDetail from "./pages/admin/JitestiResultDetail";
 import DriverManagement from "./pages/admin/DriverManagement";
 import EmployerManagement from "./pages/admin/EmployerManagement";
 import AdminDriverProfileView from "./pages/admin/AdminDriverProfileView";
+import AuditLog from "./pages/admin/AuditLog";
 
 const queryClient = new QueryClient();
 
@@ -163,14 +164,14 @@ const App = () => (
                   <TestResult />
                 </ProtectedRoute>
               } />
-              <Route path="/license-request" element={
+              <Route path="/support/request" element={
                 <ProtectedRoute>
-                  <LicenseRequest />
+                  <SupportRequest />
                 </ProtectedRoute>
               } />
-              <Route path="/license/my-requests" element={
+              <Route path="/support/my-requests" element={
                 <ProtectedRoute>
-                  <MyLicenseRequests />
+                  <MyGeneralRequests />
                 </ProtectedRoute>
               } />
               <Route path="/notifications" element={
@@ -268,12 +269,12 @@ const App = () => (
                   <TestConfiguration />
                 </AdminRoleBasedRoute>
               } />
-              <Route path="/admin/license-requests" element={
+              <Route path="/admin/support-requests" element={
                 <AdminRoleBasedRoute>
                   <LicenseRequestsManagement />
                 </AdminRoleBasedRoute>
               } />
-              <Route path="/admin/license-request/:id" element={
+              <Route path="/admin/support-request/:id" element={
                 <AdminRoleBasedRoute>
                   <LicenseRequestDetail />
                 </AdminRoleBasedRoute>
@@ -350,13 +351,7 @@ const App = () => (
                   </EmployerVerificationGuard>
                 </RoleBasedRoute>
               } />
-              <Route path="/ajiri-dereva/my-jobs" element={
-                <RoleBasedRoute allowedRoles={['Employer']}>
-                  <EmployerVerificationGuard>
-                    <MyJobPosts />
-                  </EmployerVerificationGuard>
-                </RoleBasedRoute>
-              } />
+
               <Route path="/ajiri-dereva/job/:jobId" element={
                 <RoleBasedRoute allowedRoles={['Employer']}>
                   <EmployerVerificationGuard>
@@ -468,7 +463,12 @@ const App = () => (
                   <RolesPermissions />
                 </AdminRoleBasedRoute>
               } />
-              
+              <Route path="/admin/audit-log" element={
+                <AdminRoleBasedRoute>
+                  <AuditLog />
+                </AdminRoleBasedRoute>
+              } />
+
               {/* JiTesti Routes */}
               <Route path="/admin/jitesti/categories" element={
                 <AdminRoleBasedRoute>
@@ -490,8 +490,8 @@ const App = () => (
                   <JitestiResultDetail />
                 </AdminRoleBasedRoute>
               } />
-              
-               <Route path="/jitesti" element={
+
+              <Route path="/jitesti" element={
                 <ProtectedRoute>
                   <TestCategories />
                 </ProtectedRoute>
@@ -505,7 +505,7 @@ const App = () => (
                 <ProtectedRoute>
                   <TestPage />
                 </ProtectedRoute>
-              } /> 
+              } />
               <Route path="/jitesti/results/:testAttemptId" element={
                 <ProtectedRoute>
                   <TestResultPage />
@@ -516,9 +516,9 @@ const App = () => (
                   <TestHistoryPage />
                 </ProtectedRoute>
               } />
-              
+
               {/* License Management Routes */}
-               <Route path="/license" element={<LicenseDashboard />} />
+              <Route path="/license" element={<LicenseDashboard />} />
               <Route path="/license/apply/:type" element={
                 <ProtectedRoute>
                   <LicenseApplicationWizard />
@@ -566,8 +566,8 @@ const App = () => (
                 </AdminRoleBasedRoute>
               } />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
-            <Route path="/whatsapp-privacy-policy" element={<WhatsAppPrivacyPolicy />} />
-            <Route path="*" element={<NotFound />} />
+              <Route path="/whatsapp-privacy-policy" element={<WhatsAppPrivacyPolicy />} />
+              <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>
         </AuthProvider>

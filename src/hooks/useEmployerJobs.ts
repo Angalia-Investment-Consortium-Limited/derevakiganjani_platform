@@ -18,24 +18,44 @@ export const useEmployerJobs = (filters: any) => {
     const fetchJobs = async () => {
       setLoading(true);
       try {
-        let q = query(collection(db, 'jobs'), where('employerId', '==', currentUser.uid), orderBy('posted_date', 'desc'));
+        const q = query(collection(db, 'jobs'), where('employerId', '==', currentUser.uid));
+        const querySnapshot = await getDocs(q);
+        let jobsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
 
         if (filters.searchTerm) {
-          q = query(q, where('job_title', '>=', filters.searchTerm), where('job_title', '<=', filters.searchTerm + '\uf8ff'));
+          jobsData = jobsData.filter(j => j.job_title?.toLowerCase().includes(filters.searchTerm.toLowerCase()));
         }
         if (filters.status && filters.status !== 'all') {
-          q = query(q, where('status', '==', filters.status));
+          jobsData = jobsData.filter(j => j.status === filters.status);
         }
         if (filters.vehicleType && filters.vehicleType !== 'all') {
-          q = query(q, where('vehicleType', '==', filters.vehicleType));
+          jobsData = jobsData.filter(j => j.vehicleType === filters.vehicleType);
         }
         if (filters.region && filters.region !== 'all') {
-          q = query(q, where('region', '==', filters.region));
+          jobsData = jobsData.filter(j => j.region === filters.region);
         }
 
-        const querySnapshot = await getDocs(q);
-        const jobsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job));
-        setJobs(jobsData);
+        jobsData.sort((a, b) => {
+          const aMillis = (a.posted_date as any)?.seconds ? (a.posted_date as any).seconds * 1000 : 0;
+          const bMillis = (b.posted_date as any)?.seconds ? (b.posted_date as any).seconds * 1000 : 0;
+          return bMillis - aMillis;
+        });
+
+        // Also fetch application counts like dashboard does to populate `job.applicationCount` if needed
+        const jobsWithCounts = await Promise.all(
+          jobsData.map(async (job) => {
+            try {
+              const { getCountFromServer, query: cfQuery, where: cfWhere, collection: cfColl } = await import('firebase/firestore');
+              const appsCountQuery = cfQuery(cfColl(db, 'job_applications'), cfWhere('jobId', '==', job.id));
+              const appsCountSnapshot = await getCountFromServer(appsCountQuery);
+              return { ...job, applicationCount: appsCountSnapshot.data().count };
+            } catch (err) {
+              return { ...job, applicationCount: 0 };
+            }
+          })
+        );
+
+        setJobs(jobsWithCounts);
       } catch (error) {
         console.error("Error fetching employer jobs:", error);
       } finally {

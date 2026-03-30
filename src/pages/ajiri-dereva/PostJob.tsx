@@ -10,12 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Briefcase, Calendar, DollarSign, MapPin, FileText, Loader2, PlusCircle, XCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegions, useDistricts } from '@/hooks/useLicense';
-import { collection, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Job } from '@/types/jobs';
 import type { EmployerProfile } from '@/types/auth';
@@ -33,6 +33,8 @@ const PostJob = () => {
   const { profile } = useAuth();
   const employerProfile = profile as EmployerProfile;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get('edit');
 
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -59,6 +61,39 @@ const PostJob = () => {
   const [formData, setFormData] = useState<Partial<PostJobFormData>>(initialFormData);
   const [newSkill, setNewSkill] = useState('');
   const [newBenefit, setNewBenefit] = useState('');
+
+  useEffect(() => {
+    if (editId) {
+      const fetchJob = async () => {
+        try {
+          const docRef = doc(db, 'jobs', editId);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data() as Job;
+            const fetchedData: Partial<PostJobFormData> = {
+              job_title: data.job_title || '',
+              job_type: data.job_type || 'Full-time',
+              region: data.region || '',
+              district: data.district || '',
+              minimum_experience_years: data.minimum_experience_years || 0,
+              salaryMin: data.salary?.from || 0,
+              salaryMax: data.salary?.to || 0,
+              job_description: data.job_description || '',
+              required_skills: data.required_skills || [],
+              benefits: data.benefits || [],
+              required_license_category: data.required_license_category || [],
+              application_deadline: data.application_deadline || '',
+            };
+            setFormData(fetchedData);
+          }
+        } catch (e) {
+          console.error(e);
+          toast({ title: 'Error', description: 'Failed to load job details.', variant: 'destructive' });
+        }
+      };
+      fetchJob();
+    }
+  }, [editId, toast]);
 
   const licenseCategories = [
     { id: 'A', label: 'A - Motorcycle' },
@@ -127,7 +162,7 @@ const PostJob = () => {
     setIsSaving(true);
     try {
       const { salaryMin, salaryMax, ...jobData } = formData;
-      await addDoc(collection(db, 'jobs'), {
+      const jobPayload = {
         ...jobData,
         salary: {
             from: salaryMin || 0,
@@ -135,14 +170,22 @@ const PostJob = () => {
         },
         employerId: employerProfile.userId,
         employerName: employerProfile.company_name,
-        posted_date: Timestamp.now(),
         status,
-      });
+      };
+
+      if (editId) {
+        await updateDoc(doc(db, 'jobs', editId), jobPayload);
+      } else {
+        await addDoc(collection(db, 'jobs'), {
+          ...jobPayload,
+          posted_date: Timestamp.now(),
+        });
+      }
       if (status === 'Published') {
         setShowSuccessModal(true);
       } else {
         toast({ title: "Draft Saved", description: "Your job post has been saved as a draft." });
-        navigate('/ajiri-dereva/my-jobs');
+        navigate('/employer/jobs');
       }
     } catch (error) {
       console.error("Error saving job post:", error);
@@ -169,7 +212,7 @@ const PostJob = () => {
       <main className="flex-1 container py-8">
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbLink href="/ajiri-dereva/EmployerDashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink href="/employer/dashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem><BreadcrumbPage>Post Job</BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>
@@ -322,7 +365,7 @@ const PostJob = () => {
             <Button variant="outline" className="flex-1" onClick={() => { setShowSuccessModal(false); resetForm(); }}>
               Post Another Job
             </Button>
-            <Button className="flex-1" onClick={() => navigate('/ajiri-dereva/my-jobs')}>
+            <Button className="flex-1" onClick={() => navigate('/employer/jobs')}>
               View My Jobs
             </Button>
           </div>

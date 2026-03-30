@@ -8,15 +8,67 @@ import { Briefcase, MapPin, DollarSign, CheckCircle2, Award, MessageCircle, User
 import { useNavigate, useParams } from 'react-router-dom';
 import { useJobApplicants } from '@/hooks/useJobs';
 import { Loader2 } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { doc, updateDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 const JobDetail = () => {
   const navigate = useNavigate();
   const { jobId } = useParams();
   const { job, applicants, isLoading, error } = useJobApplicants(jobId || null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
+  const { toast } = useToast();
 
-  const handleContact = (driverId: string) => {
-    const whatsappNumber = '255700000000'; // placeholder
-    window.open(`https://wa.me/${whatsappNumber}?text=Hello, I'm interested in your driver profile`, '_blank');
+  const handleCloseJob = async () => {
+    if (!jobId) return;
+    try {
+      setClosing(true);
+      const jobRef = doc(db, 'jobs', jobId);
+      await updateDoc(jobRef, { status: 'Closed' });
+      toast({ title: 'Success', description: 'Job closed successfully.' });
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to close job.', variant: 'destructive' });
+    } finally {
+      setClosing(false);
+    }
+  };
+
+  const handleShortlist = async (app: any, driverName: string) => {
+    setUpdatingId(app.id);
+    try {
+      const appRef = doc(db, 'job_applications', app.id);
+      await updateDoc(appRef, { status: 'Shortlisted' });
+
+      const shortlistQ = query(
+        collection(db, "shortlists"),
+        where("employerId", "==", job?.employerId || ''),
+        where("driverId", "==", app.driverId),
+        where("jobId", "==", app.jobId)
+      );
+      const shortlistSnap = await getDocs(shortlistQ);
+      if (shortlistSnap.empty) {
+        await addDoc(collection(db, 'shortlists'), {
+          employerId: job?.employerId || '',
+          driverId: app.driverId,
+          jobId: app.jobId,
+          status: 'Pending',
+          createdAt: serverTimestamp()
+        });
+      }
+      toast({ title: 'Success', description: `${driverName} has been shortlisted.` });
+      setTimeout(() => window.location.reload(), 1000);
+    } catch (e) {
+      toast({ title: 'Error', description: 'Failed to shortlist.', variant: 'destructive' });
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleContact = (driverId: string, driverName: string) => {
+    navigate(`/employer/messages?driverId=${driverId}&driverName=${encodeURIComponent(driverName)}`);
   };
 
   if (isLoading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -27,7 +79,7 @@ const JobDetail = () => {
       <Header />
       
       <main className="flex-1 container py-8">
-        <Button variant="outline" onClick={() => navigate('/ajiri-dereva/my-jobs')} className="mb-6">
+        <Button variant="outline" onClick={() => navigate('/employer/jobs')} className="mb-6">
           ← Back to My Jobs
         </Button>
 
@@ -115,26 +167,25 @@ const JobDetail = () => {
                 <div className="space-y-4">
                   {applicants.slice(0, 5).map((app: any) => {
                     const driver = app.driver || {};
-                    const driverName = driver.first_name ? `${driver.first_name} ${driver.last_name}` : 'Unknown Driver';
+                    const driverName = driver.fullName || driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Unknown Driver';
+                    const isShortlisted = app.status === 'Shortlisted';
                     return (
                     <div key={app.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors gap-4">
                       <div className="flex items-center gap-4">
                         <Avatar>
-                          <AvatarImage src={driver.photo_url || ''} />
+                          <AvatarImage src={driver.user_image || driver.photo_url || ''} />
                           <AvatarFallback>{driverName.substring(0,2).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         <div>
                           <div className="flex items-center gap-2">
                             <h4 className="font-semibold">{driverName}</h4>
-                            {driver.verification_status === 'verified' && (
-                              <CheckCircle2 className="h-4 w-4 text-success" />
-                            )}
+                            {driver.verified && <CheckCircle2 className="h-4 w-4 text-success" />}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Category {driver.license_category?.join(',')} • {driver.region}
+                            Category {driver.license_category?.join(', ') || driver.licenseNumber || 'N/A'} • {driver.region || driver.location || 'N/A'}
                           </p>
                           <div className="flex gap-2 mt-2">
-                            <Badge variant="outline" className="text-xs">{app.status}</Badge>
+                            <Badge variant={isShortlisted ? 'default' : 'outline'} className={isShortlisted ? 'bg-success/10 text-success text-xs' : 'text-xs'}>{app.status}</Badge>
                           </div>
                         </div>
                       </div>
@@ -142,19 +193,20 @@ const JobDetail = () => {
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => navigate(`/driver/${driver.id}`)}
+                          onClick={() => navigate(`/employer/drivers/${driver.id}`)}
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
                         <Button 
                           size="sm" 
-                          variant="outline"
-                          onClick={() => navigate('/ajiri-dereva/shortlist')}
+                          variant={isShortlisted ? "secondary" : "outline"}
+                          disabled={isShortlisted || updatingId === app.id}
+                          onClick={() => handleShortlist(app, driverName)}
                         >
-                          <UserPlus className="h-4 w-4 mr-1" />
-                          Shortlist
+                          {updatingId === app.id ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <UserPlus className="h-4 w-4 mr-1" />}
+                          {isShortlisted ? 'Shortlisted' : 'Shortlist'}
                         </Button>
-                        <Button size="sm" onClick={() => handleContact(app.driverId)}>
+                        <Button size="sm" onClick={() => handleContact(app.driverId, driverName)}>
                           <MessageCircle className="h-4 w-4 mr-1" />
                           Contact
                         </Button>
@@ -177,14 +229,20 @@ const JobDetail = () => {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={() => navigate('/ajiri-dereva/shortlist')}>
+                <Button className="w-full" onClick={() => navigate('/employer/shortlist')}>
                   View Shortlist
                 </Button>
-                <Button className="w-full" variant="outline">
+                <Button className="w-full" variant="outline" onClick={() => navigate(`/ajiri-dereva/post-job?edit=${jobId}`)}>
                   Edit Job Post
                 </Button>
-                <Button className="w-full" variant="outline">
-                  Close Job
+                <Button 
+                  className="w-full" 
+                  variant={job.status === 'Closed' ? 'secondary' : 'outline'} 
+                  disabled={closing || job.status === 'Closed'} 
+                  onClick={handleCloseJob}
+                >
+                  {closing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  {job.status === 'Closed' ? 'Closed' : 'Close Job'}
                 </Button>
               </CardContent>
             </Card>

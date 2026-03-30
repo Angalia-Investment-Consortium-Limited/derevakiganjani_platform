@@ -64,18 +64,18 @@ const navigationGroups = [
   {
     label: 'Support',
     items: [
-      { title: 'General Requests', icon: MessageSquare, href: '/admin/license-requests', badge: null }
+      { title: 'General Requests', icon: MessageSquare, href: '/admin/support-requests', badge: null }
     ]
   },
   {
     label: 'JiTesti (Testing)',
     items: [
       { title: 'Question Bank', icon: GraduationCap, href: '/admin/questions', badge: null },
-      { title: 'Test Categories', icon: TableConfig, href:'/admin/jitesti/categories', badge: null},
+      { title: 'Test Categories', icon: TableConfig, href: '/admin/jitesti/categories', badge: null },
       { title: 'Test Manager', icon: BookOpen, href: '/admin/jitesti/tests', badge: null },
       { title: 'Test Results', icon: BarChart3, href: '/admin/jitesti/results', badge: null },
       { title: 'Test Config', icon: Settings2, href: '/admin/test-config', badge: null }
-     
+
     ]
   },
   {
@@ -114,7 +114,8 @@ const navigationGroups = [
     label: 'Settings',
     items: [
       { title: 'Roles & Permissions', icon: Shield, href: '/admin/settings/roles', badge: null },
-      { title: 'System Settings', icon: Cog, href: '/admin/settings/system', badge: null }
+      { title: 'System Settings', icon: Cog, href: '/admin/settings/system', badge: null },
+      { title: 'Audit Log', icon: FileText, href: '/admin/audit-log', badge: null }
     ]
   }
 ];
@@ -187,9 +188,9 @@ export function AdminSidebar() {
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild tooltip={!open ? item.title : undefined}>
-                      <NavLink 
-                        to={item.href} 
-                        end 
+                      <NavLink
+                        to={item.href}
+                        end
                         className={({ isActive }) => cn(isActive && 'bg-sidebar-accent font-medium')}
                       >
                         <item.icon className="w-4 h-4" />

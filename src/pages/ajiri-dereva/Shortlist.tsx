@@ -115,7 +115,7 @@ const Shortlist = () => {
       <main className="flex-1 container py-8">
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbLink href="/ajiri-dereva/EmployerDashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink href="/employer/dashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem><BreadcrumbPage>Shortlisted Drivers</BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>
@@ -127,33 +127,33 @@ const Shortlist = () => {
         {!loading && !error && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-              {shortlistedDrivers.length > 0 ? shortlistedDrivers.map((driver) => (
+              {shortlistedDrivers.length > 0 ? shortlistedDrivers.map((driver: any) => (
                 <Card key={driver.id}>
                   <CardContent className="pt-6">
                     <div className="flex flex-col md:flex-row gap-4">
                       <Avatar className="h-20 w-20">
                         <AvatarImage src={driver.user_image} />
                         <AvatarFallback className="text-lg">
-                          {driver.fullName.split(' ').map(n => n[0]).join('')}
+                          {(driver.fullName || driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`).trim().split(' ').map((n: string) => n[0]).join('').substring(0, 2) || 'U'}
                         </AvatarFallback>
                       </Avatar>
 
                       <div className="flex-1 space-y-3">
                         <div>
                           <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-xl font-semibold">{driver.fullName}</h3>
+                            <h3 className="text-xl font-semibold">{driver.fullName || driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Unknown Driver'}</h3>
                             {driver.verified && <CheckCircle2 className="h-5 w-5 text-success" />}
                           </div>
                           <div className="flex flex-wrap gap-2 mb-2">
-                            {driver.skills.map((skill, i) => <Badge key={i} variant="outline" className="text-xs">{skill}</Badge>)}
-                            <Badge className={getStatusColor(driver.status)}>{driver.status.charAt(0).toUpperCase() + driver.status.slice(1)}</Badge>
+                            {(driver.skills || []).map((skill: string, i: number) => <Badge key={i} variant="outline" className="text-xs">{skill}</Badge>)}
+                            {driver.status && <Badge className={getStatusColor(driver.status)}>{String(driver.status).charAt(0).toUpperCase() + String(driver.status).slice(1)}</Badge>}
                           </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                            <div className="flex items-center gap-2"><Award className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">License:</span><span className="font-medium">Category {driver.licenseNumber}</span></div>
-                            <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Experience:</span><span className="font-medium">{driver.experience}</span></div>
-                            <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Location:</span><span className="font-medium">{driver.location}</span></div>
+                            <div className="flex items-center gap-2"><Award className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">License:</span><span className="font-medium">Category {driver.licenseNumber || driver.license_category?.join(', ') || 'N/A'}</span></div>
+                            <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Experience:</span><span className="font-medium">{driver.experience || driver.years_of_experience || 0} yrs</span></div>
+                            <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Location:</span><span className="font-medium">{driver.location || driver.region || 'N/A'}</span></div>
                             <div className="flex items-center gap-2"><span className="text-muted-foreground">Vehicle:</span><span className="font-medium">{driver.preferredVehicle}</span></div>
                         </div>
 
@@ -190,7 +190,7 @@ const Shortlist = () => {
                 <Card>
                     <CardHeader><CardTitle className="text-lg">Quick Actions</CardTitle></CardHeader>
                     <CardContent className="space-y-3">
-                        <Button className="w-full" onClick={() => navigate('/ajiri-dereva/my-jobs')}>Back to My Jobs</Button>
+                        <Button className="w-full" onClick={() => navigate('/employer/jobs')}>Back to My Jobs</Button>
                         <Button className="w-full" variant="outline">Export List</Button>
                     </CardContent>
                 </Card>

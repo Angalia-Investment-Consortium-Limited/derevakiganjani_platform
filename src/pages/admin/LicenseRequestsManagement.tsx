@@ -16,7 +16,7 @@ const LicenseRequestsManagement = () => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "license_requests"), 
+    const unsubscribe = onSnapshot(collection(db, "license_requests"),
       (snapshot) => {
         const reqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as LicenseRequest));
         setRequests(reqs);
@@ -40,7 +40,7 @@ const LicenseRequestsManagement = () => {
     <AdminLayout>
       <Card>
         <CardHeader>
-          <CardTitle>General License Requests</CardTitle>
+          <CardTitle>Helpdesk-Support</CardTitle>
           <CardDescription>Review and respond to general inquiries and support requests from drivers.</CardDescription>
         </CardHeader>
         <CardContent>

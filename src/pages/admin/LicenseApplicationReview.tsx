@@ -24,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isValid } from 'date-fns';
-import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink, Banknote } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink, Banknote, MapPin } from 'lucide-react';
 import { STATUS_COLORS, DOCUMENT_TYPE_TRANSLATIONS } from '@/types/license';
 
 const LicenseApplicationReview = () => {
@@ -149,8 +149,15 @@ const LicenseApplicationReview = () => {
             <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <DetailItem icon={User} label="Full Name" value={application.fullName} />
-                    <DetailItem icon={FileText} label="NIDA Number" value={application.nidaNumber} />
-                    <DetailItem icon={Calendar} label="Date of Birth" value={safeFormatDate(application.dateOfBirth)} />
+                    {application.applicationType === 'LATRA Exam' ? (
+                      <>
+                        <DetailItem icon={FileText} label="NIDA Number" value={application.nidaNumber || 'N/A'} />
+                        <DetailItem icon={MapPin} label="Street Address" value={application.streetAddress || 'N/A'} />
+                      </>
+                    ) : (
+                      <DetailItem icon={FileText} label="TIN Number" value={application.tinNumber || 'N/A'} />
+                    )}
+                    <DetailItem icon={FileText} label="Categories" value={application.categories?.join(', ') || 'N/A'} />
                     <DetailItem icon={Calendar} label="Submitted On" value={safeFormatDate(application.submittedOn)} />
                     <DetailItem icon={Banknote} label="Payment Status" value={getPaymentStatusBadge()} />
                 </div>

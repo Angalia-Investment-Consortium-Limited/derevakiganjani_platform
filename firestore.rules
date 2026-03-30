@@ -99,5 +99,11 @@ service cloud.firestore {
       // Allow creation if the user is the owner and has passed a test (either JITESTI or ELIMIKA quiz)
       allow create: if (isOwner(request.resource.data.userId) || isOwner(request.resource.data.driverId));
     }
+
+    // Audit Logs: Read-only for admins, written by Cloud Functions
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
   }
 }

@@ -160,7 +160,7 @@ const Interviews = () => {
       <main className="flex-1 container py-8">
         <Breadcrumb className="mb-6">
           <BreadcrumbList>
-            <BreadcrumbItem><BreadcrumbLink href="/ajiri-dereva/EmployerDashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
+            <BreadcrumbItem><BreadcrumbLink href="/employer/dashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem><BreadcrumbPage>Interviews</BreadcrumbPage></BreadcrumbItem>
           </BreadcrumbList>

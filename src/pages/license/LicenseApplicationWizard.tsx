@@ -5,6 +5,7 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -81,7 +82,9 @@ export default function LicenseApplicationWizard() {
     phone_number: user?.mobile_no || '',
     email: user?.email || '',
     nida_number: '',
-    date_of_birth: '',
+    tin_number: '',
+    street_address: '',
+    license_category: [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -111,8 +114,13 @@ export default function LicenseApplicationWizard() {
     switch (currentStep) {
       case 0:
         if (!formData.full_name?.trim()) newErrors.full_name = t('full_name_required');
-        if (!formData.nida_number?.trim()) newErrors.nida_number = t('nida_number_required');
-        if (!formData.date_of_birth?.trim()) newErrors.date_of_birth = t('date_of_birth_required');
+        
+        if (applicationType === 'LATRA Exam') {
+          if (!formData.nida_number?.trim()) newErrors.nida_number = t('nida_number_required');
+        } else {
+          if (!formData.tin_number?.trim()) newErrors.tin_number = t('tin_number_required');
+        }
+
         if (!formData.phone_number?.trim()) newErrors.phone_number = t('phone_number_required');
         else if (!/^255[0-9]{9}$/.test(formData.phone_number.replace(/\s/g, ''))) newErrors.phone_number = t('invalid_phone_number_format');
         if (formData.email && !/^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/.test(formData.email)) newErrors.email = t('invalid_email');
@@ -120,8 +128,13 @@ export default function LicenseApplicationWizard() {
       case 1:
         if (!formData.region) newErrors.region = t('Region Required');
         if (!formData.district) newErrors.district = t('District Required');
-        if (!formData.license_category) newErrors.license_category = t('License Category Required');
-        if (applicationType === 'LATRA Exam' && !formData.latra_type) newErrors.latra_type = t('LATRA Type Required');
+        
+        if (applicationType === 'LATRA Exam') {
+          if (!formData.latra_type) newErrors.latra_type = t('LATRA Type Required');
+          if (!formData.street_address?.trim()) newErrors.street_address = t('Street Address Required');
+        }
+
+        if (!formData.license_category || formData.license_category.length === 0) newErrors.license_category = t('License Category Required');
         if (applicationType === 'License Renewal' && !formData.current_license_number?.trim()) newErrors.current_license_number = t('Current License Required');
         break;
       case 2:
@@ -210,16 +223,19 @@ export default function LicenseApplicationWizard() {
               <Input id="full_name" value={formData.full_name} onChange={(e) => updateFormData({ full_name: e.target.value })} />
               {errors.full_name && <p className="text-sm text-destructive">{errors.full_name}</p>}
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="nida_number">{t('NIDA Number')}</Label>
-              <Input id="nida_number" value={formData.nida_number} onChange={(e) => updateFormData({ nida_number: e.target.value })} />
-              {errors.nida_number && <p className="text-sm text-destructive">{errors.nida_number}</p>}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="date_of_birth">{t('Date of Birth')}</Label>
-              <Input id="date_of_birth" type="date" value={formData.date_of_birth} onChange={(e) => updateFormData({ date_of_birth: e.target.value })} />
-              {errors.date_of_birth && <p className="text-sm text-destructive">{errors.date_of_birth}</p>}
-            </div>
+            {applicationType === 'LATRA Exam' ? (
+              <div className="space-y-2">
+                <Label htmlFor="nida_number">{t('NIDA Number')}</Label>
+                <Input id="nida_number" value={formData.nida_number} onChange={(e) => updateFormData({ nida_number: e.target.value })} />
+                {errors.nida_number && <p className="text-sm text-destructive">{errors.nida_number}</p>}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="tin_number">{t('TIN Number')}</Label>
+                <Input id="tin_number" value={formData.tin_number} onChange={(e) => updateFormData({ tin_number: e.target.value })} />
+                {errors.tin_number && <p className="text-sm text-destructive">{errors.tin_number}</p>}
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="phone_number">{t('Phone Number for Payment')}</Label>
               <Input
@@ -262,14 +278,36 @@ export default function LicenseApplicationWizard() {
                 {errors.district && <p className="text-sm text-destructive">{errors.district}</p>}
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>{t('License Category')}</Label>
-              <Select value={formData.license_category?.join(',')} onValueChange={(value) => updateFormData({ license_category: value.split(',') as LicenseCategory[] })}>
-                <SelectTrigger><SelectValue placeholder={t('Select License Category')} /></SelectTrigger>
-                <SelectContent>
-                  {LICENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            {applicationType === 'LATRA Exam' && (
+              <div className="space-y-2">
+                <Label htmlFor="street_address">{t('Street Address')}</Label>
+                <Input id="street_address" value={formData.street_address || ''} onChange={(e) => updateFormData({ street_address: e.target.value })} placeholder={t('Enter your street name')} />
+                {errors.street_address && <p className="text-sm text-destructive">{errors.street_address}</p>}
+              </div>
+            )}
+            <div className="space-y-3">
+              <Label>{t('License Category')} {t('(Select all that apply)')}</Label>
+              <div className="flex flex-wrap gap-2">
+                {LICENSE_CATEGORIES.map(c => {
+                  const isSelected = formData.license_category?.includes(c);
+                  return (
+                    <Badge
+                      key={c}
+                      variant={isSelected ? 'default' : 'outline'}
+                      className="cursor-pointer px-4 py-2 hover:bg-primary/90 text-sm"
+                      onClick={() => {
+                        const current = formData.license_category || [];
+                        const next = isSelected 
+                          ? current.filter(item => item !== c)
+                          : [...current, c];
+                        updateFormData({ license_category: next as LicenseCategory[] });
+                      }}
+                    >
+                      {c}
+                    </Badge>
+                  );
+                })}
+              </div>
               {errors.license_category && <p className="text-sm text-destructive">{errors.license_category}</p>}
             </div>
             {applicationType === 'License Renewal' && (
@@ -317,12 +355,18 @@ export default function LicenseApplicationWizard() {
             <h3 className="text-lg font-semibold mb-2">{t('Review Your Application')}</h3>
             <div className="space-y-2 rounded-lg border p-4">
               <p><strong>{t('Full Name')}:</strong> {formData.full_name}</p>
-              <p><strong>{t('NIDA Number')}:</strong> {formData.nida_number}</p>
-              <p><strong>{t('Date of Birth')}:</strong> {formData.date_of_birth}</p>
+              {applicationType === 'LATRA Exam' ? (
+                <p><strong>{t('NIDA Number')}:</strong> {formData.nida_number}</p>
+              ) : (
+                <p><strong>{t('TIN Number')}:</strong> {formData.tin_number}</p>
+              )}
               <p><strong>{t('Phone Number')}:</strong> {formData.phone_number}</p>
               <p><strong>{t('Email')}:</strong> {formData.email}</p>
               <p><strong>{t('Region')}:</strong> {formData.region}</p>
               <p><strong>{t('District')}:</strong> {formData.district}</p>
+              {applicationType === 'LATRA Exam' && formData.street_address && (
+                <p><strong>{t('Street Address')}:</strong> {formData.street_address}</p>
+              )}
               <p><strong>{t('License Category')}:</strong> {formData.license_category?.join(', ')}</p>
               <p><strong>{t('Application Type')}:</strong> {applicationType}</p>
               <div className="pt-2">

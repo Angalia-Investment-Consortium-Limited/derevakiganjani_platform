@@ -147,7 +147,7 @@ const EmployerDashboard = () => {
                 Post New Job
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/jobs')}>
-                View All Applicants
+                Manage Job Posts
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/shortlist')}>
                 View Shortlist
@@ -169,7 +169,7 @@ const EmployerDashboard = () => {
                 <CardTitle>Recent Job Posts</CardTitle>
                 <CardDescription>Your latest job vacancies</CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/ajiri-dereva/my-jobs')}>
+              <Button variant="outline" size="sm" onClick={() => navigate('/employer/jobs')}>
                 Manage Jobs
               </Button>
             </div>

@@ -90,7 +90,7 @@ const JobApplicants = () => {
           <Button 
             variant="ghost" 
             className="mb-4"
-            onClick={() => navigate('/ajiri-dereva/my-jobs')}
+            onClick={() => navigate('/employer/jobs')}
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to My Jobs

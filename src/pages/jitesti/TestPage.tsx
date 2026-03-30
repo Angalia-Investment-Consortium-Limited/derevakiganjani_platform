@@ -77,27 +77,33 @@ const fetchTestQuestions = async (lookupId: string | undefined): Promise<Questio
     if (!questionIds || questionIds.length === 0) return [];
 
     const questionsRef = collection(db, 'Test Question');
-    const questionsQuery = query(questionsRef, where(documentId(), 'in', questionIds));
-    const questionsSnapshot = await getDocs(questionsQuery);
-
+    
     const questionsMap = new Map<string, Question>();
-    questionsSnapshot.forEach(qDoc => {
-        const data = qDoc.data();
-        const optionsData = data.options || {};
-        const sortedOptions = Object.entries(optionsData)
-            .sort(([keyA], [keyB]) => parseInt(keyA) - parseInt(keyB))
-            .map(([, val]: [string, any]) => val.optionTextSw || val.optionTextEn || '');
-        
-        let correctIndex = data.correct_option_index ?? -1;
+    
+    // Process questionIds in chunks of 30 due to Firestore 'in' query limits
+    for (let i = 0; i < questionIds.length; i += 30) {
+        const chunk = questionIds.slice(i, i + 30);
+        const questionsQuery = query(questionsRef, where(documentId(), 'in', chunk));
+        const questionsSnapshot = await getDocs(questionsQuery);
 
-        questionsMap.set(qDoc.id, {
-            id: qDoc.id,
-            text: data.question_text_sw || data.questionTextSw || data.questionTextEn || "Question text missing",
-            options: sortedOptions,
-            correctAnswerIndex: correctIndex,
-            category: data.category || 'General',
+        questionsSnapshot.forEach(qDoc => {
+            const data = qDoc.data();
+            const optionsData = data.options || {};
+            const sortedOptions = Object.entries(optionsData)
+                .sort(([keyA], [keyB]) => parseInt(keyA) - parseInt(keyB))
+                .map(([, val]: [string, any]) => val.optionTextSw || val.optionTextEn || '');
+            
+            let correctIndex = data.correct_option_index ?? -1;
+
+            questionsMap.set(qDoc.id, {
+                id: qDoc.id,
+                text: data.question_text_sw || data.questionTextSw || data.questionTextEn || "Question text missing",
+                options: sortedOptions,
+                correctAnswerIndex: correctIndex,
+                category: data.category || 'General',
+            });
         });
-    });
+    }
 
     return questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
 };
