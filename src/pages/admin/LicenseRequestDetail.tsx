@@ -11,6 +11,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { LicenseRequest } from '@/types/license';
 import { Loader2, ArrowLeft, Save } from 'lucide-react';
+import { notificationService } from '@/services/notificationService';
 
 const LicenseRequestDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -55,6 +56,18 @@ const LicenseRequestDetail = () => {
         adminNotes,
         lastUpdated: serverTimestamp(),
       });
+
+      try {
+          if (request?.userId) {
+              await notificationService.sendSystem(request.userId, 'Support Request Updated', `Your support request "${request.subject}" has been updated to ${status}.`, { requestId: id });
+              if (request.email) {
+                  await notificationService.sendEmail(request.email, 'Support Request Updated', `Hello ${request.fullName}, your support ticket "${request.subject}" has transitioned to "${status}".${adminNotes ? ` \n\nAdmin Note: ${adminNotes}\n\n` : '\n\n'}Log in to Dereva Kiganjani for more details.`, request.userId);
+              }
+          }
+      } catch (e) {
+          console.error("Failed sending notif", e);
+      }
+
       toast({ title: 'Success', description: 'Request updated successfully.' });
     } catch (error) {
       toast({ title: 'Error', description: 'Failed to update request.', variant: 'destructive' });
@@ -79,7 +92,7 @@ const LicenseRequestDetail = () => {
         <div className="text-center">
           <p>Request not found.</p>
           <Button asChild variant="link">
-            <Link to="/admin/license-requests">Go Back</Link>
+            <Link to="/admin/support-requests">Go Back</Link>
           </Button>
         </div>
       </AdminLayout>
@@ -90,7 +103,7 @@ const LicenseRequestDetail = () => {
     <AdminLayout>
       <div className="mb-4">
         <Button asChild variant="outline">
-          <Link to="/admin/license-requests">
+          <Link to="/admin/support-requests">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Requests
           </Link>

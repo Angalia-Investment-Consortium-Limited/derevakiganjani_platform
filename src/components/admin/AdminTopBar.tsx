@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Bell, Globe, User, LogOut, Clock, Settings } from 'lucide-react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -41,6 +43,28 @@ export function AdminTopBar() {
       console.error('Logout failed:', error);
     }
   };
+
+  const [pendingTickets, setPendingTickets] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState(0);
+
+  useEffect(() => {
+    const qTickets = query(collection(db, 'license_requests'), where('status', '==', 'submitted'));
+    const unsubscribeTickets = onSnapshot(qTickets, snap => {
+        setPendingTickets(snap.docs.length);
+    });
+
+    const qPayments = query(collection(db, 'payments'), where('status', '==', 'Pending'));
+    const unsubscribePayments = onSnapshot(qPayments, snap => {
+        setPendingPayments(snap.docs.length);
+    });
+
+    return () => {
+        unsubscribeTickets();
+        unsubscribePayments();
+    };
+  }, []);
+
+  const hasNotifs = pendingTickets > 0 || pendingPayments > 0;
 
   const getUserInitials = () => {
     if (!user?.full_name) return 'U';
@@ -109,31 +133,42 @@ export function AdminTopBar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
+                {hasNotifs && <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+              <DropdownMenuLabel>Aggregated Alerts</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="p-2 space-y-2">
-                <div className="p-2 rounded-lg hover:bg-muted">
-                  <div className="flex items-start gap-2">
-                    <Badge variant="destructive">New</Badge>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">12 new license requests</p>
-                      <p className="text-xs text-muted-foreground">5 minutes ago</p>
+                {pendingTickets > 0 && (
+                  <div className="p-2 rounded-lg hover:bg-muted cursor-pointer" onClick={() => navigate('/admin/support-requests')}>
+                    <div className="flex items-start gap-2">
+                      <Badge variant="destructive">New</Badge>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{pendingTickets} new support tickets</p>
+                        <p className="text-xs text-muted-foreground">Action required</p>
+                      </div>
                     </div>
                   </div>
-                </div>
-                <div className="p-2 rounded-lg hover:bg-muted">
-                  <div className="flex items-start gap-2">
-                    <Badge variant="secondary">Payment</Badge>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">8 payments pending verification</p>
-                      <p className="text-xs text-muted-foreground">1 hour ago</p>
+                )}
+                
+                {pendingPayments > 0 && (
+                  <div className="p-2 rounded-lg hover:bg-muted cursor-pointer" onClick={() => navigate('/admin/payments')}>
+                    <div className="flex items-start gap-2">
+                      <Badge variant="secondary">Payment</Badge>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{pendingPayments} payments pending</p>
+                        <p className="text-xs text-muted-foreground">Verification needed</p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {!hasNotifs && (
+                  <div className="p-4 text-center text-sm text-muted-foreground">
+                    All caught up! No pending tasks.
+                  </div>
+                )}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>

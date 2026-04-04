@@ -25,6 +25,7 @@ import type {
   EmployerProfile,
   AdminProfile,
 } from '@/types/auth';
+import { requestFCMToken } from '@/services/pushNotificationService';
 
 interface AuthContextType {
   currentUser: FirebaseUser | null;
@@ -121,8 +122,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setProfileLoading(false);
       }
     });
+
     return () => unsubscribe();
   }, [fetchUserProfile]);
+
+  useEffect(() => {
+    if (currentUser?.uid && user) {
+        // Now that the user is logged in, request Push Notification permission
+        // A timeout ensures the UI has settled if it blocks
+        setTimeout(() => {
+            requestFCMToken(currentUser.uid).catch(e => console.error(e));
+        }, 1000);
+    }
+  }, [currentUser?.uid, user]);
 
   const login = (email: string, password: string) => {
     return signInWithEmailAndPassword(auth, email, password);

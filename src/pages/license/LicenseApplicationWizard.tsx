@@ -20,6 +20,7 @@ import {
 import {
   MultiDocumentUpload,
 } from '@/components/license/DocumentUpload';
+import { notificationService } from '@/services/notificationService';
 import type { ApplicationType, LicenseCategory, LatraType } from '@/types/license';
 import {
   LICENSE_CATEGORIES,
@@ -167,6 +168,22 @@ export default function LicenseApplicationWizard() {
     if (!creationResult.success || !creationResult.applicationId) {
       toast.error(creationResult.message);
       return;
+    }
+
+    try {
+      if (formData.email) {
+          await notificationService.sendEmail(
+              formData.email,
+              "License Application Received",
+              `Hello ${formData.full_name}, your ${applicationType} application has been successfully submitted and is pending payment/review.`,
+              user?.uid
+          );
+      }
+      if (user?.uid) {
+          await notificationService.sendSystem(user.uid, "License Application Received", `Your ${applicationType} application was submitted successfully.`, { applicationId: creationResult.applicationId });
+      }
+    } catch(e) {
+        console.error("Failed to send notification: ", e);
     }
 
     toast.info(t('Application Submitted Redirecting to Payment'));

@@ -26,6 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { format, isValid } from 'date-fns';
 import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink, Banknote, MapPin } from 'lucide-react';
 import { STATUS_COLORS, DOCUMENT_TYPE_TRANSLATIONS } from '@/types/license';
+import { notificationService } from '@/services/notificationService';
 
 const LicenseApplicationReview = () => {
   const { id } = useParams<{ id: string }>();
@@ -78,7 +79,7 @@ const LicenseApplicationReview = () => {
   }, [id, toast, navigate]);
 
   const handleUpdateStatus = async (status: 'approved' | 'rejected') => {
-    if (!id) return;
+    if (!id || !application) return;
     try {
       const docRef = doc(db, "license_applications", id);
       await updateDoc(docRef, {
@@ -87,6 +88,21 @@ const LicenseApplicationReview = () => {
         applicantAdvice: applicantAdvice,
         lastUpdated: serverTimestamp()
       });
+
+      // Send notifications
+      const subject = `License Application ${status === 'approved' ? 'Approved' : 'Rejected'}`;
+      const message = status === 'approved' 
+          ? `Hello ${application.fullName}, your ${application.applicationType} application has been approved. You can now track your license on your dashboard.`
+          : `Hello ${application.fullName}, your ${application.applicationType} application was rejected. Reason: ${applicantAdvice || adminNotes || 'Please check your dashboard.'}`;
+          
+      if (application.email) {
+          await notificationService.sendEmail(application.email, subject, message, application.userId);
+      }
+      await notificationService.sendSystem(application.userId, subject, message, {
+         applicationId: id,
+         applicationType: application.applicationType 
+      });
+
       toast({ title: "Success", description: `Application has been ${status}.` });
       navigate("/admin/license-applications");
     } catch (error) {

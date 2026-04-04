@@ -6,6 +6,7 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, collection, getDocs, query, where, documentId, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from '../../hooks/useAuth';
 import { generateCertificate } from '@/services/CertificateGenerationService';
+import { notificationService } from '@/services/notificationService';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -156,6 +157,20 @@ const TestPage: React.FC = () => {
             const isPassed = (score / questions.length) * 100 >= (testAttempt.passMark || 0);
 
             await updateDoc(doc(db, 'test_attempts', testAttemptId), { status: 'completed', score, answers, completedAt: serverTimestamp(), isPassed });
+            
+            try {
+                if (isPassed) {
+                    await notificationService.sendSystem(user.uid, 'Test Passed', `Congratulations! You passed the ${testAttempt.categoryTitle} test.`, { testAttemptId });
+                    if (user.email) {
+                        await notificationService.sendEmail(user.email, 'Test Passed', `Congratulations! You passed the ${testAttempt.categoryTitle} test. Your certificate is being generated.`, user.uid);
+                    }
+                } else {
+                    await notificationService.sendSystem(user.uid, 'Test Failed', `You did not pass the ${testAttempt.categoryTitle} test. Keep studying and try again!`, { testAttemptId });
+                }
+            } catch (e) {
+                console.error("Failed to send notification: ", e);
+            }
+
             return { testAttemptId, isPassed, userId: user.uid, categoryTitle: testAttempt.categoryTitle, userName: user.displayName || 'Anonymous' };
         },
         onSuccess: async (data) => {

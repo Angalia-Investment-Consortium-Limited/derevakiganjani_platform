@@ -274,7 +274,7 @@ const App = () => (
                   <LicenseRequestsManagement />
                 </AdminRoleBasedRoute>
               } />
-              <Route path="/admin/support-request/:id" element={
+              <Route path="/admin/license-request/:id" element={
                 <AdminRoleBasedRoute>
                   <LicenseRequestDetail />
                 </AdminRoleBasedRoute>

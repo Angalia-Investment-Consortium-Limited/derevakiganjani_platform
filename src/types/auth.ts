@@ -12,6 +12,10 @@ export interface User {
   phoneNumber: string;
   enabled: boolean;
   status: string;
+  notificationPreferences?: {
+    smsEnabled: boolean;
+    emailEnabled: boolean;
+  };
   email_verified_in?: boolean;
   user_image?: string;
 }
@@ -49,8 +53,11 @@ export interface EmployerProfile {
   address: { street: string; city: string; country: string };
   website: string;
   verificationStatus: 'Pending' | 'Verified' | 'Rejected' | 'Suspended';
-  industry: string;
-  remarks?: string;
+  industry: string;  remarks?: string;
+  notificationPreferences?: {
+    smsEnabled: boolean;
+    emailEnabled: boolean;
+  };
   verified?: boolean; // Legacy
 }
 
@@ -73,4 +80,8 @@ export interface DriverProfile {
   location?: string;
   preferredVehicle?: string;
   languages?: string[];
+  notificationPreferences?: {
+    smsEnabled: boolean;
+    emailEnabled: boolean;
+  };
 }

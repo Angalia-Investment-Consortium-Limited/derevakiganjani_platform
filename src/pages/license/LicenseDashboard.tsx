@@ -38,7 +38,7 @@ const services = [
 const quickActions = [
   { id: 'my-apps', titleSw: 'Maombi Yangu', titleEn: 'My Applications', descSw: 'Angalia maombi yako yote', descEn: 'View all your applications', icon: History, path: '/license/my-applications' },
   { id: 'track', titleSw: 'Fuatilia Hali', titleEn: 'Track Status', descSw: 'Fuatilia hali ya ombi lako', descEn: 'Track your application status', icon: Search, path: '/license/track' },
-  { id: 'support', titleSw: 'Msaada', titleEn: 'Contact Support', descSw: 'Tuma ujumbe ofisini', descEn: 'Send a message to support', icon: MessageSquare, path: '/license/my-requests' },
+  { id: 'support', titleSw: 'Msaada', titleEn: 'Contact Support', descSw: 'Tuma ujumbe ofisini', descEn: 'Send a message to support', icon: MessageSquare, path: '/support/my-requests' },
 ];
 
 export default function LicenseDashboard() {

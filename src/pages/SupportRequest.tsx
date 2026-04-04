@@ -10,6 +10,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { notificationService } from '@/services/notificationService';
 import { Loader2, Send, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -39,7 +40,7 @@ export default function LicenseRequest() {
     setError(null);
 
     try {
-      await addDoc(collection(db, 'license_requests'), {
+      const docRef = await addDoc(collection(db, 'license_requests'), {
         userId: user.uid,
         email: user.email,
         fullName: user.full_name || 'N/A',
@@ -49,6 +50,13 @@ export default function LicenseRequest() {
         submittedOn: serverTimestamp(),
         lastUpdated: serverTimestamp(),
       });
+      
+      try {
+          await notificationService.sendSystem(user.uid, 'Support Ticket Created', `Your request "${subject}" has been submitted successfully to the admin team.`, { requestId: docRef.id });
+      } catch (e) {
+          console.error("Failed to notify", e);
+      }
+
       setIsSuccess(true);
     } catch (err) {
       console.error(err);
@@ -69,11 +77,11 @@ export default function LicenseRequest() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href="/license">{t('License Services')}</BreadcrumbLink>
+              <BreadcrumbLink href="/support/my-requests">{t('Support')}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbPage>{t('General Request')}</BreadcrumbPage>
+              <BreadcrumbPage>{t('Submit New Request')}</BreadcrumbPage>
             </BreadcrumbItem>
           </BreadcrumbList>
         </Breadcrumb>
@@ -84,9 +92,16 @@ export default function LicenseRequest() {
               <CheckCircle className="h-16 w-16 mx-auto text-green-500 mb-4" />
               <h2 className="text-2xl font-bold mb-2">{t('request_submitted_successfully')}</h2>
               <p className="text-muted-foreground mb-6">{t('request_submitted_desc')}</p>
-              <div className="flex gap-4">
-                <Button onClick={() => navigate('/license/my-requests')} className="flex-1">{t('View My Requests')}</Button>
-                <Button onClick={() => navigate('/license')} variant="outline" className="flex-1">{t('Back to Dashboard')}</Button>
+              <div className="flex flex-col gap-3">
+                <Button onClick={() => navigate('/support/my-requests')} className="w-full">{t('View My Requests')}</Button>
+                <div className="flex gap-4">
+                  <Button onClick={() => {
+                    setSubject('');
+                    setDetails('');
+                    setIsSuccess(false);
+                  }} variant="outline" className="flex-1">{t('Submit New Request')}</Button>
+                  <Button onClick={() => navigate('/dashboard')} variant="outline" className="flex-1">{t('Back to Dashboard')}</Button>
+                </div>
               </div>
             </CardContent>
           </Card>

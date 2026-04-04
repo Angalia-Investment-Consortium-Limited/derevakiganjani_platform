@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, Timestamp, getDocs, query, where } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
+import { notificationService } from '@/services/notificationService';
 
 const JobDetailDriver = () => {
   const navigate = useNavigate();
@@ -58,7 +59,15 @@ const JobDetailDriver = () => {
         status: 'Submitted',
         application_date: Timestamp.now(),
       });
+
       setHasApplied(true);
+      
+      try {
+          const userName = (currentUser as any)?.full_name || currentUser.email || 'A driver';
+          await notificationService.sendSystem(currentUser.uid, 'Application Submitted', `You have successfully applied for '${job.job_title}'.`, { jobId: job.id });
+          await notificationService.sendSystem(job.employerId, 'New Candidate Applied', `${userName} applied for '${job.job_title}'.`, { jobId: job.id, applicantId: currentUser.uid });
+      } catch (e) { console.error("Notifs failed", e); }
+
       toast({
         title: "Application Submitted",
         description: "Your application has been sent to the employer.",

@@ -16,6 +16,7 @@ import { useRegions, useDistricts } from '@/hooks/useLicense';
 import { collection, addDoc, Timestamp, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { notificationService } from '@/services/notificationService';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { Job } from '@/types/jobs';
 import type { EmployerProfile } from '@/types/auth';
@@ -181,6 +182,17 @@ const PostJob = () => {
           posted_date: Timestamp.now(),
         });
       }
+      
+      if (status === 'Published') {
+          const verb = editId ? "updated" : "published";
+          try {
+             await notificationService.sendSystem(employerProfile.userId, `Job ${verb}`, `Your job post '${jobPayload.job_title}' has been successfully ${verb}.`, { jobId: editId || "" });
+             if (employerProfile.company_email) {
+                 await notificationService.sendEmail(employerProfile.company_email, `Job ${verb}`, `Hello ${employerProfile.company_name}, your job post '${jobPayload.job_title}' is now ${verb} and visible.`, employerProfile.userId);
+             }
+          } catch(e) { console.error("Notification fail: ", e) }
+      }
+
       if (status === 'Published') {
         setShowSuccessModal(true);
       } else {

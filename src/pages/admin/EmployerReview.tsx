@@ -51,6 +51,7 @@ import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbP
 // Hook & Toast
 import { useToast } from '@/hooks/use-toast';
 import { useEmployerReview } from '@/hooks/useEmployerVerification';
+import { notificationService } from '@/services/notificationService';
 
 // Constants
 const STATUS_COLORS: Record<string, string> = {
@@ -95,6 +96,22 @@ export default function EmployerReview() {
     setIsUpdating(true);
     try {
       await updateEmployerStatus(status, remarks);
+      
+      if (employer) {
+        // Send notifications
+        const subject = `Employer Account ${status.charAt(0).toUpperCase() + status.slice(1)}`;
+        const message = status === 'verified'
+            ? `Hello ${employer.contactPerson}, your business account for ${employer.company_name} has been successfully verified! You can now post jobs.`
+            : `Hello ${employer.contactPerson}, your business account for ${employer.company_name} has been ${status}. Remarks: ${remarks}`;
+            
+        if (employer.company_email) {
+            await notificationService.sendEmail(employer.company_email, subject, message, employer.userId);
+        }
+        await notificationService.sendSystem(employer.userId, subject, message, {
+           employerId: employer.id 
+        });
+      }
+
       toast({ title: 'Success', description: `Employer has been ${status}.` });
       if (status === 'rejected') {
           navigate("/admin/employer-verification");

@@ -111,7 +111,7 @@ export default function MyLicenseRequests() {
           <FilePlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
           <h3 className="text-xl font-semibold mb-2">{t('No Requests Found')}</h3>
           <p className="text-muted-foreground mb-6">{t('Submit General Request Prompt')}</p>
-          <Button onClick={() => navigate('/license-request')}>{t('Submit New Request')}</Button>
+          <Button onClick={() => navigate('/support/request')}>{t('Submit New Request')}</Button>
         </div>
       );
     }
@@ -174,7 +174,7 @@ export default function MyLicenseRequests() {
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href="/support">{t('Support')}</BreadcrumbLink>
+              <BreadcrumbPage>{t('Support')}</BreadcrumbPage>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
@@ -190,7 +190,7 @@ export default function MyLicenseRequests() {
                 <CardTitle className="text-2xl">{t('My General Requests')}</CardTitle>
                 <CardDescription>{t('Track all inquiries and support messages sent to admin')}</CardDescription>
               </div>
-              <Button onClick={() => navigate('/license-request')} variant="outline">
+              <Button onClick={() => navigate('/support/request')} variant="outline">
                 <FilePlus className="mr-2 h-4 w-4" />
                 {t('Submit New Request')}
               </Button>

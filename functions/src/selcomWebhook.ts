@@ -80,7 +80,32 @@ export const selcomWebhook = onRequest({ region: 'us-central1' }, async (req, re
             }
         }
 
-        // 5. Respond to Selcom to acknowledge receipt
+        // 5. Create a Notification Document which will auto-trigger SMS/Email via onNotificationCreated
+        if (paymentData.userId) {
+            const isSuccess = newPaymentStatus === 'completed';
+            const notificationMsg = isSuccess
+                ? `Your payment of TZS ${paymentData.amount || ''} for ${paymentData.service || 'Dereva Kiganjani'} was successful. Receipt: ${order_id}`
+                : `Your payment for ${paymentData.service || 'Dereva Kiganjani'} failed. Please try again.`;
+
+            await db.collection('notifications').add({
+                userId: paymentData.userId,
+                title_en: `Payment ${isSuccess ? 'Successful' : 'Failed'}`,
+                message_en: notificationMsg,
+                title_sw: `Malipo ${isSuccess ? 'Yamekamilika' : 'Yameshindikana'}`,
+                message_sw: notificationMsg,
+                // Send SMS/Email on success, just Push on failure
+                type: isSuccess ? 'SMS' : 'SYSTEM',
+                isRead: false,
+                createdAt: admin.firestore.FieldValue.serverTimestamp(),
+                metadata: {
+                    paymentId: paymentDoc.id,
+                    orderId: order_id
+                }
+            });
+            logger.info(`Created payment notification for user ${paymentData.userId}`);
+        }
+
+        // 6. Respond to Selcom to acknowledge receipt
         res.status(200).send("Webhook processed successfully");
 
     } catch (error: any) {

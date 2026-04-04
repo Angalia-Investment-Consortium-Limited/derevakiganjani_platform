@@ -13,6 +13,9 @@ import { useAdminJob, useCreateJob, useUpdateJob } from '@/hooks/useAdminJobs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { tanzanianRegions } from '@/lib/regions';
 import type { Job } from '@/types/jobs';
+import { notificationService } from '@/services/notificationService';
+import { db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Define a type for the form data that is different from the Job type
 // because the form uses strings for skills and benefits.
@@ -91,6 +94,33 @@ const JobPostForm = () => {
             await updateJob({ id, ...jobData });
         } else {
             await createJob(jobData);
+        }
+        
+        // Notify the Employer
+        try {
+            if (formData.employerId) {
+                const employerDoc = await getDoc(doc(db, 'employer_profiles', formData.employerId));
+                let employerEmail = null;
+                if (employerDoc.exists()) {
+                    employerEmail = employerDoc.data().email || employerDoc.data().registration_email;
+                }
+                
+                const actionVerb = action === 'published' ? 'approved and published' : 'saved as draft';
+                const message = `Your job post for "${formData.job_title}" has been ${actionVerb}.`;
+                
+                await notificationService.sendSystem(formData.employerId, 'Job Post Updated', message, { jobId: id || 'new' });
+                
+                if (employerEmail) {
+                    await notificationService.sendEmail(
+                        employerEmail, 
+                        `Job Post ${action === 'published' ? 'Published' : 'Updated'}`, 
+                        message, 
+                        formData.employerId
+                    );
+                }
+            }
+        } catch (notifErr) {
+            console.error('Failed to notify employer:', notifErr);
         }
         
         const toastAction = action === 'published' ? t('published') : t('savedAsDraft');

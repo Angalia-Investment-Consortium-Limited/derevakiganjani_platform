@@ -4,3 +4,5 @@ export { initiateLicensePayment } from "./initiateLicensePayment";
 export { getAdminReports } from "./aggregations/adminReports";
 export { calculateJobMatches } from "./calculateJobMatches";
 export * as logging from "./logging/auditLogs";
+export { onNotificationCreated } from "./notifications/onNotificationCreated";
+export { generateAdminDigest } from "./notifications/generateAdminDigest";

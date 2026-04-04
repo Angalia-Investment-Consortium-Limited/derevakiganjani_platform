@@ -8,7 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Mail, Phone, MapPin, Edit, Save, X, Briefcase, Car, Building, FileText, Globe, UserCheck, Loader2 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { User, Mail, Phone, MapPin, Edit, Save, X, Briefcase, Car, Building, FileText, Globe, UserCheck, Loader2, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -41,6 +42,8 @@ const Profile = () => {
     companyRegistration: '',
     contactPerson: '',
     website: '',
+    smsEnabled: true,
+    emailEnabled: true,
   });
 
   useEffect(() => {
@@ -59,6 +62,8 @@ const Profile = () => {
         companyRegistration: employerProfile?.companyRegistration || '',
         contactPerson: employerProfile?.contactPerson || '',
         website: employerProfile?.website || '',
+        smsEnabled: (profile as DriverProfile | EmployerProfile)?.notificationPreferences?.smsEnabled !== false,
+        emailEnabled: (profile as DriverProfile | EmployerProfile)?.notificationPreferences?.emailEnabled !== false,
       });
     }
   }, [user, profile]);
@@ -100,6 +105,11 @@ const Profile = () => {
         };
       }
       
+      profileData.notificationPreferences = {
+        smsEnabled: formData.smsEnabled,
+        emailEnabled: formData.emailEnabled,
+      };
+      
       await updateUser(userData);
       await updateProfile(clean(profileData));
       await refreshProfile();
@@ -128,6 +138,8 @@ const Profile = () => {
             companyRegistration: employerProfile?.companyRegistration || '',
             contactPerson: employerProfile?.contactPerson || '',
             website: employerProfile?.website || '',
+            smsEnabled: (profile as DriverProfile | EmployerProfile)?.notificationPreferences?.smsEnabled !== false,
+            emailEnabled: (profile as DriverProfile | EmployerProfile)?.notificationPreferences?.emailEnabled !== false,
          });
     }
     setIsEditing(false);
@@ -283,6 +295,37 @@ const Profile = () => {
                   )}
                 </div>
                 
+                <Separator />
+
+                <div className="space-y-6">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Bell className="h-5 w-5 text-primary" />
+                        <h3 className="font-semibold text-lg">Notification Preferences</h3>
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-md border bg-muted/20">
+                        <div className="space-y-0.5">
+                            <Label className="text-base font-medium">Text Messages (SMS)</Label>
+                            <p className="text-sm text-muted-foreground">Receive critical updates and OTPs via SMS.</p>
+                        </div>
+                        <Switch
+                            checked={formData.smsEnabled}
+                            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, smsEnabled: checked }))}
+                            disabled={!isEditing}
+                        />
+                    </div>
+                    <div className="flex items-center justify-between p-3 rounded-md border bg-muted/20">
+                        <div className="space-y-0.5">
+                            <Label className="text-base font-medium">Email Notifications</Label>
+                            <p className="text-sm text-muted-foreground">Receive receipts, reports, and detailed alerts via email.</p>
+                        </div>
+                        <Switch
+                            checked={formData.emailEnabled}
+                            onCheckedChange={(checked) => setFormData(prev => ({ ...prev, emailEnabled: checked }))}
+                            disabled={!isEditing}
+                        />
+                    </div>
+                </div>
+
                 <Separator />
 
                 {userType === 'Driver' && renderDriverFields()}

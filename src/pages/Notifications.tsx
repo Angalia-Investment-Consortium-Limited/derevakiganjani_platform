@@ -16,7 +16,7 @@ import {
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, onSnapshot, doc, updateDoc, writeBatch, orderBy } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, updateDoc, writeBatch, orderBy, where } from 'firebase/firestore';
 import { Bell, CheckCircle, AlertCircle, FileText, CreditCard, Calendar, ChevronRight, Home } from 'lucide-react';
 
 // Matches the filter categories and maps to new DB types
@@ -46,8 +46,8 @@ const Notifications = () => {
       return;
     }
 
-    const notificationsRef = collection(db, 'users', user.uid, 'notifications');
-    const q = query(notificationsRef, orderBy('createdAt', 'desc'));
+    const notificationsRef = collection(db, 'notifications');
+    const q = query(notificationsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedNotifications = snapshot.docs.map(doc => ({
@@ -105,7 +105,7 @@ const Notifications = () => {
 
   const markAsRead = async (id: string) => {
     if (!user) return;
-    const notifRef = doc(db, 'users', user.uid, 'notifications', id);
+    const notifRef = doc(db, 'notifications', id);
     await updateDoc(notifRef, { isRead: true });
   };
 
@@ -115,7 +115,7 @@ const Notifications = () => {
     const notificationsToUpdate = notifications.filter(n => !n.isRead);
     
     notificationsToUpdate.forEach(n => {
-      const notifRef = doc(db, 'users', user.uid, 'notifications', n.id);
+      const notifRef = doc(db, 'notifications', n.id);
       batch.update(notifRef, { isRead: true });
     });
 

@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { collection, onSnapshot, doc, updateDoc, Timestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
+import { notificationService } from '@/services/notificationService';
 
 interface Payment {
   id: string;
@@ -98,6 +99,20 @@ const PaymentsManagement = () => {
       await updateDoc(paymentRef, {
         status: newStatus,
         adminNote: adminNote,
+      });
+
+      // Send notifications using SMS and System, based on the phone number
+      const subject = `Payment ${newStatus === 'completed' ? 'Successful' : 'Failed'}`;
+      const message = newStatus === 'completed' 
+          ? `Your payment of TZS ${selectedPayment.amount.toLocaleString()} for ${selectedPayment.service} was successful.` 
+          : `Your payment of TZS ${selectedPayment.amount.toLocaleString()} for ${selectedPayment.service} failed. Reason: ${adminNote || 'Contact support'}`;
+          
+      if (selectedPayment.phone) {
+          await notificationService.sendSMS(selectedPayment.phone, message, selectedPayment.userId);
+      }
+      await notificationService.sendSystem(selectedPayment.userId, subject, message, {
+          paymentId: selectedPayment.id,
+          service: selectedPayment.service
       });
 
       toast({

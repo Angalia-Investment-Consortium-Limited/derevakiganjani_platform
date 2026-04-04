@@ -21,6 +21,7 @@ import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'fi
 import { useState, useEffect } from 'react';
 import type { DriverProfile } from '@/types/auth';
 import type { ShortlistItem } from '@/types/shortlist';
+import { notificationService } from '@/services/notificationService';
 
 const Shortlist = () => {
   const { toast } = useToast();
@@ -80,6 +81,29 @@ const Shortlist = () => {
     try {
       const driverRef = doc(db, "shortlists", driverId);
       await updateDoc(driverRef, { status });
+      
+      const targetDriver = shortlistedDrivers.find(d => d.id === driverId);
+      if (targetDriver) {
+          try {
+              const employerName = (user as any)?.full_name || (user as any)?.company_name || user?.email || "An employer";
+              const pronoun = status === 'contacted' ? "contacted you" : status === 'interviewed' ? "marked you for an interview" : status === 'hired' ? "marked you as hired" : `updated your application status to ${status}`;
+              const msg = `${employerName} has ${pronoun}.`;
+              
+              await notificationService.sendSystem(targetDriver.driverId, `Application ${status}`, msg, { jobId: targetDriver.jobId });
+              
+              if ((targetDriver as any).email) {
+                 await notificationService.sendEmail((targetDriver as any).email, `Application Update: ${status}`, `Hello, your job application status has been updated to "${status}" by the employer. Please check your dashboard for details.`, targetDriver.driverId);
+              }
+              
+              if (status === 'hired' || status === 'interviewed' || status === 'contacted') {
+                  const phone = targetDriver.phone_number || (targetDriver as any).mobile_no;
+                  if (phone) {
+                      await notificationService.sendSMS(phone, msg, targetDriver.driverId);
+                  }
+              }
+          } catch(e) { console.error("Notification fail: ", e) }
+      }
+
       toast({
         title: "Status Updated",
         description: `Driver status updated to ${status}`,

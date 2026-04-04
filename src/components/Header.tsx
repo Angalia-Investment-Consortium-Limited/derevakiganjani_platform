@@ -2,7 +2,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield, Briefcase, FileText, MessageSquare } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
 const DerevaLogo = "/logo.png";
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +23,24 @@ export const Header = () => {
   const { language, setLanguage, t } = useLanguage();
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user?.uid) return;
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', user.uid),
+      where('isRead', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.docs.length);
+    });
+
+    return () => unsubscribe();
+  }, [isAuthenticated, user?.uid]);
 
   const handleLogout = async () => {
     try {
@@ -113,7 +133,9 @@ export const Header = () => {
                 className="relative"
               >
                 <Bell className="h-5 w-5" />
-                {/* TODO: Add notification count badge */}
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                )}
               </Button>
 
               {/* User Menu */}
@@ -148,7 +170,7 @@ export const Header = () => {
                       Admin Portal
                     </DropdownMenuItem>
                   )}
-                   {user?.roles?.[0] === 'Driver' && (
+                  {user?.roles?.[0] === 'Driver' && (
                     <>
                       <DropdownMenuItem disabled>
                         <User className="mr-2 h-4 w-4" />
@@ -163,7 +185,7 @@ export const Header = () => {
                         <FileText className="mr-2 h-4 w-4" />
                         <span>My License Applications</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate('/license/my-requests')}>
+                      <DropdownMenuItem onClick={() => navigate('/support/my-requests')}>
                         <MessageSquare className="mr-2 h-4 w-4" />
                         <span>Contact Support</span>
                       </DropdownMenuItem>
@@ -274,7 +296,7 @@ export const Header = () => {
                     </Button>
                     <Button
                       variant="outline"
-                      onClick={() => { navigate('/license/my-requests'); setMobileMenuOpen(false); }}
+                      onClick={() => { navigate('/support/my-requests'); setMobileMenuOpen(false); }}
                       className="w-full justify-start"
                     >
                       <MessageSquare className="mr-2 h-4 w-4" />
