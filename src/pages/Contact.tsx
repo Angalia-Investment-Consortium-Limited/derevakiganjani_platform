@@ -25,12 +25,12 @@ export default function Contact() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Basic validation
     if (!formData.name || !formData.email || !formData.message) {
       toast({
-        title: t('errorTitle'),
-        description: t('fillRequiredFields'),
+        title: t('Error Title'),
+        description: t('Fill Required Fields'),
         variant: 'destructive',
       });
       return;
@@ -38,10 +38,10 @@ export default function Contact() {
 
     // TODO: Connect to backend API
     console.log('Contact form submitted:', formData);
-    
+
     toast({
-      title: t('messageSentTitle'),
-      description: t('messageSentDesc'),
+      title: t('Message Sent Title'),
+      description: t('Message Sent Desc'),
     });
 
     // Reset form
@@ -57,27 +57,27 @@ export default function Contact() {
   const contactInfo = [
     {
       icon: MapPin,
-      title: t('officeAddressLabel'),
+      title: t('Office Address Label'),
       content: 'MDV Vehicle Fleet Limited, Dar es Salaam, Tanzania,⁠ ⁠Plot# 151, Bima Road, Mikocheni B", Dar es Salaam'
-,
-      subContent: t('visitByAppointment'),
+      ,
+      subContent: t('Visit By Appointment'),
     },
     {
       icon: Phone,
-      title: t('phoneLabel'),
+      title: t('Phone Label'),
       content: '+255 748 467 348',
-      subContent: t('workingHoursLabel'),
+      subContent: t('Working Hours Label'),
     },
     {
       icon: Mail,
-      title: t('emailLabel'),
+      title: t('Email Label'),
       content: 'derevakiganjani@mdvfleet.co.tz',
-      subContent: t('supportEmailLabel'),
+      subContent: t('Support Email Label'),
     },
     {
       icon: Clock,
-      title: t('officeHoursLabel'),
-      content: t('mondayFriday'),
+      title: t('Office Hours Label'),
+      content: t('Monday Friday'),
       subContent: '8:00 AM - 5:00 PM EAT',
     },
   ];
@@ -85,10 +85,10 @@ export default function Contact() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      
+
       <main className="flex-1">
         {/* Hero Section */}
-        <section 
+        <section
           className="relative py-20 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: `url(${contactHeroImage})` }}
         >
@@ -96,10 +96,10 @@ export default function Contact() {
           <div className="container relative z-10">
             <div className="max-w-3xl mx-auto text-center space-y-6">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-white">
-                {t('contactTitle')}
+                {t('Contact Title')}
               </h1>
               <p className="text-xl text-white/90">
-                {t('contactSubtitle')}
+                {t('Contact Subtitle')}
               </p>
             </div>
           </div>
@@ -130,28 +130,28 @@ export default function Contact() {
               {/* Contact Form */}
               <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-2xl">{t('sendMessageTitle')}</CardTitle>
-                  <CardDescription>{t('sendMessageDesc')}</CardDescription>
+                  <CardTitle className="text-2xl">{t('Send Message Title')}</CardTitle>
+                  <CardDescription>{t('Send Message Desc')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="name">{t('fullName')} *</Label>
+                        <Label htmlFor="name">{t('Full Name')} *</Label>
                         <Input
                           id="name"
-                          placeholder={t('namePlaceholder')}
+                          placeholder={t('Name Placeholder')}
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                           required
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="email">{t('emailLabel')} *</Label>
+                        <Label htmlFor="email">{t('Email Label')} *</Label>
                         <Input
                           id="email"
                           type="email"
-                          placeholder={t('emailPlaceholder')}
+                          placeholder={t('Email Placeholder')}
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                           required
@@ -161,7 +161,7 @@ export default function Contact() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="phone">{t('phoneNumber')}</Label>
+                        <Label htmlFor="phone">{t('Phone Number')}</Label>
                         <Input
                           id="phone"
                           type="tel"
@@ -171,28 +171,28 @@ export default function Contact() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="subject">{t('subjectLabel')} *</Label>
+                        <Label htmlFor="subject">{t('Subject Label')} *</Label>
                         <Select
                           value={formData.subject}
                           onValueChange={(value) => setFormData({ ...formData, subject: value })}
                         >
                           <SelectTrigger id="subject">
-                            <SelectValue placeholder={t('selectSubject')} />
+                            <SelectValue placeholder={t('Select Subject')} />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="general">{t('generalInquiry')}</SelectItem>
-                            <SelectItem value="support">{t('technicalSupport')}</SelectItem>
-                            <SelectItem value="business">{t('businessPartnership')}</SelectItem>
+                            <SelectItem value="general">{t('General Inquiry')}</SelectItem>
+                            <SelectItem value="support">{t('Technical Support')}</SelectItem>
+                            <SelectItem value="business">{t('Business Partnership')}</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="message">{t('messageLabel')} *</Label>
+                      <Label htmlFor="message">{t('Message Label')} *</Label>
                       <Textarea
                         id="message"
-                        placeholder={t('messagePlaceholder')}
+                        placeholder={t('Message Placeholder')}
                         rows={6}
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
@@ -213,44 +213,44 @@ export default function Contact() {
                   <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
                     <MessageCircle className="h-6 w-6 text-primary" />
                   </div>
-                  <CardTitle>{t('whatsappTitle')}</CardTitle>
-                  <CardDescription>{t('whatsappDesc')}</CardDescription>
+                  <CardTitle>{t('WhatsApp Title')}</CardTitle>
+                  <CardDescription>{t('WhatsApp Desc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    {t('whatsappAvailable')}
+                    {t('WhatsApp Available')}
                   </p>
-                  <Button 
-                    className="w-full" 
+                  <Button
+                    className="w-full"
                     variant="outline"
                     asChild
                   >
-                    <a 
-                      href="https://wa.me/255748467348?text=Hello%20Dereva%2Kiganjani" 
-                      target="_blank" 
+                    <a
+                      href="https://wa.me/255748467348?text=Hello%20Dereva%2Kiganjani"
+                      target="_blank"
                       rel="noopener noreferrer"
                     >
                       <MessageCircle className="mr-2 h-4 w-4" />
-                      {t('chatOnWhatsApp')}
+                      {t('Chat On WhatsApp')}
                     </a>
                   </Button>
 
                   <div className="pt-6 border-t">
-                    <h4 className="font-semibold mb-3">{t('quickLinksLabel')}</h4>
+                    <h4 className="font-semibold mb-3">{t('Quick Links')}</h4>
                     <ul className="space-y-2 text-sm">
                       <li>
                         <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                          {t('helpCenterLabel')}
+                          {t('Help Center')}
                         </a>
                       </li>
                       <li>
                         <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                          {t('userGuideLabel')}
+                          {t('User Guide')}
                         </a>
                       </li>
                       <li>
                         <a href="#" className="text-muted-foreground hover:text-primary transition-colors">
-                          {t('faqLabel')}
+                          {t('FAQ')}
                         </a>
                       </li>
                     </ul>
@@ -270,7 +270,7 @@ export default function Contact() {
                   <div className="h-96 bg-muted flex items-center justify-center rounded-lg">
                     <div className="text-center space-y-2">
                       <MapPin className="h-12 w-12 mx-auto text-muted-foreground" />
-                      <p className="text-muted-foreground">{t('mapPlaceholder')}</p>
+                      <p className="text-muted-foreground">{t('Map Placeholder')}</p>
                     </div>
                   </div>
                 </CardContent>

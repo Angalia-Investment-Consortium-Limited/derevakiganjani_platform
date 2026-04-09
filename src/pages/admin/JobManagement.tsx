@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { RefreshCw, Trash2, Users } from 'lucide-react';
+import { RefreshCw, Trash2, Users, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +46,7 @@ export default function JobManagement() {
     refresh,
     deleteJob
   } = useJobManagement();
-  
+
   const statusFilter = filters.find(f => f.field === 'status')?.value || 'all';
 
   const handleDelete = async () => {
@@ -71,23 +71,30 @@ export default function JobManagement() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">{t('Job Management')}</h1>
-          <Button onClick={refresh} disabled={isLoading}><RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />{t('refresh')}</Button>
+          <div className="flex items-center gap-3">
+              <Button onClick={() => navigate('/admin/jobs/new')} className="bg-primary hover:bg-primary/90">
+                {t('Create New Job')}
+              </Button>
+              <Button onClick={refresh} disabled={isLoading} variant="outline">
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />{t('refresh')}
+              </Button>
+          </div>
         </div>
 
         <Card>
           <CardHeader>
             <div className="flex justify-between items-center">
-                <CardTitle>{t('allJobs')}</CardTitle>
-                <Select onValueChange={setStatusFilter} value={statusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder={t('filterByStatus')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">{t('allStatuses')}</SelectItem>
-                    <SelectItem value="Open">{t('active')}</SelectItem>
-                    <SelectItem value="Expired">{t('expired')}</SelectItem>
-                  </SelectContent>
-                </Select>
+              <CardTitle>{t('All Jobs')}</CardTitle>
+              <Select onValueChange={setStatusFilter} value={statusFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder={t('Filter By Status')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{t('All Statuses')}</SelectItem>
+                  <SelectItem value="Open">{t('Active')}</SelectItem>
+                  <SelectItem value="Expired">{t('Expired')}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent>
@@ -95,21 +102,21 @@ export default function JobManagement() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>{t('title')}</TableHead>
-                    <TableHead>{t('company')}</TableHead>
-                    <TableHead>{t('status')}</TableHead>
-                    <TableHead>{t('postedOn')}</TableHead>
-                    <TableHead>{t('expiresOn')}</TableHead>
-                    <TableHead className="text-right">{t('actions')}</TableHead>
+                    <TableHead>{t('Title')}</TableHead>
+                    <TableHead>{t('Company')}</TableHead>
+                    <TableHead>{t('Status')}</TableHead>
+                    <TableHead>{t('Posted On')}</TableHead>
+                    <TableHead>{t('Expires On')}</TableHead>
+                    <TableHead className="text-right">{t('Actions')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {isLoading ? (
-                    <TableRow><TableCell colSpan={6} className="h-24 text-center">{t('loadingJobs')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="h-24 text-center">{t('Loading Jobs')}</TableCell></TableRow>
                   ) : error ? (
-                     <TableRow><TableCell colSpan={6} className="h-24 text-center text-red-500"><span>{error}</span></TableCell></TableRow>
-                  ): jobs.length === 0 ? (
-                    <TableRow><TableCell colSpan={6} className="h-24 text-center">{t('noJobsFound')}</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="h-24 text-center text-red-500"><span>{error}</span></TableCell></TableRow>
+                  ) : jobs.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="h-24 text-center">{t('No Jobs Found')}</TableCell></TableRow>
                   ) : (
                     jobs.map((job) => (
                       <TableRow key={job.id}>
@@ -118,21 +125,22 @@ export default function JobManagement() {
                         <TableCell><Badge className={STATUS_COLORS[job.status] || ''}>{t(job.status.toLowerCase())}</Badge></TableCell>
                         <TableCell>{formatDate(job.posted_date)}</TableCell>
                         <TableCell>{formatDate(job.expire_date)}</TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
+                          <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/jobs/${job.id}/edit`)}><Edit className="h-4 w-4 mr-2" />{t('edit')}</Button>
                           <Button variant="ghost" size="sm" onClick={() => navigate(`/admin/job-applicants/${job.id}`)}><Users className="h-4 w-4 mr-2" />{t('viewApplicants')}</Button>
                           <AlertDialog onOpenChange={() => setJobToDelete(job.id)}>
                             <AlertDialogTrigger asChild>
-                               <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600"><Trash2 className="h-4 w-4" /></Button>
+                              <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600"><Trash2 className="h-4 w-4" /></Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
-                                    <AlertDialogDescription>{t('deleteJobWarning')}</AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setJobToDelete(null)}>{t('cancel')}</AlertDialogCancel>
-                                    <AlertDialogAction onClick={handleDelete}>{t('delete')}</AlertDialogAction>
-                                </AlertDialogFooter>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>{t('areYouSure')}</AlertDialogTitle>
+                                <AlertDialogDescription>{t('deleteJobWarning')}</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setJobToDelete(null)}>{t('Cancel')}</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDelete}>{t('Delete')}</AlertDialogAction>
+                              </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
                         </TableCell>
@@ -145,10 +153,10 @@ export default function JobManagement() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between mt-4">
-                 <p className="text-sm text-muted-foreground">{t('showingPage', { currentPage: currentPage + 1, totalPages, totalJobs: total })}</p>
+                <p className="text-sm text-muted-foreground">{t('Showing Page', { currentPage: currentPage + 1, totalPages, totalJobs: total })}</p>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 0 || isLoading}>{t('previous')}</Button>
-                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages - 1 || isLoading}>{t('next')}</Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 0 || isLoading}>{t('Previous')}</Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage >= totalPages - 1 || isLoading}>{t('Next')}</Button>
                 </div>
               </div>
             )}

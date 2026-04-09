@@ -15,7 +15,6 @@ import { db } from "@/lib/firebase";
 import { useElimika } from "@/hooks/useElimika";
 import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import type { Course } from "@/types/elimika";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 const CourseEditor = () => {
   const navigate = useNavigate();
@@ -153,21 +152,7 @@ const CourseEditor = () => {
 
   return (
     <AdminLayout>
-        <Breadcrumb className="mb-6">
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild><Link to="/admin">Admin</Link></BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild><Link to="/admin/courses">Courses</Link></BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{isNew ? "New Course" : "Edit"}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
+
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">{isNew ? "Create New Course" : "Edit Course"}</h1>
         <p className="text-muted-foreground">Fill in the course details and manage lessons.</p>

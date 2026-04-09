@@ -14,7 +14,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Save, X, Loader2, AlertCircle, Upload, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { Loader } from "@/components/ui/loader";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
@@ -202,11 +201,23 @@ const QuestionEditor = () => {
   };
 
   const handleSave = async () => {
-    if (!formData.question_text_en || !formData.question_text_sw) {
-      return toast({ variant: "destructive", title: "Validation Error", description: "Question text in both English and Swahili is required." });
+    if (!formData.question_text_en && !formData.question_text_sw) {
+      return toast({ variant: "destructive", title: "Validation Error", description: "Question text in either English or Swahili is required." });
     }
-    if (!formData.answers || formData.answers.some(a => !a.text_en || !a.text_sw)) {
-      return toast({ variant: "destructive", title: "Validation Error", description: "All answer choices must have text in both English and Swahili." });
+    
+    if (!formData.question_text_en || !formData.question_text_sw) {
+      const missingLang = !formData.question_text_en ? "English" : "Swahili";
+      const proceed = window.confirm(`Warning: The ${missingLang} question text is missing. Do you want to proceed and save? (Click Cancel to amend)`);
+      if (!proceed) return;
+    }
+
+    if (!formData.answers || formData.answers.some(a => !a.text_en && !a.text_sw)) {
+      return toast({ variant: "destructive", title: "Validation Error", description: "All answer choices must have at least one text (English or Swahili)." });
+    }
+    
+    if (formData.answers.some(a => !a.text_en || !a.text_sw)) {
+      const proceed = window.confirm(`Warning: Some answer choices are missing either the English or Swahili text. Do you want to proceed and save? (Click Cancel to amend)`);
+      if (!proceed) return;
     }
 
     setIsSaving(true);
@@ -262,24 +273,12 @@ const QuestionEditor = () => {
     }
   };
 
-  const breadcrumb = (
-    <Breadcrumb className="mb-8">
-      <BreadcrumbList>
-        <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin">Admin</Link></BreadcrumbLink></BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem><BreadcrumbLink asChild><Link to="/admin/questions">Question Bank</Link></BreadcrumbLink></BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem><BreadcrumbPage>{isNew ? "Create" : "Edit"}</BreadcrumbPage></BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
 
   if (isLoading) { return <AdminLayout><Loader>Loading question editor...</Loader></AdminLayout>; }
 
   if (error) {
     return (
       <AdminLayout>
-        {breadcrumb}
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error} <Button variant="link" onClick={() => navigate("/admin/questions")}>Return to Bank</Button></AlertDescription>
@@ -290,7 +289,6 @@ const QuestionEditor = () => {
 
   return (
     <AdminLayout>
-      {breadcrumb}
       <div className="mb-8 flex justify-between items-center">
         <div>
           <h1 className="text-4xl font-bold mb-2">{isNew ? "Create New Question" : "Edit Question"}</h1>

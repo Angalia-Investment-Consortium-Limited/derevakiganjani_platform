@@ -12,10 +12,12 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const JobDetail = () => {
   const navigate = useNavigate();
   const { jobId } = useParams();
+  const { user, profile } = useAuth();
   const { job, applicants, isLoading, error } = useJobApplicants(jobId || null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
@@ -42,16 +44,17 @@ const JobDetail = () => {
       const appRef = doc(db, 'job_applications', app.id);
       await updateDoc(appRef, { status: 'Shortlisted' });
 
+      const empId = job?.employerId || (profile as any)?.userId || user?.uid || '';
       const shortlistQ = query(
         collection(db, "shortlists"),
-        where("employerId", "==", job?.employerId || ''),
+        where("employerId", "==", empId),
         where("driverId", "==", app.driverId),
         where("jobId", "==", app.jobId)
       );
       const shortlistSnap = await getDocs(shortlistQ);
       if (shortlistSnap.empty) {
         await addDoc(collection(db, 'shortlists'), {
-          employerId: job?.employerId || '',
+          employerId: empId,
           driverId: app.driverId,
           jobId: app.jobId,
           status: 'Pending',
@@ -182,7 +185,7 @@ const JobDetail = () => {
                             {driver.verified && <CheckCircle2 className="h-4 w-4 text-success" />}
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            Category {driver.license_category?.join(', ') || driver.licenseNumber || 'N/A'} • {driver.region || driver.location || 'N/A'}
+                            Category {Array.isArray(driver.license_category) ? driver.license_category.join(', ') : (driver.license_category || driver.licenseNumber || 'N/A')} • {driver.region || driver.location || 'N/A'}
                           </p>
                           <div className="flex gap-2 mt-2">
                             <Badge variant={isShortlisted ? 'default' : 'outline'} className={isShortlisted ? 'bg-success/10 text-success text-xs' : 'text-xs'}>{app.status}</Badge>
@@ -229,7 +232,7 @@ const JobDetail = () => {
                 <CardTitle className="text-lg">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={() => navigate('/employer/shortlist')}>
+                <Button className="w-full" onClick={() => navigate(`/employer/shortlist?jobId=${jobId}`)}>
                   View Shortlist
                 </Button>
                 <Button className="w-full" variant="outline" onClick={() => navigate(`/ajiri-dereva/post-job?edit=${jobId}`)}>

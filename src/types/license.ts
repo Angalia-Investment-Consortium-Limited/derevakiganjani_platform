@@ -30,7 +30,7 @@ export const APPLICATION_TYPES = [
 export const APPLICATION_FEES: { [key in ApplicationType]: number } = {
   'New License': 3000,
   'License Renewal': 3000,
-  'LATRA Exam': 3000,
+  'LATRA Exam': 300,
 };
 
 export const LICENSE_CATEGORIES = [
@@ -65,7 +65,7 @@ export type DocumentType = typeof DOCUMENT_TYPES[number];
 export const REQUIRED_DOCUMENTS: { [key in ApplicationType]: DocumentType[] } = {
   'New License': [], // No documents uploaded
   'License Renewal': [], // No documents uploaded
-  'LATRA Exam': ['nationalId', 'drivingLicense', 'psvCertificate', 'hgvCertificate'], // LATRA still requires these
+  'LATRA Exam': ['drivingLicense'], // LATRA requires only drivingLicense now
 };
 
 // A more robust config allowing per-document validation, matching the hook's expectation.
@@ -142,6 +142,8 @@ export interface LicenseApplicationFormData {
   email: string;
   region: string;
   district: string;
+  ward?: string;
+  exam_date?: string;
   street_address?: string; // Only for LATRA Exam
   license_category: LicenseCategory[];
   current_license_number?: string;
@@ -171,7 +173,10 @@ export interface LicenseApplication {
   email: string;
   region: string;
   district: string;
+  ward?: string;
   streetAddress?: string;
+  examDate?: string;
+  latraType?: LatraType;
   categories: LicenseCategory[];
   documents: DocumentUpload[];
   submittedOn: Timestamp;

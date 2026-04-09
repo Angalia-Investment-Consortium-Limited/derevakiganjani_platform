@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Download, DollarSign, Award, GraduationCap, FileCheck, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 import { useAdminReports } from '@/hooks/useAdminReports';
 import { exportToCSV, exportToPDF } from '@/utils/exportUtils';
 
@@ -88,7 +87,6 @@ const ReportsCenter = () => {
 
   return (
     <AdminLayout>
-      <AdminBreadcrumbs />
       <div className="space-y-6 mt-4">
           {/* Header */}
           <div>

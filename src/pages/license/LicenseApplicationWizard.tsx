@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
@@ -17,6 +16,7 @@ import {
   useSubmitApplication,
   useFileValidation
 } from '@/hooks/useApplications';
+import { useRegions, useDistricts } from '@/hooks/useLocations';
 import {
   MultiDocumentUpload,
 } from '@/components/license/DocumentUpload';
@@ -40,15 +40,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-
-const MOCK_REGIONS = ['Dar es Salaam', 'Mwanza', 'Arusha', 'Dodoma', 'Mbeya'];
-const MOCK_DISTRICTS: { [key: string]: string[] } = {
-  'Dar es Salaam': ['Ilala', 'Temeke', 'Kinondoni', 'Ubungo', 'Kigamboni'],
-  'Mwanza': ['Nyamagana', 'Ilemela', 'Sengerema'],
-  'Arusha': ['Arusha City', 'Arusha Rural', 'Meru'],
-  'Dodoma': ['Dodoma Urban', 'Bahi', 'Chamwino'],
-  'Mbeya': ['Mbeya Urban', 'Rungwe', 'Kyela'],
-};
 
 export default function LicenseApplicationWizard() {
   const { type } = useParams<{ type: string }>();
@@ -85,25 +76,23 @@ export default function LicenseApplicationWizard() {
     nida_number: '',
     tin_number: '',
     street_address: '',
+    ward: '',
+    exam_date: '',
     license_category: [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [regions] = useState<string[]>(MOCK_REGIONS);
-  const [districts, setDistricts] = useState<string[]>([]);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
-  useEffect(() => {
-    if (formData.region) {
-      setDistricts(MOCK_DISTRICTS[formData.region] || []);
-    } else {
-      setDistricts([]);
-    }
-  }, [formData.region]);
+  const { regions, isLoading: regionsLoading } = useRegions();
+  const selectedRegion = useMemo(() => regions.find((r: any) => r.name === formData.region), [regions, formData.region]);
+  const { districts, isLoading: districtsLoading } = useDistricts(selectedRegion?.id || '');
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   const steps = useMemo(() => [
     { id: 1, title: t('personal_info'), icon: User, description: t('fill_personal_info') },
-    { id: 2, title: t('location_license'), icon: MapPin, description: t('select_location_license') },
+    { id: 2, title: t('Location & Scheduling'), icon: MapPin, description: t('select_location_license') },
     { id: 3, title: t('upload_documents'), icon: Upload, description: t('upload_required_docs') },
     { id: 4, title: t('review_submit'), icon: FileText, description: t('review_and_submit') }
   ], [t]);
@@ -129,6 +118,9 @@ export default function LicenseApplicationWizard() {
       case 1:
         if (!formData.region) newErrors.region = t('Region Required');
         if (!formData.district) newErrors.district = t('District Required');
+        if (!formData.ward?.trim()) newErrors.ward = t('Ward Required');
+        if (!formData.exam_date) newErrors.exam_date = t('Requested Exam Date Required');
+        if (formData.exam_date && formData.exam_date < todayStr) newErrors.exam_date = t('Exam date cannot be in the past');
         
         if (applicationType === 'LATRA Exam') {
           if (!formData.latra_type) newErrors.latra_type = t('LATRA Type Required');
@@ -136,10 +128,26 @@ export default function LicenseApplicationWizard() {
         }
 
         if (!formData.license_category || formData.license_category.length === 0) newErrors.license_category = t('License Category Required');
-        if (applicationType === 'License Renewal' && !formData.current_license_number?.trim()) newErrors.current_license_number = t('Current License Required');
         break;
       case 2:
-        const requiredDocs = REQUIRED_DOCUMENTS[applicationType];
+        const requiredDocs = [...(REQUIRED_DOCUMENTS[applicationType] || [])];
+        
+        if (applicationType === 'LATRA Exam') {
+            if (!requiredDocs.includes('nationalId')) requiredDocs.push('nationalId');
+            
+            if (formData.latra_type === 'PSV') {
+                if (!requiredDocs.includes('psvCertificate')) requiredDocs.push('psvCertificate');
+            } else if (formData.latra_type === 'HGV') {
+                if (!requiredDocs.includes('hgvCertificate')) requiredDocs.push('hgvCertificate');
+            }
+        }
+
+        // OR Logic: If they provided the license string manually, uploading the document is no longer required.
+        if ((applicationType === 'License Renewal' || applicationType === 'LATRA Exam') && formData.current_license_number?.trim()) {
+            const index = requiredDocs.indexOf('drivingLicense');
+            if (index > -1) requiredDocs.splice(index, 1);
+        }
+
         const uploadedDocTypes = uploadedFiles.map(f => f.documentType);
         const missingDocs = requiredDocs.filter(doc => !uploadedDocTypes.includes(doc));
         if (missingDocs.length > 0) {
@@ -150,7 +158,7 @@ export default function LicenseApplicationWizard() {
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  }, [currentStep, formData, uploadedFiles, applicationType, t]);
+  }, [currentStep, formData, uploadedFiles, applicationType, t, todayStr]);
 
   const handleNext = () => {
     if (validateStep()) {
@@ -162,7 +170,6 @@ export default function LicenseApplicationWizard() {
   const handleSubmitAndPay = async () => {
     if (isSubmitting || isProcessingPayment) return;
 
-    // 1. Create the application document in Firestore
     const creationResult = await createApplication(formData, uploadedFiles);
 
     if (!creationResult.success || !creationResult.applicationId) {
@@ -189,7 +196,6 @@ export default function LicenseApplicationWizard() {
     toast.info(t('Application Submitted Redirecting to Payment'));
     setIsProcessingPayment(true);
 
-    // 2. Call the Cloud Function to initiate payment
     try {
       const functions = getFunctions();
       const initiateLicensePayment = httpsCallable(functions, 'initiateLicensePayment');
@@ -217,11 +223,9 @@ export default function LicenseApplicationWizard() {
     } catch (error: any) {
       console.error("Payment initiation error:", error);
       toast.error(error.message || t('An Error Occurred During Payment'));
-      // Optionally revert application status or let user retry payment
       setIsProcessingPayment(false);
     }
   };
-
 
   useEffect(() => {
     if (!user) {
@@ -276,25 +280,39 @@ export default function LicenseApplicationWizard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t('Region')}</Label>
-                <Select value={formData.region} onValueChange={(value) => updateFormData({ region: value, district: '' })}>
+                <Select value={formData.region} onValueChange={(value) => updateFormData({ region: value, district: '' })} disabled={regionsLoading}>
                   <SelectTrigger><SelectValue placeholder={t('Select Region')} /></SelectTrigger>
                   <SelectContent>
-                    {regions.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                    {regions.map((r: any) => <SelectItem key={r.id} value={r.name}>{r.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {errors.region && <p className="text-sm text-destructive">{errors.region}</p>}
               </div>
               <div className="space-y-2">
                 <Label>{t('District')}</Label>
-                <Select value={formData.district} onValueChange={(value) => updateFormData({ district: value })} disabled={!formData.region}>
+                <Select value={formData.district} onValueChange={(value) => updateFormData({ district: value })} disabled={!formData.region || districtsLoading}>
                   <SelectTrigger><SelectValue placeholder={t('Select District')} /></SelectTrigger>
                   <SelectContent>
-                    {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
+                    {districts.map((d: any) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 {errors.district && <p className="text-sm text-destructive">{errors.district}</p>}
               </div>
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="ward">{t('Ward (Kata)')}</Label>
+                <Input id="ward" value={formData.ward || ''} onChange={(e) => updateFormData({ ward: e.target.value })} placeholder={t('Enter your ward')} />
+                {errors.ward && <p className="text-sm text-destructive">{errors.ward}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="exam_date">{t('Requested Exam Date')}</Label>
+                <Input type="date" id="exam_date" min={todayStr} value={formData.exam_date || ''} onChange={(e) => updateFormData({ exam_date: e.target.value })} />
+                {errors.exam_date && <p className="text-sm text-destructive">{errors.exam_date}</p>}
+              </div>
+            </div>
+
             {applicationType === 'LATRA Exam' && (
               <div className="space-y-2">
                 <Label htmlFor="street_address">{t('Street Address')}</Label>
@@ -327,9 +345,9 @@ export default function LicenseApplicationWizard() {
               </div>
               {errors.license_category && <p className="text-sm text-destructive">{errors.license_category}</p>}
             </div>
-            {applicationType === 'License Renewal' && (
+            {(applicationType === 'License Renewal' || applicationType === 'LATRA Exam') && (
               <div className="space-y-2">
-                <Label htmlFor="current_license_number">{t('Current License Number')}</Label>
+                <Label htmlFor="current_license_number">{t('Current License Number')} {t('(Optional if uploading document next)')}</Label>
                 <Input id="current_license_number" value={formData.current_license_number || ''} onChange={(e) => updateFormData({ current_license_number: e.target.value })} />
                 {errors.current_license_number && <p className="text-sm text-destructive">{errors.current_license_number}</p>}
               </div>
@@ -350,10 +368,32 @@ export default function LicenseApplicationWizard() {
           </div>
         );
       case 2:
-        const requiredDocs = REQUIRED_DOCUMENTS[applicationType] || [];
+        const requiredDocsRender = [...(REQUIRED_DOCUMENTS[applicationType] || [])];
+        
+        if (applicationType === 'LATRA Exam') {
+            if (!requiredDocsRender.includes('nationalId')) requiredDocsRender.push('nationalId');
+            
+            if (formData.latra_type === 'PSV') {
+                if (!requiredDocsRender.includes('psvCertificate')) requiredDocsRender.push('psvCertificate');
+            } else if (formData.latra_type === 'HGV') {
+                if (!requiredDocsRender.includes('hgvCertificate')) requiredDocsRender.push('hgvCertificate');
+            }
+        }
+
+        // We do not remove 'drivingLicense' from requiredDocsRender. 
+        // This ensures it stays in the dropdown so the user can optionally upload it.
+        // Strict validation in `validateStep()` handles bypassing it if they typed the number.
+
+        if (requiredDocsRender.length === 0) {
+            return (
+              <div className="text-center p-6 bg-muted/20 rounded-md border border-dashed">
+                  <p className="text-muted-foreground">{t('No documents are required since you provided your License Number.')}</p>
+              </div>
+            );
+        }
         return (
           <MultiDocumentUpload
-            requiredDocuments={requiredDocs}
+            requiredDocuments={requiredDocsRender}
             uploadedFiles={uploadedFiles}
             onFileAdd={(file, docType) => {
               const error = validateFile(file, docType);
@@ -379,12 +419,19 @@ export default function LicenseApplicationWizard() {
               )}
               <p><strong>{t('Phone Number')}:</strong> {formData.phone_number}</p>
               <p><strong>{t('Email')}:</strong> {formData.email}</p>
-              <p><strong>{t('Region')}:</strong> {formData.region}</p>
-              <p><strong>{t('District')}:</strong> {formData.district}</p>
-              {applicationType === 'LATRA Exam' && formData.street_address && (
-                <p><strong>{t('Street Address')}:</strong> {formData.street_address}</p>
+              <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2 rounded">
+                 <p><strong>{t('Region')}:</strong> {formData.region}</p>
+                 <p><strong>{t('District')}:</strong> {formData.district}</p>
+                 <p><strong>{t('Ward')}:</strong> {formData.ward}</p>
+                 <p><strong>{t('Requested Exam Date')}:</strong> {formData.exam_date}</p>
+                 {applicationType === 'LATRA Exam' && formData.street_address && (
+                   <p className="col-span-2"><strong>{t('Street Address')}:</strong> {formData.street_address}</p>
+                 )}
+              </div>
+              <p className="mt-2"><strong>{t('License Category')}:</strong> {formData.license_category?.join(', ')}</p>
+              {applicationType === 'LATRA Exam' && formData.latra_type && (
+                <p><strong>{t('LATRA Type')}:</strong> {formData.latra_type}</p>
               )}
-              <p><strong>{t('License Category')}:</strong> {formData.license_category?.join(', ')}</p>
               <p><strong>{t('Application Type')}:</strong> {applicationType}</p>
               <div className="pt-2">
                 <h4 className="font-semibold">{t('Uploaded Documents')}:</h4>
@@ -412,9 +459,9 @@ export default function LicenseApplicationWizard() {
             <Progress value={progress} className="w-full" />
             <div className="flex justify-between mt-2 text-sm text-muted-foreground">
               {steps.map((step, index) => (
-                <div key={step.id} className={`flex items-center ${index === currentStep ? 'font-semibold' : ''}`}>
+                <div key={step.id} className={`flex items-center ${index === currentStep ? 'font-semibold text-primary' : ''}`}>
                   <step.icon className={`mr-2 h-4 w-4 ${index === currentStep ? 'text-primary' : ''}`} />
-                  {step.title}
+                  <span className="hidden sm:inline">{step.title}</span>
                 </div>
               ))}
             </div>
@@ -443,7 +490,7 @@ export default function LicenseApplicationWizard() {
                 )}
               </Button>
             ) : (
-              <Button onClick={handleNext} disabled={isSubmitting || isProcessingPayment}>
+              <Button onClick={handleNext} disabled={isSubmitting || isProcessingPayment || regionsLoading}>
                 {t('Next')} <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             )}

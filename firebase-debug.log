@@ -1,0 +1,33 @@
+[debug] [2026-04-09T00:07:50.394Z] ----------------------------------------------------------------------
+[debug] [2026-04-09T00:07:50.397Z] Command:       /Users/apple/.nvm/versions/node/v22.18.0/bin/node /Users/apple/.nvm/versions/node/v22.18.0/bin/firebase deploy --only hosting
+[debug] [2026-04-09T00:07:50.397Z] CLI Version:   15.11.0
+[debug] [2026-04-09T00:07:50.398Z] Platform:      darwin
+[debug] [2026-04-09T00:07:50.398Z] Node Version:  v22.18.0
+[debug] [2026-04-09T00:07:50.398Z] Time:          Thu Apr 09 2026 03:07:50 GMT+0300 (East Africa Time)
+[debug] [2026-04-09T00:07:50.398Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-04-09T00:07:52.749Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-04-09T00:07:52.751Z] > authorizing via signed-in user (brian2xa@gmail.com)
+[debug] [2026-04-09T00:07:52.751Z] [iam] checking project derevakiganjani for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-04-09T00:07:52.752Z] Checked if tokens are valid: false, expires at: 1775693547067
+[debug] [2026-04-09T00:07:52.752Z] Checked if tokens are valid: false, expires at: 1775693547067
+[debug] [2026-04-09T00:07:52.754Z] > refreshing access token with scopes: []
+[debug] [2026-04-09T00:07:52.756Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-04-09T00:07:52.757Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-09T00:07:53.582Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-04-09T00:07:53.582Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-04-09T00:07:53.605Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions [none]
+[debug] [2026-04-09T00:07:53.605Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions  x-goog-user-project=derevakiganjani
+[debug] [2026-04-09T00:07:53.605Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-04-09T00:07:55.280Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions 200
+[debug] [2026-04-09T00:07:55.280Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/derevakiganjani:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-04-09T00:07:55.280Z] Checked if tokens are valid: true, expires at: 1775696872582
+[debug] [2026-04-09T00:07:55.281Z] Checked if tokens are valid: true, expires at: 1775696872582
+[debug] [2026-04-09T00:07:55.281Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/derevakiganjani [none]
+[debug] [2026-04-09T00:07:56.062Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/derevakiganjani 200
+[debug] [2026-04-09T00:07:56.062Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/derevakiganjani {"projectId":"derevakiganjani","projectNumber":"916725946911","displayName":"derevakiganjani","name":"projects/derevakiganjani","resources":{"hostingSite":"derevakiganjani"},"state":"ACTIVE","etag":"1_e90a482a-a8de-488c-8323-f02d694183ef"}
+[info] 
+[info] === Deploying to 'derevakiganjani'...
+[info] 
+[info] i  deploying hosting 
+[info] Running command: npm install && npm run build

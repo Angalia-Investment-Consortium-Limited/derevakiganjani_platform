@@ -19,8 +19,8 @@ import { db } from '@/lib/firebase';
 import { collection, query, onSnapshot, doc, updateDoc, writeBatch, orderBy, where } from 'firebase/firestore';
 import { Bell, CheckCircle, AlertCircle, FileText, CreditCard, Calendar, ChevronRight, Home } from 'lucide-react';
 
-// Matches the filter categories and maps to new DB types
-type NotificationCategory = 'payment' | 'test' | 'license' | 'info';
+// Matches the filter categories dynamically based on userType
+type NotificationCategory = 'payment' | 'test' | 'license' | 'jobs' | 'candidates' | 'info';
 
 // Matches the structure in Firestore
 interface Notification {
@@ -36,7 +36,7 @@ interface Notification {
 
 const Notifications = () => {
   const { t, language } = useLanguage();
-  const { user } = useAuth();
+  const { user, userType } = useAuth();
   const [filter, setFilter] = useState<'all' | NotificationCategory>('all');
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -61,45 +61,42 @@ const Notifications = () => {
     return () => unsubscribe();
   }, [user]);
 
-  // Maps Firestore types to the filter categories
-  const getCategory = (type: string): NotificationCategory => {
-    const upperType = type.toUpperCase();
-    if (upperType.includes('PAYMENT')) return 'payment';
-    if (upperType.includes('TEST')) return 'test';
-    if (upperType.includes('LICENSE')) return 'license';
-    // Default for WELCOME, JOB_APPLICATION_STATUS, etc.
+  // Maps Firestore titles to the filter categories (since type is transport medium)
+  const getCategory = (notification: Notification): NotificationCategory => {
+    const searchString = `${notification.type} ${notification.title_en}`.toUpperCase();
+    if (searchString.includes('PAYMENT') || searchString.includes('RECEIPT')) return 'payment';
+    if (searchString.includes('TEST')) return 'test';
+    if (searchString.includes('LICENSE')) return 'license';
+    if (searchString.includes('JOB')) return 'jobs';
+    if (searchString.includes('CANDIDATE') || searchString.includes('APPLICATION')) return 'candidates';
     return 'info';
   };
 
   const getIcon = (category: NotificationCategory) => {
     switch (category) {
-      case 'payment':
-        return <CreditCard className="h-5 w-5" />;
-      case 'test':
-        return <FileText className="h-5 w-5" />;
-      case 'license':
-        return <Calendar className="h-5 w-5" />;
-      default:
-        return <Bell className="h-5 w-5" />;
+      case 'payment': return <CreditCard className="h-5 w-5" />;
+      case 'test': return <FileText className="h-5 w-5" />;
+      case 'license': return <Calendar className="h-5 w-5" />;
+      case 'jobs': return <FileText className="h-5 w-5" />;
+      case 'candidates': return <CheckCircle className="h-5 w-5" />;
+      default: return <Bell className="h-5 w-5" />;
     }
   };
 
   const getStatusIcon = (category: NotificationCategory) => {
     switch (category) {
-      case 'payment':
-        return <CheckCircle className="h-4 w-4 text-success" />;
-      case 'test':
-        return <AlertCircle className="h-4 w-4 text-accent" />;
-      case 'license':
-        return <FileText className="h-4 w-4 text-secondary" />;
-      default:
-        return <Bell className="h-4 w-4 text-primary" />;
+      case 'payment': return <CheckCircle className="h-4 w-4 text-success" />;
+      case 'test': return <AlertCircle className="h-4 w-4 text-accent" />;
+      case 'license': return <FileText className="h-4 w-4 text-secondary" />;
+      case 'jobs': return <CheckCircle className="h-4 w-4 text-success" />;
+      case 'candidates': return <CheckCircle className="h-4 w-4 text-primary" />;
+      default: return <Bell className="h-4 w-4 text-primary" />;
     }
   };
 
   const filteredNotifications = filter === 'all' 
     ? notifications 
-    : notifications.filter(n => getCategory(n.type) === filter);
+    : notifications.filter(n => getCategory(n) === filter);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -177,30 +174,63 @@ const Notifications = () => {
                 >
                   {t('All')}
                 </Button>
-                <Button
-                  variant={filter === 'payment' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('payment')}
-                >
-                  <CreditCard className="h-4 w-4 mr-1" />
-                  {t('Payments')}
-                </Button>
-                <Button
-                  variant={filter === 'test' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('test')}
-                >
-                  <FileText className="h-4 w-4 mr-1" />
-                  {t('Tests')}
-                </Button>
-                <Button
-                  variant={filter === 'license' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setFilter('license')}
-                >
-                  <Calendar className="h-4 w-4 mr-1" />
-                  {t('License')}
-                </Button>
+
+                {userType === 'Employer' ? (
+                  <>
+                    <Button
+                      variant={filter === 'jobs' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setFilter('jobs')}
+                    >
+                      <FileText className="h-4 w-4 mr-1" />
+                      Jobs
+                    </Button>
+                    <Button
+                      variant={filter === 'candidates' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setFilter('candidates')}
+                    >
+                      <CheckCircle className="h-4 w-4 mr-1" />
+                      Candidates
+                    </Button>
+                    <Button
+                      variant={filter === 'payment' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setFilter('payment')}
+                    >
+                      <CreditCard className="h-4 w-4 mr-1" />
+                      Payments
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant={filter === 'payment' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setFilter('payment')}
+                    >
+                      <CreditCard className="h-4 w-4 mr-1" />
+                      {t('Payments')}
+                    </Button>
+                    <Button
+                      variant={filter === 'test' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setFilter('test')}
+                    >
+                      <FileText className="h-4 w-4 mr-1" />
+                      {t('Tests')}
+                    </Button>
+                    <Button
+                      variant={filter === 'license' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setFilter('license')}
+                    >
+                      <Calendar className="h-4 w-4 mr-1" />
+                      {t('License')}
+                    </Button>
+                  </>
+                )}
+
                 <Button
                   variant={filter === 'info' ? 'default' : 'outline'}
                   size="sm"
@@ -223,7 +253,7 @@ const Notifications = () => {
               </Card>
             ) : (
               filteredNotifications.map((notification) => {
-                const category = getCategory(notification.type);
+                const category = getCategory(notification);
                 return (
                   <Card
                     key={notification.id}

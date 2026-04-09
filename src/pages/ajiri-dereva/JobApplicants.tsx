@@ -1,5 +1,7 @@
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +21,8 @@ const JobApplicants = () => {
   const navigate = useNavigate();
   const { jobId } = useParams();
   const { toast } = useToast();
-  const { applicants, job, isLoading, error, refresh } = useJobApplicants(jobId || null);
+  const { job, applicants, isLoading, error, refresh } = useJobApplicants(jobId || null);
+  const { user, profile } = useAuth();
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
   const jobTitle = job?.job_title || "Loading...";
@@ -50,17 +53,18 @@ const JobApplicants = () => {
       await updateDoc(appRef, { status: actionStatus });
 
       if (actionStatus === 'Shortlisted') {
+        const empId = job?.employerId || (profile as any)?.userId || user?.uid || '';
         // Check if already shortlisted to prevent duplicates
         const shortlistQ = query(
           collection(db, "shortlists"),
-          where("employerId", "==", job?.employerId || ''),
+          where("employerId", "==", empId),
           where("driverId", "==", app.driverId),
           where("jobId", "==", app.jobId)
         );
         const shortlistSnap = await getDocs(shortlistQ);
         if (shortlistSnap.empty) {
           await addDoc(collection(db, 'shortlists'), {
-            employerId: job?.employerId || '',
+            employerId: empId,
             driverId: app.driverId,
             jobId: app.jobId,
             status: 'Pending',
@@ -189,7 +193,7 @@ const JobApplicants = () => {
                       <TableRow key={app.id}>
                         <TableCell className="font-medium">{driverName}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">Cat {driver.license_category?.join(', ')}</Badge>
+                          <Badge variant="outline">Cat {Array.isArray(driver.license_category) ? driver.license_category.join(', ') : (driver.license_category || driver.licenseNumber || 'N/A')}</Badge>
                         </TableCell>
                         <TableCell>{driver.years_of_experience ? `${driver.years_of_experience} yrs` : 'N/A'}</TableCell>
                         <TableCell>{driver.region}</TableCell>

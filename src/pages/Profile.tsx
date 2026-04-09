@@ -46,6 +46,15 @@ const Profile = () => {
     emailEnabled: true,
   });
 
+  const formatAddress = (addr: any): string => {
+    if (!addr) return '';
+    if (typeof addr === 'string') return addr;
+    if (typeof addr === 'object') {
+      return [addr.street, addr.city, addr.country].filter(Boolean).join(', ');
+    }
+    return '';
+  };
+
   useEffect(() => {
     if (user || profile) {
       const driverProfile = profile as DriverProfile;
@@ -55,7 +64,7 @@ const Profile = () => {
         full_name: user?.full_name || driverProfile?.fullName || '',
         email: user?.email || '',
         phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
-        address: (profile as any)?.address || '',
+        address: formatAddress((profile as any)?.address),
         bio: driverProfile?.bio || '',
         licenseNumber: driverProfile?.licenseNumber || '',
         company_name: employerProfile?.company_name || '',
@@ -131,7 +140,7 @@ const Profile = () => {
             full_name: user?.full_name || driverProfile?.fullName || '',
             email: user?.email || '',
             phone_number: (profile as any)?.phone_number || user?.mobile_no || '',
-            address: (profile as any)?.address || '',
+            address: formatAddress((profile as any)?.address),
             bio: driverProfile?.bio || '',
             licenseNumber: driverProfile?.licenseNumber || '',
             company_name: employerProfile?.company_name || '',

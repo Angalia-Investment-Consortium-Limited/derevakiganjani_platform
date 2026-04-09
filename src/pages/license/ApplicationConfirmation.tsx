@@ -18,10 +18,10 @@ export default function ApplicationConfirmation() {
     return null;
   }
 
-  const { 
-    application, 
-    isLoading: isLoadingApplication, 
-    error: applicationError 
+  const {
+    application,
+    isLoading: isLoadingApplication,
+    error: applicationError
   } = useApplicationDetails(refNo);
 
   const renderStatus = () => {
@@ -29,23 +29,23 @@ export default function ApplicationConfirmation() {
       return (
         <div className="flex flex-col items-center justify-center text-center p-8">
           <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-          <h1 className="text-2xl font-bold">{t('processing_payment')}</h1>
-          <p className="text-muted-foreground">{t('please_wait_payment')}</p>
+          <h1 className="text-2xl font-bold">{t('Processing Payment')}</h1>
+          <p className="text-muted-foreground">{t('Please wait while we process your payment.')}</p>
         </div>
       );
     }
 
     if (applicationError) {
-        return (
-            <div className="flex flex-col items-center justify-center text-center p-8">
-                <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-                <h1 className="text-2xl font-bold">{t('payment_error_title')}</h1>
-                <p className="text-muted-foreground max-w-md">
-                    {t('Payment Error Message')}: {applicationError}
-                </p>
-                <Button onClick={() => window.location.reload()} className="mt-6">{t('Try Again')}</Button>
-            </div>
-        );
+      return (
+        <div className="flex flex-col items-center justify-center text-center p-8">
+          <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+          <h1 className="text-2xl font-bold">{t('Payment Error Title')}</h1>
+          <p className="text-muted-foreground max-w-md">
+            {t('Payment Error Message')}: {applicationError}
+          </p>
+          <Button onClick={() => window.location.reload()} className="mt-6">{t('Try Again')}</Button>
+        </div>
+      );
     }
 
     const finalStatus = application?.status;
@@ -54,44 +54,44 @@ export default function ApplicationConfirmation() {
       case 'pending-review':
       case 'approved':
         return (
-           <div className="text-center p-8">
-                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <h1 className="text-2xl font-bold text-green-700">{t('payment_successful')}</h1>
-                <p className="text-muted-foreground mb-6">{t('application_under_review')}</p>
-                <div className="flex gap-4 justify-center">
-                    <Button asChild><Link to="/license/my-applications">{t('view_my_applications')}</Link></Button>
-                    <Button asChild variant="outline"><Link to="/dashboard">{t('back_to_dashboard')}</Link></Button>
-                </div>
+          <div className="text-center p-8">
+            <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+            <h1 className="text-2xl font-bold text-green-700">{t('Payment Successful')}</h1>
+            <p className="text-muted-foreground mb-6">{t('Your application is now under review.')}</p>
+            <div className="flex gap-4 justify-center">
+              <Button asChild><Link to="/license/my-applications">{t('View My Applications')}</Link></Button>
+              <Button asChild variant="outline"><Link to="/dashboard">{t('Back to Dashboard')}</Link></Button>
             </div>
+          </div>
         );
 
       case 'payment-failed':
       case 'rejected':
         return (
-            <div className="flex flex-col items-center justify-center text-center p-8">
-                <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-                <h1 className="text-2xl font-bold">{t('payment_failed_title')}</h1>
-                <p className="text-muted-foreground">{t('payment_failed_message')}</p>
-                <Button asChild className="mt-6"><Link to="/license/my-applications">{t('Try Again')}</Link></Button>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-8">
+            <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+            <h1 className="text-2xl font-bold">{t('Payment Failed Title')}</h1>
+            <p className="text-muted-foreground">{t('Payment Failed Message')}</p>
+            <Button asChild className="mt-6"><Link to="/license/my-applications">{t('Try Again')}</Link></Button>
+          </div>
         );
 
       case 'pending-payment':
         return (
-             <div className="flex flex-col items-center justify-center text-center p-8">
-                <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
-                <h1 className="text-2xl font-bold">{t('redirecting_to_payment')}</h1>
-                <p className="text-muted-foreground">{t('A USSD prompt has been sent to your phone. Please enter your PIN to authorize the payment.')}</p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-8">
+            <Loader2 className="h-16 w-16 animate-spin text-primary mb-4" />
+            <h1 className="text-2xl font-bold">{t('Redirecting to Payment')}</h1>
+            <p className="text-muted-foreground">{t('A USSD prompt has been sent to your phone. Please enter your PIN to authorize the payment.')}</p>
+          </div>
         );
 
       default:
         return (
-            <div className="flex flex-col items-center justify-center text-center p-8">
-                <AlertTriangle className="h-16 w-16 text-yellow-500 mb-4" />
-                <h1 className="text-2xl font-bold">{t('unknown_status')}</h1>
-                <p className="text-muted-foreground">{t('checking_application_status')}</p>
-            </div>
+          <div className="flex flex-col items-center justify-center text-center p-8">
+            <AlertTriangle className="h-16 w-16 text-yellow-500 mb-4" />
+            <h1 className="text-2xl font-bold">{t('Unknown Status')}</h1>
+            <p className="text-muted-foreground">{t('Checking Application Status')}</p>
+          </div>
         );
     }
   };
@@ -101,9 +101,9 @@ export default function ApplicationConfirmation() {
       <Header />
       <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
         <Card className="w-full max-w-lg shadow-lg">
-            <CardContent className="p-4 sm:p-6">
-                {renderStatus()}
-            </CardContent>
+          <CardContent className="p-4 sm:p-6">
+            {renderStatus()}
+          </CardContent>
         </Card>
       </main>
       <Footer />

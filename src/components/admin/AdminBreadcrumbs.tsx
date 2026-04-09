@@ -32,6 +32,20 @@ const routeLabels: Record<string, string> = {
   login: 'Login',
   forgot: 'Forgot Password',
   reset: 'Reset Password',
+  'license-application': 'License Application',
+  'license-applications': 'License Applications',
+};
+
+const pathMappings: Record<string, string> = {
+  'license-application': 'license-applications',
+  'question': 'questions',
+  'course': 'courses',
+  'job': 'job-management',
+  'jobs': 'job-posts',
+  'license-request': 'support-requests',
+  'driver': 'drivers',
+  'employer-review': 'employer-verification',
+  'jitesti': 'Jitesti',
 };
 
 export function AdminBreadcrumbs() {
@@ -40,7 +54,11 @@ export function AdminBreadcrumbs() {
 
   // Build breadcrumb items
   const breadcrumbs = pathSegments.map((segment, index) => {
-    const path = '/' + pathSegments.slice(0, index + 1).join('/');
+    const linkPathSegments = pathSegments.slice(0, index + 1).map((s, i) => 
+      i === index ? (pathMappings[s] || s) : s
+    );
+    
+    const path = '/' + linkPathSegments.join('/');
     const label = routeLabels[segment] || segment.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     const isLast = index === pathSegments.length - 1;
 

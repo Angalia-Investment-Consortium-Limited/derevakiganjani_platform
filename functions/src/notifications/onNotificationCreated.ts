@@ -25,8 +25,8 @@ const transporter = nodemailer.createTransport({
 /**
  * Beem Africa Configuration
  */
-const BEEM_API_KEY = "4c1c74a2b68c08fe";
-const BEEM_SECRET_KEY = "NmI5OTU5ODEyMzRlZjUzOWM1OGNmZDhlNDAyYzRlMTRmYzdjNDk3YzM2YzNjZGNjYjU5ZTFiYmI1YmU5OTk3OA==";
+const BEEM_API_KEY = "fe1fcc2c58d7d1bb";
+const BEEM_SECRET_KEY = "NTc4OWRmMTkyNDEwMjQwMTMxNWIzNjcxY2UzNDc3OTFmNzdkYmRkMDE5NTcwMWE2Yzg5MmI4MzRiM2NmMWZkYg==";
 const BEEM_SENDER_ID = "DerevaInfo";
 const BEEM_URL = "https://apisms.beem.africa/v1/send";
 
@@ -80,29 +80,39 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
     }
 
     if (type === "EMAIL") {
-      if (!emailAddress) {
-        throw new Error("Email address is required for EMAIL notifications.");
-      }
+      let finalEmail = emailAddress;
       
-      // Fetch Preferences
+      // Fetch Preferences & Email Fallback
       let emailEnabled = true;
       if (data.userId) {
          try {
-             // Profiles usually exist in driver_profiles or employer_profiles
+             // 1. Try resolving email from root user
+             const userDoc = await admin.firestore().collection("users").doc(data.userId).get();
+             if (userDoc.exists) {
+                 finalEmail = finalEmail || userDoc.data()?.email;
+             }
+
+             // 2. Resolve preferences & fallback profile emails
              const driverDoc = await admin.firestore().collection("driver_profiles").doc(data.userId).get();
              if (driverDoc.exists) {
                  const prefs = driverDoc.data()?.notificationPreferences;
                  if (prefs && prefs.emailEnabled === false) emailEnabled = false;
+                 finalEmail = finalEmail || driverDoc.data()?.email;
              } else {
                  const empDoc = await admin.firestore().collection("employer_profiles").doc(data.userId).get();
                  if (empDoc.exists) {
                      const prefs = empDoc.data()?.notificationPreferences;
                      if (prefs && prefs.emailEnabled === false) emailEnabled = false;
+                     finalEmail = finalEmail || empDoc.data()?.company_email;
                  }
              }
          } catch (e) {
              logger.warn("Could not fetch user preferences for Email", e);
          }
+      }
+
+      if (!finalEmail) {
+        throw new Error("Email address is required and could not be resolved for EMAIL notifications.");
       }
       
       if (!emailEnabled) {
@@ -113,40 +123,49 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
 
       await transporter.sendMail({
         from: '"Dereva Kiganjani" <communicaton@mdvfleet.co.tz>',
-        to: emailAddress,
+        to: finalEmail,
         subject: title || "New Notification - Dereva Kiganjani",
         text: message,
         html: `<p>${message}</p>`,
       });
 
-      logger.info(`Email sent successfully to ${emailAddress} [ID: ${notificationId}]`);
+      logger.info(`Email sent successfully to ${finalEmail} [ID: ${notificationId}]`);
       await snapshot.ref.update({ status: "SENT", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
       return;
     }
 
     if (type === "SMS") {
-      if (!phoneNumber) {
-        throw new Error("Phone number is required for SMS notifications.");
-      }
+      let finalPhoneNumber = phoneNumber;
 
-      // Fetch Preferences
+      // Fetch Preferences & Number
       let smsEnabled = true;
       if (data.userId) {
          try {
+             const userDoc = await admin.firestore().collection("users").doc(data.userId).get();
+             if (userDoc.exists) {
+                 finalPhoneNumber = finalPhoneNumber || userDoc.data()?.mobile_no || userDoc.data()?.phoneNumber;
+             }
+
              const driverDoc = await admin.firestore().collection("driver_profiles").doc(data.userId).get();
              if (driverDoc.exists) {
                  const prefs = driverDoc.data()?.notificationPreferences;
                  if (prefs && prefs.smsEnabled === false) smsEnabled = false;
+                 finalPhoneNumber = finalPhoneNumber || driverDoc.data()?.phone_number;
              } else {
                  const empDoc = await admin.firestore().collection("employer_profiles").doc(data.userId).get();
                  if (empDoc.exists) {
                      const prefs = empDoc.data()?.notificationPreferences;
                      if (prefs && prefs.smsEnabled === false) smsEnabled = false;
+                     finalPhoneNumber = finalPhoneNumber || empDoc.data()?.company_phone;
                  }
              }
          } catch (e) {
              logger.warn("Could not fetch user preferences for SMS", e);
          }
+      }
+
+      if (!finalPhoneNumber) {
+        throw new Error("Phone number is required and could not be resolved for SMS notifications.");
       }
 
       if (!smsEnabled) {
@@ -155,11 +174,18 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
           return;
       }
 
+      let fmtPhone = finalPhoneNumber.trim();
+      if (fmtPhone.startsWith("+")) {
+          fmtPhone = fmtPhone.substring(1);
+      } else if (fmtPhone.startsWith("0")) {
+          fmtPhone = "255" + fmtPhone.substring(1);
+      }
+
       // Format recipient specifically for Beem Africa
       const recipient = {
         recipient_id: 1,
-        // Remove leading '+' if exists, Beem requires valid international format without '+'
-        dest_addr: phoneNumber.startsWith("+") ? phoneNumber.substring(1) : phoneNumber,
+        // Beem requires valid international format without '+'
+        dest_addr: fmtPhone,
       };
 
       const authHeader = "Basic " + Buffer.from(`${BEEM_API_KEY}:${BEEM_SECRET_KEY}`).toString("base64");
@@ -183,7 +209,7 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
       );
 
       if (response.data && response.data.successful) {
-        logger.info(`SMS sent successfully to ${phoneNumber} [ID: ${notificationId}]`);
+        logger.info(`SMS sent successfully to ${finalPhoneNumber} [ID: ${notificationId}]`);
         await snapshot.ref.update({ status: "SENT", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
       } else {
         throw new Error(`SMS Provider error: ${JSON.stringify(response.data)}`);

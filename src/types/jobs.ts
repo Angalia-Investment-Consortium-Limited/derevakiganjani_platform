@@ -20,6 +20,7 @@ export interface Job {
     benefits: string[];
     posted_date: Timestamp;
     status: 'Open' | 'Closed' | 'Draft' | 'Published'; // Keep Published for compat if needed temporarily, but Schema says Open/Closed/Draft
+    expire_date?: Timestamp | string;
     
     // Additional optional fields used in UI
     applicationCount?: number;

@@ -139,13 +139,13 @@ const DriverProfile = () => {
                 <div className="flex flex-col items-center text-center">
                   <Avatar className="h-24 w-24 mb-4">
                     <AvatarFallback className="text-2xl">
-                      {driver.name.split(' ').map(n => n[0]).join('')}
+                      {driver.name.split(' ').map((n: string) => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
                   <CardTitle className="text-2xl">{driver.name}</CardTitle>
                   <CardDescription className="mt-2">Professional Driver</CardDescription>
                   <div className="flex gap-2 mt-3">
-                    {driver.licenseCategory.map((cat) => (
+                    {driver.licenseCategory.map((cat: string) => (
                       <Badge key={cat} variant="outline" className="text-lg px-3 py-1">
                         Category {cat}
                       </Badge>

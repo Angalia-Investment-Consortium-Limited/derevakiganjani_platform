@@ -168,11 +168,14 @@ const LicenseApplicationReview = () => {
                     {application.applicationType === 'LATRA Exam' ? (
                       <>
                         <DetailItem icon={FileText} label="NIDA Number" value={application.nidaNumber || 'N/A'} />
+                        <DetailItem icon={FileText} label="LATRA Type" value={application.latraType || 'N/A'} />
                         <DetailItem icon={MapPin} label="Street Address" value={application.streetAddress || 'N/A'} />
                       </>
                     ) : (
                       <DetailItem icon={FileText} label="TIN Number" value={application.tinNumber || 'N/A'} />
                     )}
+                    <DetailItem icon={MapPin} label="Location" value={`${application.region}, ${application.district}${application.ward ? `, ${application.ward}` : ''}`} />
+                    <DetailItem icon={Calendar} label="Requested Exam Date" value={application.examDate ? safeFormatDate(application.examDate) : 'N/A'} />
                     <DetailItem icon={FileText} label="Categories" value={application.categories?.join(', ') || 'N/A'} />
                     <DetailItem icon={Calendar} label="Submitted On" value={safeFormatDate(application.submittedOn)} />
                     <DetailItem icon={Banknote} label="Payment Status" value={getPaymentStatusBadge()} />

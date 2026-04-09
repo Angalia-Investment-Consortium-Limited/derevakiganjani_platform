@@ -1,7 +1,7 @@
 
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield, Briefcase, FileText, MessageSquare } from 'lucide-react';
+import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield, Briefcase, FileText, MessageSquare, Award } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -181,6 +181,14 @@ export const Header = () => {
                         <Briefcase className="mr-2 h-4 w-4" />
                         <span>My Job Applications</span>
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/elimika/my-learning')}>
+                        <Award className="mr-2 h-4 w-4" />
+                        <span>My Certificates</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/jitesti/my-history')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span>My Test Results</span>
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate('/license/my-applications')}>
                         <FileText className="mr-2 h-4 w-4" />
                         <span>My License Applications</span>
@@ -285,6 +293,22 @@ export const Header = () => {
                     >
                       <Briefcase className="mr-2 h-4 w-4" />
                       My Job Applications
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { navigate('/elimika/my-learning'); setMobileMenuOpen(false); }}
+                      className="w-full justify-start"
+                    >
+                      <Award className="mr-2 h-4 w-4" />
+                      My Certificates
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { navigate('/jitesti/my-history'); setMobileMenuOpen(false); }}
+                      className="w-full justify-start"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      My Test Results
                     </Button>
                     <Button
                       variant="outline"

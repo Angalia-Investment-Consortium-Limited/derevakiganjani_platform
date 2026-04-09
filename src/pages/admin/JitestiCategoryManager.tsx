@@ -12,7 +12,6 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/components/ui/use-toast";
 import { TrashIcon, FilePlus } from 'lucide-react';
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 
 // This type uses camelCase, matching our component's state and props.
 type JitestiCategory = {
@@ -124,7 +123,6 @@ const JitestiCategoryManager: React.FC = () => {
   return (
       <AdminLayout>
         <div className="space-y-6">
-            <AdminBreadcrumbs />
             <Card>
             <CardHeader>
                 <div className="flex justify-between items-center">

@@ -11,13 +11,21 @@ import {
     DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 
-// --- Type Definitions ---
-// Made fields optional to handle potentially missing data from Firestore
+export type TestSection = {
+    id: string;
+    title: string;
+    questionIds: string[];
+    shuffle: boolean;
+};
+
 export type Test = { 
     id: string; 
     test_title_en?: string; 
+    instructions_en?: string;
+    instructions_sw?: string;
     courseId?: string; 
     questionIds?: string[]; 
+    sections?: TestSection[];
     pass_mark_percentage?: number; 
 };
 
@@ -94,12 +102,14 @@ export const getColumns = (onEdit: (test: Test) => void, onDelete: (testId: stri
         cell: ({ row }) => row.getValue("courseId") || "N/A", // Fallback
     },
     {
-        accessorKey: "questionIds",
+        id: "questions_count",
         header: "No. of Questions",
         cell: ({ row }) => {
-            // Robustly get length, defaulting to 0 if data is missing
-            const questionIds = row.getValue("questionIds") as string[] | undefined;
-            return questionIds?.length || 0;
+            const test = row.original;
+            if (test.sections && test.sections.length > 0) {
+                return test.sections.reduce((total, section) => total + (section.questionIds?.length || 0), 0);
+            }
+            return test.questionIds?.length || 0;
         }
     },
     {

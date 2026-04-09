@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { db } from '@/lib/firebase';
@@ -17,6 +16,7 @@ import { Progress } from '@/components/ui/progress';
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import type { TestSection } from '@/components/admin/tests/Columns';
 
 // --- Type Definitions ---
 type TestAttempt = {
@@ -40,6 +40,19 @@ type Question = {
     category: string;
 };
 
+type PreparedQuestion = Question & {
+    sectionTitle: string;
+};
+
+type TestDefinition = {
+    id: string;
+    test_title_en?: string;
+    instructions_en?: string;
+    instructions_sw?: string;
+    sections?: TestSection[];
+    questionIds?: string[];
+};
+
 // --- Data Fetching ---
 const fetchTestAttempt = async (attemptId: string): Promise<TestAttempt | null> => {
     const docRef = doc(db, 'test_attempts', attemptId);
@@ -47,8 +60,8 @@ const fetchTestAttempt = async (attemptId: string): Promise<TestAttempt | null> 
     return docSnap.exists() ? { id: docSnap.id, ...docSnap.data() } as TestAttempt : null;
 };
 
-const fetchTestQuestions = async (lookupId: string | undefined): Promise<Question[]> => {
-    if (!lookupId) return [];
+const fetchTestWithMetadata = async (lookupId: string | undefined): Promise<{ testDef: TestDefinition; questions: PreparedQuestion[] } | null> => {
+    if (!lookupId) return null;
     const testsRef = collection(db, 'tests');
     let testQuerySnapshot = await getDocs(query(testsRef, where('courseId', '==', lookupId)));
 
@@ -74,16 +87,32 @@ const fetchTestQuestions = async (lookupId: string | undefined): Promise<Questio
 
     if (testQuerySnapshot.empty) throw new Error("Test definition not found.");
 
-    const { questionIds } = testQuerySnapshot.docs[0].data() as { questionIds: string[] };
-    if (!questionIds || questionIds.length === 0) return [];
+    const testDoc = testQuerySnapshot.docs[0];
+    const testData = { id: testDoc.id, ...testDoc.data() } as TestDefinition;
+
+    let sections = testData.sections;
+    if (!sections || sections.length === 0) {
+        if (testData.questionIds && testData.questionIds.length > 0) {
+            sections = [{
+                id: 'legacy',
+                title: 'General Knowledge',
+                questionIds: testData.questionIds,
+                shuffle: true
+            }];
+        } else {
+            return { testDef: testData, questions: [] };
+        }
+    }
+
+    // Deduplicate IDs just in case they appear multiple times
+    const allQuestionIds = Array.from(new Set(sections.flatMap(s => s.questionIds)));
+    if (allQuestionIds.length === 0) return { testDef: testData, questions: [] };
 
     const questionsRef = collection(db, 'Test Question');
-    
     const questionsMap = new Map<string, Question>();
-    
-    // Process questionIds in chunks of 30 due to Firestore 'in' query limits
-    for (let i = 0; i < questionIds.length; i += 30) {
-        const chunk = questionIds.slice(i, i + 30);
+
+    for (let i = 0; i < allQuestionIds.length; i += 30) {
+        const chunk = allQuestionIds.slice(i, i + 30);
         const questionsQuery = query(questionsRef, where(documentId(), 'in', chunk));
         const questionsSnapshot = await getDocs(questionsQuery);
 
@@ -106,7 +135,27 @@ const fetchTestQuestions = async (lookupId: string | undefined): Promise<Questio
         });
     }
 
-    return questionIds.map(id => questionsMap.get(id)).filter((q): q is Question => !!q);
+    const finalQuestions: PreparedQuestion[] = [];
+    
+    sections.forEach(section => {
+        let qsForSection = section.questionIds
+            .map(id => questionsMap.get(id))
+            .filter((q): q is Question => !!q);
+            
+        if (section.shuffle) {
+            for (let i = qsForSection.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [qsForSection[i], qsForSection[j]] = [qsForSection[j], qsForSection[i]];
+            }
+        }
+        
+        finalQuestions.push(...qsForSection.map(q => ({
+            ...q,
+            sectionTitle: section.title
+        })));
+    });
+
+    return { testDef: testData, questions: finalQuestions };
 };
 
 const formatTime = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -127,9 +176,16 @@ const TestPage: React.FC = () => {
     });
 
     const testLookupId = testAttempt?.categoryId || testAttempt?.testId || testAttempt?.categoryTitle;
-    const { data: questions = [], isLoading: isLoadingQuestions, error: questionsError } = useQuery<Question[]>({
-        queryKey: ['test-questions', testLookupId], queryFn: () => fetchTestQuestions(testLookupId), enabled: !!testLookupId, staleTime: Infinity
+    
+    const { data: testPrepData, isLoading: isLoadingQuestions, error: questionsError } = useQuery({
+        queryKey: ['test-prep', testLookupId], 
+        queryFn: () => fetchTestWithMetadata(testLookupId), 
+        enabled: !!testLookupId, 
+        staleTime: Infinity
     });
+
+    const questions = testPrepData?.questions || [];
+    const testDef = testPrepData?.testDef;
 
     useEffect(() => {
         if (!testAttempt || testAttempt.status === 'completed' || !testAttempt.startTime) return;
@@ -159,13 +215,17 @@ const TestPage: React.FC = () => {
             await updateDoc(doc(db, 'test_attempts', testAttemptId), { status: 'completed', score, answers, completedAt: serverTimestamp(), isPassed });
             
             try {
+                const baseUrl = window.location.origin;
                 if (isPassed) {
-                    await notificationService.sendSystem(user.uid, 'Test Passed', `Congratulations! You passed the ${testAttempt.categoryTitle} test.`, { testAttemptId });
+                    await notificationService.sendSystem(user.uid, 'Test Passed', `Congratulations! You passed the ${testAttempt.categoryTitle} test with a score of ${score}/${questions.length}.`, { testAttemptId });
                     if (user.email) {
-                        await notificationService.sendEmail(user.email, 'Test Passed', `Congratulations! You passed the ${testAttempt.categoryTitle} test. Your certificate is being generated.`, user.uid);
+                        await notificationService.sendEmail(user.email, 'Test Passed', `Congratulations! You passed the ${testAttempt.categoryTitle} test with a score of ${score}/${questions.length}.\n\nYour certificate is being generated. You can view your detailed test results here: ${baseUrl}/jitesti/results/${testAttemptId}\n\nYou can view and download your certificate from your Learning Dashboard at: ${baseUrl}/elimika/my-learning`, user.uid);
                     }
                 } else {
-                    await notificationService.sendSystem(user.uid, 'Test Failed', `You did not pass the ${testAttempt.categoryTitle} test. Keep studying and try again!`, { testAttemptId });
+                    await notificationService.sendSystem(user.uid, 'Test Failed', `You scored ${score}/${questions.length} on the ${testAttempt.categoryTitle} test. Keep studying and try again!`, { testAttemptId });
+                    if (user.email) {
+                        await notificationService.sendEmail(user.email, 'Test Failed', `You scored ${score}/${questions.length} on the ${testAttempt.categoryTitle} test which is below the pass mark. Keep studying and try again!\n\nYou can view your detailed test results here: ${baseUrl}/jitesti/results/${testAttemptId}`, user.uid);
+                    }
                 }
             } catch (e) {
                 console.error("Failed to send notification: ", e);
@@ -199,24 +259,53 @@ const TestPage: React.FC = () => {
         }
     }, [testAttempt, navigate, testAttemptId]);
 
-    if (isLoadingAttempt) return <div>Loading test...</div>;
-    if (attemptError || !testAttempt) return <div className="text-red-500">Error loading test. It may be invalid.</div>;
-    if (!user || user.uid !== testAttempt.userId) return <div className="text-red-500">You are not authorized to take this test.</div>;
+    if (isLoadingAttempt || isLoadingQuestions) return <div className="p-8 text-center">Loading test environment...</div>;
+    if (attemptError || !testAttempt) return <div className="text-red-500 p-8">Error loading test ticket. It may be invalid.</div>;
+    if (questionsError) return <div className="text-red-500 p-8">Error loading test definition. Please try again.</div>;
+    if (!user || user.uid !== testAttempt.userId) return <div className="text-red-500 p-8">You are not authorized to take this test.</div>;
 
     if (testAttempt.status === 'not_started' || !testAttempt.startTime) {
         return (
             <div className="min-h-screen flex flex-col bg-background">
                 <Header />
                 <main className="flex-grow flex items-center justify-center container mx-auto px-4 py-8">
-                    <Card className="max-w-md w-full p-6 text-center shadow-lg border-2 border-indigo-100">
-                         <CardHeader>
-                             <CardTitle className="text-2xl font-bold mb-2">Ready to begin?</CardTitle>
-                             <CardDescription className="text-lg text-gray-600 mt-2">
-                                 You have <span className="font-bold text-gray-900">{testAttempt.durationInMinutes} minutes</span> to complete this test.<br/><br/>
-                                 The evaluation timer will start immediately after you confirm below.
-                             </CardDescription>
+                    <Card className="max-w-2xl w-full text-left shadow-lg border-2 border-primary/20">
+                         <CardHeader className="bg-primary/5 pb-6 border-b text-center">
+                             <CardTitle className="text-3xl font-bold uppercase tracking-tight">
+                                 {testDef?.test_title_en?.trim() || testAttempt.categoryTitle}
+                             </CardTitle>
+                             {(testDef?.test_title_en?.trim() !== testAttempt.categoryTitle) && (
+                                 <CardDescription className="text-lg">({testAttempt.categoryTitle})</CardDescription>
+                             )}
                          </CardHeader>
-                         <CardContent>
+                         <CardContent className="pt-6 px-8">
+                             <div className="mb-8">
+                                 <h3 className="text-xl font-bold mb-4 text-foreground/80">Maelekezo (Instructions):</h3>
+                                 <ul className="list-decimal list-outside ml-6 space-y-2 text-md leading-relaxed">
+                                     <li>Huu mtihani una jumla ya maswali <span className="font-bold">{questions.length}</span>.</li>
+                                     <li>Jibu maswali yote.</li>
+                                     <li>Una <span className="font-bold">{testAttempt.durationInMinutes}</span> dakika kujibu maswali yote.</li>
+                                     <li>Unatakiwa kupata alama <span className="font-bold">{testAttempt.passMark}%</span> kufaulu huu mtihani.</li>
+                                     <li className="text-muted-foreground italic">This test has a total of <span className="font-bold">{questions.length}</span> questions.</li>
+                                     <li className="text-muted-foreground italic">Answer all questions.</li>
+                                     <li className="text-muted-foreground italic">You have <span className="font-bold">{testAttempt.durationInMinutes}</span> minutes to answer all questions.</li>
+                                     <li className="text-muted-foreground italic">You must score <span className="font-bold">{testAttempt.passMark}%</span> to pass this test.</li>
+                                     
+                                     {testDef?.instructions_sw && (
+                                         testDef.instructions_sw.split('\n').map((line, i) => (
+                                             line.trim() ? <li key={`sw-${i}`}>{line.replace(/^-\s*/, '')}</li> : null
+                                         ))
+                                     )}
+                                     {testDef?.instructions_en && (
+                                         testDef.instructions_en.split('\n').map((line, i) => (
+                                             line.trim() ? <li key={`en-${i}`} className="text-muted-foreground italic">{line.replace(/^-\s*/, '')}</li> : null
+                                         ))
+                                     )}
+                                 </ul>
+                                 <p className="mt-8 font-bold text-primary tracking-widest text-center">TUNAKUTAKIA KILA LA KHERI.</p>
+                             </div>
+                         </CardContent>
+                         <CardFooter className="bg-muted/30 pt-6">
                              <Button onClick={async () => {
                                  try {
                                      await updateDoc(doc(db, 'test_attempts', testAttemptId), { status: 'started', startTime: serverTimestamp() });
@@ -224,10 +313,10 @@ const TestPage: React.FC = () => {
                                  } catch (e: any) {
                                      toast({ title: "Error starting test", description: e.message, variant: "destructive" });
                                  }
-                             }} size="lg" className="w-full text-lg py-6 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md">
-                                 Start Test Now
+                             }} size="lg" className="w-full text-xl py-8 shadow-md">
+                                 START TEST NOW
                              </Button>
-                         </CardContent>
+                         </CardFooter>
                     </Card>
                 </main>
                 <Footer />
@@ -242,43 +331,56 @@ const TestPage: React.FC = () => {
         <div className="min-h-screen flex flex-col bg-background">
             <Header />
             <Breadcrumb className="mb-6 container"><BreadcrumbList><BreadcrumbItem><BreadcrumbLink href="/dashboard">Home</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbLink href="/jitesti">Jitesti</BreadcrumbLink></BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbItem><BreadcrumbPage>Test In Progress</BreadcrumbPage></BreadcrumbItem></BreadcrumbList></Breadcrumb>
+            
             <main className="flex-grow container mx-auto px-4 py-8">
-                <Card className="max-w-4xl mx-auto">
-                    <CardHeader>
-                        <div className="flex justify-between items-center">
+                <Card className="max-w-4xl mx-auto shadow-md">
+                    <CardHeader className="bg-muted/10 border-b pb-4">
+                        <div className="flex justify-between items-center mb-2">
                             <div>
-                               <CardTitle>{testAttempt.categoryTitle}</CardTitle>
-                               <CardDescription>Question {currentQuestionIndex + 1} of {questions.length}</CardDescription>
+                               <CardTitle className="uppercase text-xl text-primary">{testDef?.test_title_en || testAttempt.categoryTitle}</CardTitle>
                             </div>
-                            <div className="text-lg font-semibold bg-primary text-primary-foreground px-4 py-2 rounded-md">
+                            <div className="text-lg font-bold bg-primary text-primary-foreground px-4 py-1.5 rounded-full shadow-sm">
                                 {timeLeft !== null ? formatTime(timeLeft) : "..."}
                             </div>
                         </div>
-                        <Progress value={progress} className="mt-4" />
+                        {currentQuestion && (
+                            <div className="flex items-center gap-2 mt-2">
+                                <span className="bg-secondary text-secondary-foreground px-2 py-0.5 rounded text-xs font-semibold tracking-wider">SEHEMU X</span>
+                                <span className="font-semibold text-lg text-foreground/80">{currentQuestion.sectionTitle}</span>
+                            </div>
+                        )}
+                        <div className="mt-4 flex items-center gap-4">
+                            <Progress value={progress} className="flex-grow h-2" />
+                            <span className="text-sm font-medium whitespace-nowrap">Q: {currentQuestionIndex + 1} / {questions.length}</span>
+                        </div>
                     </CardHeader>
-                    <CardContent className="min-h-[300px]">
-                         {isLoadingQuestions ? <p>Loading questions...</p> : questionsError ? <Alert variant="destructive"><AlertTitle>Error</AlertTitle><AlertDescription>{questionsError.message}</AlertDescription></Alert> : currentQuestion ? (
-                            <div>
-                                <p className="text-xl font-semibold mb-6">{currentQuestion.text}</p>
+                    <CardContent className="min-h-[350px] pt-8">
+                         {currentQuestion ? (
+                            <div className="max-w-3xl mx-auto">
+                                <p className="text-2xl font-medium mb-8 leading-relaxed">{currentQuestionIndex + 1}. {currentQuestion.text}</p>
                                 <RadioGroup value={selectedAnswers[currentQuestion.id]?.toString()} onValueChange={(v) => setSelectedAnswers(p => ({ ...p, [currentQuestion.id]: parseInt(v) }))}>
                                     {currentQuestion.options.map((option, index) => (
-                                        <div key={index} className="flex items-center space-x-2 mb-3 p-3 border rounded-md has-[:checked]:bg-muted has-[:checked]:border-primary">
-                                            <RadioGroupItem value={index.toString()} id={`q${currentQuestion.id}-opt${index}`} />
-                                            <Label htmlFor={`q${currentQuestion.id}-opt${index}`} className="flex-1 cursor-pointer">{option}</Label>
+                                        <div key={index} className="flex items-center space-x-4 mb-4 p-4 border-2 rounded-lg transition-all hover:border-primary/50 has-[:checked]:bg-primary/5 has-[:checked]:border-primary shadow-sm">
+                                            <RadioGroupItem value={index.toString()} id={`q${currentQuestion.id}-opt${index}`} className="w-5 h-5" />
+                                            <Label htmlFor={`q${currentQuestion.id}-opt${index}`} className="flex-1 cursor-pointer text-lg">{option}</Label>
                                         </div>
                                     ))}
                                 </RadioGroup>
                             </div>
-                        ) : <p>There are no questions for this test.</p>}
+                        ) : <p className="text-center text-muted-foreground mt-20">There are no questions assigned to this test.</p>}
                     </CardContent>
-                    <CardFooter className="flex justify-between">
-                        <Button variant="outline" onClick={() => setCurrentQuestionIndex(p => p - 1)} disabled={currentQuestionIndex === 0}>Previous</Button>
+                    <CardFooter className="flex justify-between border-t bg-muted/5 pt-6">
+                        <Button variant="outline" size="lg" onClick={() => setCurrentQuestionIndex(p => p - 1)} disabled={currentQuestionIndex === 0} className="w-32">
+                            PREVIOUS
+                        </Button>
                         {currentQuestionIndex === questions.length - 1 ? (
-                            <Button onClick={() => submitTestMutation.mutate()} disabled={submitTestMutation.isPending || !questions.length} className="bg-green-600 hover:bg-green-700">
-                               {submitTestMutation.isPending ? 'Submitting...' : 'Finish & Submit'}
+                            <Button size="lg" onClick={() => submitTestMutation.mutate()} disabled={submitTestMutation.isPending || !questions.length} className="bg-green-600 hover:bg-green-700 w-48 text-white">
+                                {submitTestMutation.isPending ? 'Submitting...' : 'FINISH & SUBMIT'}
                             </Button>
                         ) : (
-                            <Button onClick={() => setCurrentQuestionIndex(p => p + 1)} disabled={!questions.length}>Next</Button>
+                            <Button size="lg" onClick={() => setCurrentQuestionIndex(p => p + 1)} disabled={!questions.length} className="w-32">
+                                NEXT
+                            </Button>
                         )}
                     </CardFooter>
                 </Card>

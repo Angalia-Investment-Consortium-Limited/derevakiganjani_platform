@@ -56,7 +56,20 @@ export const calculateJobMatches = onCall({
         }
 
         // 3. Call Vertex AI
-        const projectId = process.env.GCLOUD_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.FIREBASE_CONFIG ? JSON.parse(process.env.FIREBASE_CONFIG || '{}').projectId : null;
+        const getProjectId = () => {
+            if (process.env.GCLOUD_PROJECT) return process.env.GCLOUD_PROJECT;
+            if (process.env.GOOGLE_CLOUD_PROJECT) return process.env.GOOGLE_CLOUD_PROJECT;
+            if (process.env.FIREBASE_CONFIG) {
+                try {
+                    const config = JSON.parse(process.env.FIREBASE_CONFIG);
+                    if (config.projectId) return config.projectId;
+                } catch (e) {
+                    // ignore
+                }
+            }
+            return "derevakiganjani"; // default fallback
+        };
+        const projectId = getProjectId();
         let ai;
         if (projectId) {
             // @ts-ignore

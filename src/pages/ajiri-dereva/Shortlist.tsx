@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, updateDoc, getDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useState, useEffect } from 'react';
 import type { DriverProfile } from '@/types/auth';
 import type { ShortlistItem } from '@/types/shortlist';
@@ -26,7 +26,7 @@ import { notificationService } from '@/services/notificationService';
 const Shortlist = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [shortlistedDrivers, setShortlistedDrivers] = useState<ShortlistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +38,30 @@ const Shortlist = () => {
       return;
     }
 
-    const q = query(collection(db, "shortlists"), where("employerId", "==", user.uid));
+    const fixLegacyShortlists = async () => {
+      try {
+        const qLegacy = query(collection(db, "shortlists"), where("employerId", "==", ""));
+        const snap = await getDocs(qLegacy);
+        if (!snap.empty) {
+          const batch = writeBatch(db);
+          snap.forEach(docSnap => batch.update(docSnap.ref, { employerId: user.uid }));
+          await batch.commit();
+          console.log(`Fixed ${snap.size} legacy shortlists with empty employerId`);
+        }
+      } catch(e) { console.error("Error fixing legacy shortlists", e); }
+    };
+    fixLegacyShortlists();
+
+    const [searchParams] = window.location.search ? [new URLSearchParams(window.location.search)] : [new URLSearchParams()];
+    const jobIdParam = searchParams.get('jobId');
+
+    const employerIds = Array.from(new Set([user.uid, (profile as any)?.userId].filter(Boolean)));
+    
+    // If jobId is provided, query by jobId (useful for admins viewing a specific job's shortlist)
+    // Otherwise query by employerId
+    const q = jobIdParam 
+      ? query(collection(db, "shortlists"), where("jobId", "==", jobIdParam))
+      : query(collection(db, "shortlists"), where("employerId", "in", employerIds));
 
     const unsubscribe = onSnapshot(q, async (querySnapshot) => {
       setLoading(true);
@@ -56,8 +79,13 @@ const Shortlist = () => {
               ...shortlistData,
             } as ShortlistItem;
           } else {
-            // Handle case where driver profile is not found
-            return null;
+            // Handle case where driver profile is not found by rendering a fallback
+            return {
+              id: docSnap.id,
+              driverId: shortlistData.driverId,
+              fullName: 'Unknown Driver',
+              ...shortlistData,
+            } as any;
           }
         });
 
@@ -123,7 +151,9 @@ const Shortlist = () => {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    const s = String(status || '').toLowerCase();
+    switch (s) {
+      case 'pending':
       case 'shortlisted': return 'bg-primary/10 text-primary';
       case 'contacted': return 'bg-blue-500/10 text-blue-500';
       case 'interviewed': return 'bg-yellow-500/10 text-yellow-500';
@@ -175,7 +205,7 @@ const Shortlist = () => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                            <div className="flex items-center gap-2"><Award className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">License:</span><span className="font-medium">Category {driver.licenseNumber || driver.license_category?.join(', ') || 'N/A'}</span></div>
+                            <div className="flex items-center gap-2"><Award className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">License:</span><span className="font-medium">Category {driver.licenseNumber || (Array.isArray(driver.license_category) ? driver.license_category.join(', ') : driver.license_category) || 'N/A'}</span></div>
                             <div className="flex items-center gap-2"><Briefcase className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Experience:</span><span className="font-medium">{driver.experience || driver.years_of_experience || 0} yrs</span></div>
                             <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span className="text-muted-foreground">Location:</span><span className="font-medium">{driver.location || driver.region || 'N/A'}</span></div>
                             <div className="flex items-center gap-2"><span className="text-muted-foreground">Vehicle:</span><span className="font-medium">{driver.preferredVehicle}</span></div>

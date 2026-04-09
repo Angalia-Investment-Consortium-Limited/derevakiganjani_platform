@@ -80,11 +80,26 @@ export const generateAdminDigest = onSchedule({
        totalRevenue += Number(amount);
     });
 
-    // 7. Format the HTML Email Structure
+    // 7. Fetch Failed Notifications / Errors
+    const errorsQuery = await db.collection("notifications")
+        .where("createdAt", ">=", firestorePrevTimestamp)
+        .where("status", "==", "FAILED")
+        .get();
+    const systemErrorsCount = errorsQuery.size;
+
+    const totalMetrics = newEmployersCount + newDriversCount + newLicensesCount + newSupportTickets + newJobPosts + totalRevenue + systemErrorsCount;
+    const isQuietDay = totalMetrics === 0;
+
+    // 8. Format the HTML Email Structure
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-w-xl; color: #333; line-height: 1.6;">
         <h2 style="color: #0b2241;">Dereva Kiganjani - Daily Administrator Digest</h2>
         <p>Here is a summary of the activity on the platform over the last 24 hours.</p>
+        
+        ${isQuietDay ? 
+            '<div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #6c757d; margin: 20px 0;"><strong>Notice:</strong> The system experienced zero active engagements or errors in the past 24 hours.</div>' 
+            : ''
+        }
 
         <table style="width: 100%; max-width: 600px; border-collapse: collapse; margin-top: 20px;">
           <tr style="background-color: #f4f6f9; text-align: left;">
@@ -115,6 +130,10 @@ export const generateAdminDigest = onSchedule({
             <td style="padding: 12px; border-bottom: 1px solid #eee;"><strong>🎫 Support Tickets Opened</strong></td>
             <td style="padding: 12px; border-bottom: 1px solid #eee;">${newSupportTickets}</td>
           </tr>
+          <tr style="${systemErrorsCount > 0 ? 'background-color: #fff3f3;' : ''}">
+            <td style="padding: 12px; border-bottom: 1px solid #eee; color: ${systemErrorsCount > 0 ? '#cc0000' : '#333'}"><strong>⚠️ System/Delivery Errors</strong></td>
+            <td style="padding: 12px; border-bottom: 1px solid #eee; color: ${systemErrorsCount > 0 ? '#cc0000' : '#333'}"><strong>${systemErrorsCount}</strong></td>
+          </tr>
         </table>
         
         <p style="margin-top: 30px; font-size: 14px; color: #777;">
@@ -123,10 +142,10 @@ export const generateAdminDigest = onSchedule({
       </div>
     `;
 
-    // 8. Dispatch Email
+    // 9. Dispatch Email
     await transporter.sendMail({
       from: '"Dereva Kiganjani Digest" <communicaton@mdvfleet.co.tz>',
-      to: "david@mdvfleet.co.tz", 
+      to: ["david@mdvfleet.co.tz", "mdv@aicl.co.tz"], 
       subject: `Daily Admin Digest - ${new Date().toLocaleDateString()}`,
       html: emailHtml,
     });

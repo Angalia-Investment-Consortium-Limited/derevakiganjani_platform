@@ -49,8 +49,10 @@ export interface EmployerProfile {
   account_creation_date: Timestamp;
   company_name: string;
   contactPerson: string;
+  position?: string;
+  description?: string;
   companyRegistration: string;
-  address: { street: string; city: string; country: string };
+  address: { street: string; city: string; country: string } | string;
   website: string;
   verificationStatus: 'Pending' | 'Verified' | 'Rejected' | 'Suspended';
   industry: string;  remarks?: string;

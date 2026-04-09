@@ -9,14 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Award, Download, ArrowLeft, User, Mail, Calendar } from 'lucide-react';
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
+
 import { Loader2 } from 'lucide-react';
 
 // --- Type Definitions ---
@@ -144,21 +137,7 @@ const JitestiResultDetail: React.FC = () => {
     return (
         <AdminLayout>
             <main className="flex-1 container py-8">
-                <Breadcrumb className="mb-6">
-                    <BreadcrumbList>
-                        <BreadcrumbItem>
-                            <BreadcrumbLink href="/admin">Dashboard</BreadcrumbLink>
-                        </BreadcrumbItem>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            <BreadcrumbLink href="/admin/jitesti/results">Jitesti Results</BreadcrumbLink>
-                        </BreadcrumbItem>
-                        <BreadcrumbSeparator />
-                        <BreadcrumbItem>
-                            <BreadcrumbPage>Result Details</BreadcrumbPage>
-                        </BreadcrumbItem>
-                    </BreadcrumbList>
-                </Breadcrumb>
+
 
                 <div className="max-w-4xl mx-auto space-y-6">
                      <div className="flex justify-between items-center mb-6">

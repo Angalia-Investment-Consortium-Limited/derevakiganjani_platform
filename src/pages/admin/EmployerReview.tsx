@@ -45,7 +45,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 
 
 // Hook & Toast
@@ -149,17 +148,7 @@ export default function EmployerReview() {
   if (error || !employer) {
     return (
       <AdminLayout>
-        <Breadcrumb className="mb-6">
-            <BreadcrumbList>
-                <BreadcrumbItem>
-                    <BreadcrumbLink asChild><Link to="/admin">Admin</Link></BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                    <BreadcrumbLink asChild><Link to="/admin/employer-verification">Employer Verification</Link></BreadcrumbLink>
-                </BreadcrumbItem>
-            </BreadcrumbList>
-        </Breadcrumb>
+
         <Card className="border-destructive"><CardContent className="pt-6 text-center py-8"><p className="text-destructive">{error || 'Employer not found.'}</p></CardContent></Card>
       </AdminLayout>
     );
@@ -167,21 +156,7 @@ export default function EmployerReview() {
 
   return (
     <AdminLayout>
-        <Breadcrumb className="mb-6">
-            <BreadcrumbList>
-                <BreadcrumbItem>
-                    <BreadcrumbLink asChild><Link to="/admin">Admin</Link></BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                    <BreadcrumbLink asChild><Link to="/admin/employer-verification">Employer Verification</Link></BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator />
-                <BreadcrumbItem>
-                    <BreadcrumbPage>Review</BreadcrumbPage>
-                </BreadcrumbItem>
-            </BreadcrumbList>
-        </Breadcrumb>
+
 
       <div className="flex justify-between items-start">
         <div>

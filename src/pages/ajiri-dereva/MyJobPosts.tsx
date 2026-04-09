@@ -140,7 +140,7 @@ const MyJobPosts = () => {
                         <TableCell className="font-medium">{job.job_title}</TableCell>
                         <TableCell>{job.vehicleType}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">Category {job.required_license_category?.join(', ')}</Badge>
+                          <Badge variant="outline">Category {Array.isArray(job.required_license_category) ? job.required_license_category.join(', ') : (job.required_license_category || 'N/A')}</Badge>
                         </TableCell>
                         <TableCell>
                           <Badge className={getStatusColor(job.status)}>{job.status}</Badge>

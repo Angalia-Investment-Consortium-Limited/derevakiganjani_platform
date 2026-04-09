@@ -4,7 +4,6 @@ import { collection, getDocs, addDoc, updateDoc, doc, deleteDoc } from 'firebase
 import { db } from '@/lib/firebase';
 
 import { AdminLayout } from '@/components/admin/AdminLayout';
-import { AdminBreadcrumbs } from '@/components/admin/AdminBreadcrumbs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DataTable } from "@/components/shared/DataTable";
 import { getColumns } from "@/components/admin/tests/Columns";
@@ -122,8 +121,6 @@ const JitestiTestManager: React.FC = () => {
 
     return (
         <AdminLayout>
-            {/* CORRECTED: Removed the invalid 'path' prop */}
-            <AdminBreadcrumbs />
             <div className="mt-4">
                 <Card>
                     <CardHeader>
