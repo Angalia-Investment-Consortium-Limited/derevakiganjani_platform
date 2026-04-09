@@ -30,6 +30,7 @@ type TestAttempt = {
     passMark: number;
     status: 'not_started' | 'started' | 'completed';
     score?: number;
+    savedAnswers?: { [qid: string]: number };
 };
 
 type Question = {
@@ -38,6 +39,7 @@ type Question = {
     options: string[];
     correctAnswerIndex: number;
     category: string;
+    imageUrl?: string;
 };
 
 type PreparedQuestion = Question & {
@@ -123,14 +125,30 @@ const fetchTestWithMetadata = async (lookupId: string | undefined): Promise<{ te
                 .sort(([keyA], [keyB]) => parseInt(keyA) - parseInt(keyB))
                 .map(([, val]: [string, any]) => val.optionTextSw || val.optionTextEn || '');
             
-            let correctIndex = data.correct_option_index ?? -1;
+            let correctIndex = -1;
+            if (data.correct_option_index !== undefined) {
+                correctIndex = data.correct_option_index;
+            } else if (data.correct_answer) {
+                switch(data.correct_answer) {
+                    case 'A': correctIndex = 0; break;
+                    case 'B': correctIndex = 1; break;
+                    case 'C': correctIndex = 2; break;
+                    case 'D': correctIndex = 3; break;
+                }
+            }
 
             questionsMap.set(qDoc.id, {
                 id: qDoc.id,
                 text: data.question_text_sw || data.questionTextSw || data.questionTextEn || "Question text missing",
-                options: sortedOptions,
+                options: sortedOptions.length > 0 ? sortedOptions : [
+                    data.option_a_sw || data.option_a_en,
+                    data.option_b_sw || data.option_b_en,
+                    data.option_c_sw || data.option_c_en,
+                    data.option_d_sw || data.option_d_en
+                ].filter(Boolean) as string[],
                 correctAnswerIndex: correctIndex,
                 category: data.category || 'General',
+                imageUrl: data.image,
             });
         });
     }
@@ -171,6 +189,9 @@ const TestPage: React.FC = () => {
     const [selectedAnswers, setSelectedAnswers] = useState<{ [qid: string]: number }>({});
     const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
+    // Initial Hydration from Firestore
+    const [isHydrated, setIsHydrated] = useState(false);
+
     const { data: testAttempt, isLoading: isLoadingAttempt, error: attemptError } = useQuery<TestAttempt | null>({
         queryKey: ['test-attempt', testAttemptId], queryFn: () => fetchTestAttempt(testAttemptId), staleTime: Infinity
     });
@@ -188,15 +209,49 @@ const TestPage: React.FC = () => {
     const testDef = testPrepData?.testDef;
 
     useEffect(() => {
-        if (!testAttempt || testAttempt.status === 'completed' || !testAttempt.startTime) return;
-        const endTime = testAttempt.startTime.toDate().getTime() + testAttempt.durationInMinutes * 60 * 1000;
+        if (testAttempt?.savedAnswers && !isHydrated) {
+            setSelectedAnswers(testAttempt.savedAnswers || {});
+            setIsHydrated(true);
+        }
+    }, [testAttempt, isHydrated]);
+
+    // Browser unload interception
+    useEffect(() => {
+        if (testAttempt?.status === 'started' && timeLeft !== null && timeLeft > 0) {
+            const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+                e.preventDefault();
+                e.returnValue = '';
+            };
+            window.addEventListener('beforeunload', handleBeforeUnload);
+            return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+        }
+    }, [testAttempt?.status, timeLeft]);
+
+    useEffect(() => {
+        if (!testAttempt || testAttempt.status === 'completed' || !testAttempt.startTime || !questions.length) return;
+        const duration = testAttempt.durationInMinutes || 120;
+        const endTime = testAttempt.startTime.toDate().getTime() + duration * 60 * 1000;
+        
+        if (Date.now() >= endTime && testAttempt.status === 'started') {
+             if (!submitTestMutation.isPending && !submitTestMutation.isSuccess) {
+                 toast({ title: "Test Expired", description: "Time ran out while you were away.", variant: "destructive" });
+                 submitTestMutation.mutate();
+             }
+             return;
+        }
+
         const timer = setInterval(() => {
             const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
             setTimeLeft(remaining);
-            if (remaining === 0) { clearInterval(timer); submitTestMutation.mutate(); }
+            if (remaining === 0) { 
+                clearInterval(timer); 
+                if (!submitTestMutation.isPending && !submitTestMutation.isSuccess) {
+                    submitTestMutation.mutate(); 
+                }
+            }
         }, 1000);
         return () => clearInterval(timer);
-    }, [testAttempt]);
+    }, [testAttempt, questions.length]);
 
     const submitTestMutation = useMutation({
         mutationFn: async () => {
@@ -204,7 +259,7 @@ const TestPage: React.FC = () => {
 
             let score = 0;
             const answers = questions.map(q => {
-                const selectedIdx = selectedAnswers[q.id] ?? -1;
+                const selectedIdx = selectedAnswers[q.id] ?? -2; // Prevents matching -1 if unanswered
                 const isCorrect = selectedIdx === q.correctAnswerIndex;
                 if (isCorrect) score++;
                 return { questionId: q.id, questionText: q.text, selectedAnswerIndex: selectedIdx, correctAnswerIndex: q.correctAnswerIndex, isCorrect, category: q.category };
@@ -284,11 +339,11 @@ const TestPage: React.FC = () => {
                                  <ul className="list-decimal list-outside ml-6 space-y-2 text-md leading-relaxed">
                                      <li>Huu mtihani una jumla ya maswali <span className="font-bold">{questions.length}</span>.</li>
                                      <li>Jibu maswali yote.</li>
-                                     <li>Una <span className="font-bold">{testAttempt.durationInMinutes}</span> dakika kujibu maswali yote.</li>
+                                     <li>Una <span className="font-bold">{testAttempt.durationInMinutes || 120}</span> dakika kujibu maswali yote.</li>
                                      <li>Unatakiwa kupata alama <span className="font-bold">{testAttempt.passMark}%</span> kufaulu huu mtihani.</li>
                                      <li className="text-muted-foreground italic">This test has a total of <span className="font-bold">{questions.length}</span> questions.</li>
                                      <li className="text-muted-foreground italic">Answer all questions.</li>
-                                     <li className="text-muted-foreground italic">You have <span className="font-bold">{testAttempt.durationInMinutes}</span> minutes to answer all questions.</li>
+                                     <li className="text-muted-foreground italic">You have <span className="font-bold">{testAttempt.durationInMinutes || 120}</span> minutes to answer all questions.</li>
                                      <li className="text-muted-foreground italic">You must score <span className="font-bold">{testAttempt.passMark}%</span> to pass this test.</li>
                                      
                                      {testDef?.instructions_sw && (
@@ -358,7 +413,22 @@ const TestPage: React.FC = () => {
                          {currentQuestion ? (
                             <div className="max-w-3xl mx-auto">
                                 <p className="text-2xl font-medium mb-8 leading-relaxed">{currentQuestionIndex + 1}. {currentQuestion.text}</p>
-                                <RadioGroup value={selectedAnswers[currentQuestion.id]?.toString()} onValueChange={(v) => setSelectedAnswers(p => ({ ...p, [currentQuestion.id]: parseInt(v) }))}>
+                                {currentQuestion.imageUrl && (
+                                    <div className="mb-8 flex justify-center bg-muted/10 p-4 rounded-lg border">
+                                        <img src={currentQuestion.imageUrl} alt="Question Component" className="max-w-full max-h-80 object-contain rounded shadow-sm" />
+                                    </div>
+                                )}
+                                <RadioGroup value={selectedAnswers[currentQuestion.id] !== undefined ? selectedAnswers[currentQuestion.id].toString() : ""} onValueChange={async (v) => {
+                                    const val = parseInt(v);
+                                    setSelectedAnswers(p => ({ ...p, [currentQuestion.id]: val }));
+                                    try {
+                                        await updateDoc(doc(db, 'test_attempts', testAttemptId), {
+                                            [`savedAnswers.${currentQuestion.id}`]: val
+                                        });
+                                    } catch (e) {
+                                        console.error("Auto-save failed", e);
+                                    }
+                                }}>
                                     {currentQuestion.options.map((option, index) => (
                                         <div key={index} className="flex items-center space-x-4 mb-4 p-4 border-2 rounded-lg transition-all hover:border-primary/50 has-[:checked]:bg-primary/5 has-[:checked]:border-primary shadow-sm">
                                             <RadioGroupItem value={index.toString()} id={`q${currentQuestion.id}-opt${index}`} className="w-5 h-5" />

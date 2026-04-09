@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { useAuth } from '@/hooks/useAuth';
 
 // Type Definition for the component
 type JitestiCategory = {
@@ -18,6 +19,14 @@ type JitestiCategory = {
   price: number;
   durationInMinutes: number;
   passMark: number;
+};
+
+type ActiveTestAttempt = {
+  id: string;
+  categoryTitle: string;
+  status: 'not_started' | 'started';
+  startTime?: { toDate: () => Date };
+  durationInMinutes?: number;
 };
 
 // Fetch function for active categories, with correct Firestore field mapping
@@ -43,8 +52,41 @@ const fetchActiveCategories = async (): Promise<JitestiCategory[]> => {
   return categories;
 };
 
+const fetchActiveUserTests = async (userId: string): Promise<ActiveTestAttempt[]> => {
+    const attemptsCollection = collection(db, 'test_attempts');
+    const q = query(attemptsCollection, where("userId", "==", userId), where("status", "in", ["not_started", "started"]));
+    const snapshot = await getDocs(q);
+    
+    return snapshot.docs
+        .map(doc => ({
+            id: doc.id,
+            categoryTitle: doc.data().categoryTitle,
+            status: doc.data().status,
+            startTime: doc.data().startTime,
+            durationInMinutes: doc.data().durationInMinutes
+        }))
+        // Filter out essentially expired tests so the list doesn't get long
+        .filter(test => {
+            if (test.status === 'not_started') return true;
+            if (!test.startTime) return true;
+            
+            const duration = test.durationInMinutes || 120; // fallback cleanly
+            const endTime = test.startTime.toDate().getTime() + (duration * 60 * 1000);
+            
+            return Date.now() < endTime;
+        });
+};
+
 const TestCategories: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const { data: activeTests = [] } = useQuery<ActiveTestAttempt[]>({
+    queryKey: ['active-tests', user?.uid],
+    queryFn: () => fetchActiveUserTests(user!.uid),
+    enabled: !!user
+  });
+
   const { data: categories = [], isLoading, error } = useQuery<JitestiCategory[]>({ 
     queryKey: ['active-jitesti-categories'], 
     queryFn: fetchActiveCategories 
@@ -76,6 +118,33 @@ const TestCategories: React.FC = () => {
         <h1 className="text-4xl font-bold tracking-tight">Welcome to JiTesti Online</h1>
         <p className="text-lg text-muted-foreground mt-2">Select a category below to test your knowledge.</p>
       </div>
+
+      {activeTests.length > 0 && (
+          <div className="mb-10 bg-blue-50 border-2 border-blue-200 rounded-lg p-6">
+              <h2 className="text-xl font-bold text-blue-900 mb-4 flex items-center gap-2">
+                 <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                  </span>
+                  You have tests waiting!
+              </h2>
+              <div className="space-y-3">
+                  {activeTests.map(test => (
+                      <div key={test.id} className="flex items-center justify-between bg-white p-4 rounded shadow-sm border border-blue-100">
+                          <div>
+                              <p className="font-semibold text-lg">{test.categoryTitle}</p>
+                              <p className="text-sm text-muted-foreground">
+                                  {test.status === 'started' ? 'In Progress - Resume now to beat the timer!' : 'Purchased - Ready to start'}
+                              </p>
+                          </div>
+                          <Button onClick={() => navigate(`/jitesti/test/${test.id}`)} className="bg-blue-600 hover:bg-blue-700">
+                              {test.status === 'started' ? 'Resume Test' : 'Start Test'}
+                          </Button>
+                      </div>
+                  ))}
+              </div>
+          </div>
+      )}
 
       {isLoading && <p className="text-center py-12">Loading available tests...</p>}
       {error && <p className="text-center text-red-500 py-12">Error loading tests. Please try again later.</p>}
