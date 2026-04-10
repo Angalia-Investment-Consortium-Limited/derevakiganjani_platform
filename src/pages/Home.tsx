@@ -24,7 +24,7 @@ const Home = () => {
       icon: GraduationCap,
       title: t('jiTesti'),
       description: t('jiTestiDesc'),
-      href: '/test/category',
+      href: '',
       iconColor: 'text-warm',
     },
     {

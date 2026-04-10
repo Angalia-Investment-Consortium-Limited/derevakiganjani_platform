@@ -126,10 +126,11 @@ const fetchTestWithMetadata = async (lookupId: string | undefined): Promise<{ te
                 .map(([, val]: [string, any]) => val.optionTextSw || val.optionTextEn || '');
             
             let correctIndex = -1;
+            const correctAnsStr = data.correct_answer || data.correctAnswer;
             if (data.correct_option_index !== undefined) {
                 correctIndex = data.correct_option_index;
-            } else if (data.correct_answer) {
-                switch(data.correct_answer) {
+            } else if (correctAnsStr) {
+                switch(correctAnsStr) {
                     case 'A': correctIndex = 0; break;
                     case 'B': correctIndex = 1; break;
                     case 'C': correctIndex = 2; break;

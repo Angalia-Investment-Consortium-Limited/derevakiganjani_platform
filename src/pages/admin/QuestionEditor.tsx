@@ -239,7 +239,7 @@ const QuestionEditor = () => {
       }
 
       const { answers, ...restOfData } = formData;
-      const dataToSave: any = { ...restOfData, modified: serverTimestamp(), image: imageUrl };
+      const dataToSave: any = { ...restOfData, modified: serverTimestamp(), image: imageUrl || null };
       
       const optionKeys: AnswerOption[] = ['A', 'B', 'C', 'D'];
       dataToSave.correctAnswer = optionKeys[correctAnswerIndex];
