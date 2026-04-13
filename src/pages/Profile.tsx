@@ -9,9 +9,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
-import { User, Mail, Phone, MapPin, Edit, Save, X, Briefcase, Car, Building, FileText, Globe, UserCheck, Loader2, Bell } from 'lucide-react';
+import { Car, Building, UserCheck, Globe, FileText, Mail, Phone, MapPin, Edit, Loader2, Save, X, User, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import ChangePassword from '@/components/auth/ChangePassword';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/hooks/use-toast';
 import type { DriverProfile, EmployerProfile } from '@/types/auth';
@@ -340,6 +341,21 @@ const Profile = () => {
                 {userType === 'Driver' && renderDriverFields()}
                 {userType === 'Employer' && renderEmployerFields()}
               </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="lg:col-span-2 lg:col-start-2">
+            <CardHeader>
+                <div className="flex items-center gap-2 mb-2">
+                    <UserCheck className="h-5 w-5 text-primary" />
+                    <div>
+                        <CardTitle>Security Settings</CardTitle>
+                        <CardDescription>Update your password to keep your account secure</CardDescription>
+                    </div>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <ChangePassword />
             </CardContent>
           </Card>
         </div>

@@ -127,7 +127,7 @@ const QuestionEditor = () => {
             ...prev,
             ...dbData,
             name: docSnap.id,
-            answers: answers.length > 0 ? answers : prev.answers,
+            answers: answers.length > 0 ? answers : (prev.answers || []),
             difficulty: dbData.difficulty || 'Easy',
           }));
 
@@ -171,8 +171,9 @@ const QuestionEditor = () => {
 
   const handleAddAnswer = () => {
     setFormData(prev => {
-      if (prev.answers && prev.answers.length < 4) {
-        return { ...prev, answers: [...prev.answers, { text_en: "", text_sw: "" }] };
+      const currentAnswers = prev.answers || [];
+      if (currentAnswers.length < 4) {
+        return { ...prev, answers: [...currentAnswers, { text_en: "", text_sw: "" }] };
       }
       return prev;
     });
@@ -381,7 +382,7 @@ const QuestionEditor = () => {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Answer Choices</CardTitle>
-                <Button size="sm" variant="outline" onClick={handleAddAnswer} disabled={!formData.answers || formData.answers.length >= 4}><Plus className="mr-2 h-3 w-3" />Add Answer</Button>
+                <Button size="sm" variant="outline" onClick={handleAddAnswer} disabled={(formData.answers?.length || 0) >= 4}><Plus className="mr-2 h-3 w-3" />Add Answer</Button>
               </div>
                <CardDescription>Select the correct answer by clicking the radio button. A maximum of 4 answers are allowed.</CardDescription>
             </CardHeader>
