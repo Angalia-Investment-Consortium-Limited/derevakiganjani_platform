@@ -1,6 +1,6 @@
 {
   "index.html": {
-    "file": "assets/index-DSXRXNrA.js",
+    "file": "assets/index-PE0eaQpI.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -24,7 +24,7 @@
     ]
   },
   "node_modules/canvg/lib/index.es.js": {
-    "file": "assets/index.es-CJQtapu3.js",
+    "file": "assets/index.es-CIu6dE2n.js",
     "name": "index.es",
     "src": "node_modules/canvg/lib/index.es.js",
     "isDynamicEntry": true,

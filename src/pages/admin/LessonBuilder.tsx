@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Save, Upload, FileText, Image, Video, Loader2, Plus, X } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
+import { db, uploadFile } from "@/lib/firebase";
 import { doc, getDoc, setDoc, addDoc, collection, query, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -40,7 +40,7 @@ const LessonBuilder = () => {
   const navigate = useNavigate();
   const { courseId, lessonId } = useParams();
   const { toast } = useToast();
-  const isNew = lessonId === "new";
+  const isNew = !lessonId || lessonId === "new";
 
   const [formData, setFormData] = useState({
     title: "",
@@ -59,6 +59,7 @@ const LessonBuilder = () => {
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
   const [courses, setCourses] = useState<{ id: string, name: string }[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState(courseId || "");
@@ -180,6 +181,39 @@ const LessonBuilder = () => {
       }
       return q;
     }));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsUploading(true);
+    try {
+        const file = files[0];
+        const path = `lessons/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const url = await uploadFile(file, path);
+        
+        let newFormData = { ...formData };
+        if (file.type.startsWith('image/')) {
+            newFormData.imageUrl = url;
+            toast({ title: 'Image Uploaded', description: 'Image successfully attached to lesson.' });
+        } else if (file.type.startsWith('video/')) {
+            newFormData.videoUrl = url;
+            toast({ title: 'Video Uploaded', description: 'Video successfully attached to lesson.' });
+        } else if (file.type.includes('pdf')) {
+            newFormData.pdfUrl = url;
+            toast({ title: 'PDF Uploaded', description: 'PDF document successfully attached.' });
+        } else {
+            toast({ variant: 'destructive', title: 'Unsupported format', description: 'Please upload an Image, PDF, or Video.' });
+        }
+        
+        setFormData(newFormData);
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Upload failed', description: 'Failed to upload resource. Ensure you have the right permissions.' });
+    } finally {
+        setIsUploading(false);
+        if (e.target) e.target.value = '';
+    }
   };
 
   const handleSave = async () => {
@@ -442,10 +476,21 @@ const LessonBuilder = () => {
                   </div>
                 </div>
 
-                <div className="p-4 border-2 border-dashed rounded-lg text-center">
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">Drag and drop files here or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-1">Supports: Images, PDFs, Videos</p>
+                <div className="relative p-8 border-2 border-dashed rounded-lg text-center cursor-pointer hover:bg-muted/50 transition-colors">
+                  <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*,video/*,application/pdf" onChange={handleFileUpload} disabled={isUploading} />
+                  {isUploading ? (
+                    <div className="flex flex-col items-center">
+                        <Loader2 className="h-8 w-8 mx-auto mb-2 text-primary animate-spin" />
+                        <p className="text-sm font-medium text-foreground">Uploading resource...</p>
+                        <p className="text-xs text-muted-foreground mt-1">Please wait</p>
+                    </div>
+                  ) : (
+                    <>
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground">Drag and drop files here or click to browse</p>
+                        <p className="text-xs text-muted-foreground mt-1">Supports: Images, PDFs, Videos</p>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
