@@ -1,11 +1,12 @@
 import type { Timestamp } from 'firebase/firestore';
 
-export type UserRole = 'SuperAdmin' | 'Admin' | 'Staff' | 'Employer' | 'Driver';
+export type UserRole = 'SuperAdmin' | 'Admin' | 'Staff' | 'Employer' | 'Driver' | 'Tutor' | 'LicenseOfficer' | 'TestOfficer' | 'Finance';
 
 export interface User {
   uid: string;
   email: string;
   roles: UserRole[];
+  user_type?: string;
   createdAt: Timestamp;
   full_name: string;
   mobile_no: string;

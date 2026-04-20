@@ -11,7 +11,9 @@ import { useElimika } from "@/hooks/useElimika";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Badge } from "@/components/ui/badge";
-
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { XCircle } from "lucide-react";
 const LessonViewer = () => {
   const navigate = useNavigate();
   const { lessonId } = useParams<{ lessonId: string }>();
@@ -33,6 +35,16 @@ const LessonViewer = () => {
   const { data: progressData, mutate: mutateProgress } = useLessonProgress(driverProfileId, enrollment?.name);
   
   const { markAsComplete, loading: markingComplete } = useUpdateLessonProgress();
+
+  const [currentQIndex, setCurrentQIndex] = useState(0);
+  const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
+  const [showFeedback, setShowFeedback] = useState<Record<string, boolean>>({});
+
+  const interactiveQuestions = lesson?.interactive_questions || [];
+  const hasQuestions = interactiveQuestions.length > 0;
+  
+  // A lesson can be marked complete manually ONLY IF all interactive questions are successfully answered.
+  const allQuestionsAnswered = interactiveQuestions.every(q => selectedAnswers[q.id]);
 
   const isCompleted = useMemo(() => {
     if (!progressData || !lessonId) return false;
@@ -184,19 +196,105 @@ const LessonViewer = () => {
                    dangerouslySetInnerHTML={{ __html: lessonContent || '' }}
               />
 
+              {hasQuestions && (
+                  <div className="mt-8 space-y-8">
+                     <h3 className="text-xl font-bold">{language === 'en' ? 'Knowledge Check' : 'Zoezi'}</h3>
+                     {interactiveQuestions.map((question, index) => {
+                         const qId = question.id;
+                         const isAnswered = !!selectedAnswers[qId];
+                         const feedbackShown = !!showFeedback[qId];
+                         const isCorrect = selectedAnswers[qId] === question.correct_answer;
+                         const explanationText = language === 'en' ? question.explanation_en : (question.explanation_sw || question.explanation_en);
+
+                         return (
+                             <Card key={qId} className={`border-2 ${feedbackShown ? (isCorrect ? 'border-success' : 'border-destructive') : 'border-muted'}`}>
+                                 <CardHeader className="bg-muted/10 pb-4">
+                                     <CardTitle className="text-lg">
+                                         {index + 1}. {language === 'en' ? question.question_text_en : (question.question_text_sw || question.question_text_en)}
+                                     </CardTitle>
+                                 </CardHeader>
+                                 <CardContent className="pt-4 space-y-4">
+                                     <RadioGroup 
+                                        value={selectedAnswers[qId]} 
+                                        onValueChange={(val) => {
+                                            if (!feedbackShown) {
+                                                setSelectedAnswers(prev => ({ ...prev, [qId]: val }));
+                                            }
+                                        }}
+                                        disabled={feedbackShown}
+                                     >
+                                         <div className="space-y-3">
+                                             {question.options.map(option => {
+                                                let style = "";
+                                                if (feedbackShown) {
+                                                    if (option.option_id === question.correct_answer) style = "border-success bg-success/10";
+                                                    else if (selectedAnswers[qId] === option.option_id) style = "border-destructive bg-destructive/10";
+                                                }
+                                                return (
+                                                 <div key={option.option_id} className={`flex items-center space-x-2 p-4 rounded-lg border transition-all ${style}`}>
+                                                     <RadioGroupItem value={option.option_id} id={`q_${qId}_opt_${option.option_id}`} />
+                                                     <Label htmlFor={`q_${qId}_opt_${option.option_id}`} className="flex-1 cursor-pointer">
+                                                         {language === 'en' ? option.option_text_en : (option.option_text_sw || option.option_text_en)}
+                                                     </Label>
+                                                     {feedbackShown && option.option_id === question.correct_answer && <CheckCircle2 className="h-5 w-5 text-success" />}
+                                                     {feedbackShown && selectedAnswers[qId] === option.option_id && !isCorrect && <XCircle className="h-5 w-5 text-destructive" />}
+                                                 </div>
+                                             )})}
+                                         </div>
+                                     </RadioGroup>
+
+                                     {!feedbackShown && (
+                                         <Button 
+                                            onClick={() => setShowFeedback(prev => ({ ...prev, [qId]: true }))} 
+                                            disabled={!isAnswered}
+                                         >
+                                             {language === 'en' ? 'Submit Answer' : 'Wasilisha Jibu'}
+                                         </Button>
+                                     )}
+
+                                     {feedbackShown && (
+                                         <div className={`p-4 rounded-lg mt-4 ${isCorrect ? "bg-success/10" : "bg-destructive/10"}`}>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                {isCorrect ? (
+                                                    <><CheckCircle2 className="h-5 w-5 text-success" /><span className="font-bold text-success">{language === 'en' ? 'Correct!' : 'Sahihi!'}</span></>
+                                                ) : (
+                                                    <><XCircle className="h-5 w-5 text-destructive" /><span className="font-bold text-destructive">{language === 'en' ? 'Incorrect' : 'Si Sahihi'}</span></>
+                                                )}
+                                            </div>
+                                            {(explanationText && explanationText.trim() !== '') && (
+                                                <div className="mt-2 text-sm">
+                                                    <strong>{language === 'en' ? 'Explanation:' : 'Maelezo:'}</strong> {explanationText}
+                                                </div>
+                                            )}
+                                         </div>
+                                     )}
+                                 </CardContent>
+                             </Card>
+                         )
+                     })}
+                  </div>
+              )}
+
               {!isCompleted ? (
-                <Button className="w-full" onClick={handleMarkComplete} disabled={markingComplete || !enrollment}>
+                <Button 
+                    className="w-full mt-8" 
+                    onClick={handleMarkComplete} 
+                    disabled={markingComplete || !enrollment || (hasQuestions && !allQuestionsAnswered)}
+                >
                   {markingComplete ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
-                  {language === 'en' ? 'Mark Lesson Complete' : 'Weka Somo Limekamilika'}
+                  {hasQuestions && !allQuestionsAnswered 
+                    ? (language === 'en' ? 'Answer all questions to complete lesson' : 'Jibu maswali yote ili kumaliza somo')
+                    : (language === 'en' ? 'Mark Lesson Complete' : 'Weka Somo Limekamilika')
+                  }
                 </Button>
               ) : (
-                <div className="flex items-center justify-center gap-2 p-4 bg-success/10 rounded-lg text-success">
+                <div className="flex items-center justify-center gap-2 p-4 mt-8 bg-success/10 rounded-lg text-success">
                   <CheckCircle2 className="h-5 w-5" />
                   <span className="font-medium">{language === 'en' ? 'Lesson Completed!' : 'Somo Limekamilika!'}</span>
                 </div>
               )}
 
-              <div className="flex justify-between gap-4 pt-4 border-t">
+              <div className="flex justify-between gap-4 pt-4 border-t mt-4">
                 <Button
                   variant="outline"
                   onClick={() => navigate(`/elimika/lesson/${prevLesson?.name}`)}

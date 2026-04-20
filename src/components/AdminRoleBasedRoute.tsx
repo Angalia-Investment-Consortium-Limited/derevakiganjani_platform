@@ -23,7 +23,7 @@ export const AdminRoleBasedRoute: React.FC<AdminRoleBasedRouteProps> = ({ childr
     return <Navigate to="/auth/admin-login" replace />;
   }
 
-  const allowedRoles: UserRole[] = ['SuperAdmin', 'Admin'];
+  const allowedRoles: UserRole[] = ['SuperAdmin', 'Admin', 'Tutor', 'LicenseOfficer', 'TestOfficer', 'Finance'];
   const hasPermission = user?.roles?.some(role => allowedRoles.includes(role));
 
   if (!hasPermission) {

@@ -155,6 +155,12 @@ const EmployerDashboard = () => {
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/interviews')}>
                 Schedule Interview
               </Button>
+              <Button variant="outline" className="w-full" onClick={() => navigate('/employer/outsource')}>
+                Outsource a Driver
+              </Button>
+              <Button variant="outline" className="w-full border-primary/20 hover:bg-primary/5" onClick={() => navigate('/employer/outsource-requests')}>
+                My Outsource Requests
+              </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/messages')}>
                 Messages
               </Button>

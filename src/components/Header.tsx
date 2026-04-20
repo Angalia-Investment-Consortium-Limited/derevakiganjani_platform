@@ -1,7 +1,7 @@
 
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield, Briefcase, FileText, MessageSquare, Award } from 'lucide-react';
+import { Menu, X, Globe, User, LogOut, Settings, Bell, Shield, Briefcase, FileText, MessageSquare, Award, Calendar, Truck } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -199,6 +199,38 @@ export const Header = () => {
                       </DropdownMenuItem>
                     </>
                   )}
+                  {user?.roles?.[0] === 'Employer' && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate('/ajiri-dereva/post-job')}>
+                        <Briefcase className="mr-2 h-4 w-4" />
+                        <span>Post New Job</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/employer/jobs')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span>Manage Job Posts</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/employer/shortlist')}>
+                        <User className="mr-2 h-4 w-4" />
+                        <span>View Shortlist</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/employer/interviews')}>
+                        <Calendar className="mr-2 h-4 w-4" />
+                        <span>Schedule Interview</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/employer/outsource')}>
+                        <Truck className="mr-2 h-4 w-4" />
+                        <span>Outsource a Driver</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/employer/outsource-requests')}>
+                        <Briefcase className="mr-2 h-4 w-4" />
+                        <span>My Outsource Requests</span>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/employer/messages')}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        <span>Messages</span>
+                      </DropdownMenuItem>
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => navigate('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     {t('myProfile')}
@@ -325,6 +357,38 @@ export const Header = () => {
                     >
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Contact Support
+                    </Button>
+                  </>
+                )}
+                {user?.roles?.[0] === 'Employer' && (
+                  <>
+                    <Button variant="outline" onClick={() => { navigate('/ajiri-dereva/post-job'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      Post New Job
+                    </Button>
+                    <Button variant="outline" onClick={() => { navigate('/employer/jobs'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                      <FileText className="mr-2 h-4 w-4" />
+                      Manage Job Posts
+                    </Button>
+                    <Button variant="outline" onClick={() => { navigate('/employer/shortlist'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                      <User className="mr-2 h-4 w-4" />
+                      View Shortlist
+                    </Button>
+                    <Button variant="outline" onClick={() => { navigate('/employer/interviews'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Schedule Interview
+                    </Button>
+                    <Button variant="outline" onClick={() => { navigate('/employer/outsource'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                      <Truck className="mr-2 h-4 w-4" />
+                      Outsource a Driver
+                    </Button>
+                    <Button variant="outline" onClick={() => { navigate('/employer/outsource-requests'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                      <Briefcase className="mr-2 h-4 w-4" />
+                      My Outsource Requests
+                    </Button>
+                    <Button variant="outline" onClick={() => { navigate('/employer/messages'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Messages
                     </Button>
                   </>
                 )}

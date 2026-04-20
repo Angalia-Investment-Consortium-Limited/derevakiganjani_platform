@@ -8,7 +8,11 @@ interface AdminLayoutProps {
   children: ReactNode;
 }
 
+import { useAdminMovementTracker } from '@/hooks/useAdminMovement';
+
 export function AdminLayout({ children }: AdminLayoutProps) {
+  useAdminMovementTracker();
+
   return (
     <SidebarProvider defaultOpen>
       <div className="min-h-screen flex w-full">

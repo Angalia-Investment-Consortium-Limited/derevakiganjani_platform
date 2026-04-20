@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { doc, getDoc, setDoc, writeBatch, serverTimestamp } from 'firebase/firestore';
 import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
-import { db } from '@/lib/firebase';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { db, app } from '@/lib/firebase';
 import type { User, UserRole } from '@/types/auth';
 import { useToast } from "@/hooks/use-toast";
 
@@ -47,7 +48,7 @@ export const useUserForm = (userId: string | null) => {
         throw new Error('User not found');
       }
 
-      const userData = { id: userSnap.id, ...userSnap.data() } as User;
+      const userData = { id: userSnap.id, ...userSnap.data() } as unknown as User;
       const role = userData.user_type as UserRole;
       let profileData = {};
 
@@ -77,15 +78,18 @@ export const useUserForm = (userId: string | null) => {
   const saveUser = async (formData: any) => {
     setIsSubmitting(true);
     setError(null);
+    let secondaryApp: any = null;
 
     try {
         if (isEdit) {
             // Edit logic remains unchanged for now.
             console.log("User editing not yet implemented in this flow.");
         } else {
-            // 1. Create user in Firebase Authentication
-            const auth = getAuth();
-            const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+            // 1. Create user in Firebase Authentication without logging out current administrator
+            secondaryApp = initializeApp(app.options, "SecondaryApp" + Date.now());
+            const secondaryAuth = getAuth(secondaryApp);
+            
+            const userCredential = await createUserWithEmailAndPassword(secondaryAuth, formData.email, formData.password);
             const uid = userCredential.user.uid;
 
             // 2. Send verification email
@@ -95,6 +99,9 @@ export const useUserForm = (userId: string | null) => {
                 description: "Verification email sent successfully.",
             });
 
+            // Sign out the secondary instance to be neat, prior to deleting app
+            await secondaryAuth.signOut();
+
             const batch = writeBatch(db);
 
             // 3. Create the main user document in 'users' collection
@@ -102,7 +109,12 @@ export const useUserForm = (userId: string | null) => {
             const role = formData.user_type as UserRole;
             let userRoles: UserRole[] = [role];
             if (role === 'Admin') {
-                userRoles = formData.is_super_admin === true ? ['SuperAdmin', 'Admin'] : ['Admin'];
+                userRoles = ['Admin'];
+                if (formData.is_super_admin) userRoles.push('SuperAdmin' as UserRole);
+                if (formData.is_tutor) userRoles.push('Tutor' as UserRole);
+                if (formData.is_license_officer) userRoles.push('LicenseOfficer' as UserRole);
+                if (formData.is_test_officer) userRoles.push('TestOfficer' as UserRole);
+                if (formData.is_finance) userRoles.push('Finance' as UserRole);
             }
 
             batch.set(userRef, {
@@ -148,9 +160,13 @@ export const useUserForm = (userId: string | null) => {
         setError(errorMessage);
         throw new Error(errorMessage);
     } finally {
+        if (secondaryApp) {
+           await deleteApp(secondaryApp).catch(console.error);
+        }
         setIsSubmitting(false);
     }
   };
 
   return { user, isLoading, isSubmitting, error, saveUser, isEdit };
 };
+

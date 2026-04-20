@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, getCountFromServer } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Admin = () => {
+  const { roles } = useAuth();
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,79 +62,99 @@ const Admin = () => {
       title: 'Users & Drivers',
       description: 'Manage registered drivers and user accounts',
       href: '/admin/learners',
-      iconColor: 'text-blue-500'
+      iconColor: 'text-blue-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Staff']
     },
     {
       icon: FileText,
       title: 'Leseni Requests',
       description: 'Review and approve license requests',
       href: '/admin/license-requests',
-      iconColor: 'text-green-500'
+      iconColor: 'text-green-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'LicenseOfficer']
     },
     {
       icon: GraduationCap,
       title: 'JiTesti Question Bank',
       description: 'Create and edit test questions',
       href: '/admin/questions',
-      iconColor: 'text-purple-500'
+      iconColor: 'text-purple-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'TestOfficer', 'Tutor']
     },
     {
       icon: BarChart3,
       title: 'Test Results & Attempts',
       description: 'View reports and pass rate analytics',
       href: '/admin/test-config',
-      iconColor: 'text-orange-500'
+      iconColor: 'text-orange-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'TestOfficer', 'Tutor']
     },
     {
       icon: BookOpen,
       title: 'Elimika Course Manager',
       description: 'Add courses, lessons, and quizzes',
       href: '/admin/courses',
-      iconColor: 'text-indigo-500'
+      iconColor: 'text-indigo-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Tutor']
     },
     {
       icon: Briefcase,
       title: 'Job Posts (Ajiri Dereva)',
       description: 'Approve employer posts and manage hiring',
       href: '/admin/job-posts',
-      iconColor: 'text-cyan-500'
+      iconColor: 'text-cyan-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Staff']
     },
     {
       icon: ClipboardList,
       title: 'Driver Applications',
       description: 'Track driver job applications and matches',
       href: '/admin/job-posts',
-      iconColor: 'text-teal-500'
+      iconColor: 'text-teal-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Staff']
     },
     {
       icon: Users,
       title: 'Employer Verification',
       description: 'Review and verify employer registrations',
       href: '/admin/employer-verification',
-      iconColor: 'text-emerald-500'
+      iconColor: 'text-emerald-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Staff']
     },
     {
       icon: Wallet,
       title: 'Payments & Finance',
       description: 'Confirm payments and view revenue',
       href: '/admin/payments',
-      iconColor: 'text-yellow-500'
+      iconColor: 'text-yellow-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Finance']
     },
     {
       icon: Award,
       title: 'Certificates',
       description: 'Manage issued and revoked certificates',
       href: '/admin/certificates',
-      iconColor: 'text-pink-500'
+      iconColor: 'text-pink-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Staff']
     },
     {
       icon: Download,
       title: 'Reports & Export',
       description: 'Download CSV/PDF statistics and reports',
       href: '/admin/reports',
-      iconColor: 'text-red-500'
+      iconColor: 'text-red-500',
+      allowedRoles: ['SuperAdmin', 'Admin', 'Finance']
     }
   ];
+
+  const hasSpecificRole = roles.includes('Tutor') || roles.includes('TestOfficer') || roles.includes('LicenseOfficer') || roles.includes('Finance');
+
+  const visibleModules = modules.filter(m => {
+    if (roles.includes('SuperAdmin')) return true;
+    if (roles.includes('Admin') && !hasSpecificRole && m.allowedRoles.includes('Admin')) return true;
+    
+    return roles.some(role => role !== 'Admin' && m.allowedRoles.includes(role as string));
+  });
 
   const kpis = stats ? [
     { label: 'Total Users', value: stats.totalUsers?.toString() || '0' },
@@ -192,7 +214,7 @@ const Admin = () => {
         <div>
           <h2 className="text-xl font-semibold mb-4">Platform Modules</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {modules.map((module) => (
+            {visibleModules.map((module) => (
               <ServiceCard
                 key={module.title}
                 icon={module.icon}

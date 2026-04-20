@@ -28,6 +28,17 @@ import { QuickCreate } from './QuickCreate';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAdminMovementLogs } from '@/hooks/useAdminMovement';
+import { navigationGroups } from './AdminSidebar';
+
+const timeAgo = (ms: number) => {
+  const diff = Math.floor((Date.now() - ms) / 60000);
+  if (diff < 1) return 'Just now';
+  if (diff < 60) return `${diff} min ago`;
+  const hrs = Math.floor(diff / 60);
+  if (hrs < 24) return `${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+  return `${Math.floor(hrs / 24)} days ago`;
+};
 
 export function AdminTopBar() {
   const [commandOpen, setCommandOpen] = useState(false);
@@ -72,12 +83,42 @@ export function AdminTopBar() {
     return names.map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const recentItems = [
-    { title: 'Driver Profile: John Doe', href: '/admin/learners', time: '2 min ago' },
-    { title: 'License Request #DRV-2025-0341', href: '/admin/license-requests', time: '15 min ago' },
-    { title: 'Job Post: Taxi Driver Needed', href: '/admin/job-posts', time: '1 hour ago' },
-    { title: 'Course: Road Safety Basics', href: '/admin/courses', time: '2 hours ago' },
-  ];
+  const movementLogs = useAdminMovementLogs();
+  
+  const recentItems = [];
+  const seenTitles = new Set<string>();
+  
+  for (const log of movementLogs) {
+      let title = log.path;
+      let found: any = null;
+      
+      for (const group of navigationGroups) {
+          const item = group.items.find((i:any) => i.href === log.path);
+          if (item) { found = item; break; }
+      }
+      if (!found) {
+          for (const group of navigationGroups) {
+              const item = group.items.find((i:any) => i.href !== '/admin' && String(log.path).startsWith(i.href + '/'));
+              if (item) { found = item; break; }
+          }
+      }
+      if (found) title = found.title;
+
+      if (seenTitles.has(title)) continue;
+      seenTitles.add(title);
+      
+      recentItems.push({
+          title,
+          href: log.path,
+          time: timeAgo(log.timestamp)
+      });
+      
+      if (recentItems.length >= 5) break;
+  }
+
+  if (recentItems.length === 0) {
+      recentItems.push({ title: 'No recent activity recorded', href: '/admin', time: '' });
+  }
 
   return (
     <>

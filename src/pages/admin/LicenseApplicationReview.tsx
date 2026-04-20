@@ -24,7 +24,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isValid } from 'date-fns';
-import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink, Banknote, MapPin } from 'lucide-react';
+import { CheckCircle, XCircle, FileText, User, Calendar, MessageSquare, ExternalLink, Banknote, MapPin, Phone, Mail } from 'lucide-react';
 import { STATUS_COLORS, DOCUMENT_TYPE_TRANSLATIONS } from '@/types/license';
 import { notificationService } from '@/services/notificationService';
 
@@ -165,6 +165,8 @@ const LicenseApplicationReview = () => {
             <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <DetailItem icon={User} label="Full Name" value={application.fullName} />
+                    <DetailItem icon={Phone} label="Phone Number" value={application.phoneNumber || 'N/A'} />
+                    <DetailItem icon={Mail} label="Email" value={application.email || 'N/A'} />
                     {application.applicationType === 'LATRA Exam' ? (
                       <>
                         <DetailItem icon={FileText} label="NIDA Number" value={application.nidaNumber || 'N/A'} />

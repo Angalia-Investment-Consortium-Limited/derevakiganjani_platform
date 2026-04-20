@@ -74,6 +74,8 @@ import Interviews from "./pages/ajiri-dereva/Interviews";
 import Messages from "./pages/ajiri-dereva/Messages";
 import DriverProfile from "./pages/ajiri-dereva/DriverProfile";
 import EmployerSettings from "./pages/ajiri-dereva/EmployerSettings";
+import OutsourceDriver from "./pages/ajiri-dereva/OutsourceDriver";
+import OutsourceRequestsTracking from "./pages/ajiri-dereva/OutsourceRequestsTracking";
 import PendingVerification from "./pages/employer/PendingVerification";
 import MatchingMonitor from "./pages/admin/MatchingMonitor";
 import RecruitmentReports from "./pages/admin/RecruitmentReports";
@@ -108,6 +110,7 @@ import DriverManagement from "./pages/admin/DriverManagement";
 import EmployerManagement from "./pages/admin/EmployerManagement";
 import AdminDriverProfileView from "./pages/admin/AdminDriverProfileView";
 import AuditLog from "./pages/admin/AuditLog";
+import OutsourceDesk from "./pages/admin/OutsourceDesk";
 
 const queryClient = new QueryClient();
 
@@ -244,6 +247,11 @@ const App = () => (
                   <LessonBuilder />
                 </AdminRoleBasedRoute>
               } />
+              <Route path="/admin/lesson-builder" element={
+                <AdminRoleBasedRoute>
+                  <LessonBuilder />
+                </AdminRoleBasedRoute>
+              } />
               <Route path="/admin/course/:courseId/quiz" element={
                 <AdminRoleBasedRoute>
                   <QuizBuilder />
@@ -343,6 +351,20 @@ const App = () => (
                   <EmployerSettings />
                 </RoleBasedRoute>
               } />
+              <Route path="/employer/outsource" element={
+                <RoleBasedRoute allowedRoles={['Employer']}>
+                  <EmployerVerificationGuard>
+                    <OutsourceDriver />
+                  </EmployerVerificationGuard>
+                </RoleBasedRoute>
+              } />
+              <Route path="/employer/outsource-requests" element={
+                <RoleBasedRoute allowedRoles={['Employer']}>
+                  <EmployerVerificationGuard>
+                    <OutsourceRequestsTracking />
+                  </EmployerVerificationGuard>
+                </RoleBasedRoute>
+              } />
               <Route path="/ajiri-dereva/register" element={<EmployerRegistration />} />
               <Route path="/ajiri-dereva/post-job" element={
                 <RoleBasedRoute allowedRoles={['Employer']}>
@@ -436,6 +458,11 @@ const App = () => (
               <Route path="/admin/matching" element={
                 <AdminRoleBasedRoute>
                   <MatchingMonitor />
+                </AdminRoleBasedRoute>
+              } />
+              <Route path="/admin/outsource" element={
+                <AdminRoleBasedRoute>
+                  <OutsourceDesk />
                 </AdminRoleBasedRoute>
               } />
               <Route path="/admin/recruitment-reports" element={

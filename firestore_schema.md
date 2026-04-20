@@ -23,7 +23,7 @@ This collection stores basic information about all registered users, linking the
 ---
 
 ### `admins`
-Stores profile information for users with the "Admin" role.
+Stores profile information for users with the "Admin" role, and potentially sub-roles like "Tutor", "TestOfficer", "LicenseOfficer", or "Finance".
 
 **Document ID:** User's UID from Firebase Authentication.
 
@@ -32,7 +32,14 @@ Stores profile information for users with the "Admin" role.
 | `createdAt` | Timestamp | Date the admin profile was created. |
 | `email` | String | Admin's email. |
 | `fullName` | String | Admin's full name. |
-| `role` | String | Specific admin role (e.g., "SuperAdmin"). |
+| `role` | String | Specific admin role (e.g., "SuperAdmin"). Note: Roles array in the `users` collection dictates routing. |
+| `is_super_admin` | Boolean | True if the admin is a SuperAdmin. |
+| `is_tutor` | Boolean | True if the admin manages courses (Elimika). |
+| `is_license_officer` | Boolean | True if the admin manages licenses (Leseni). |
+| `is_test_officer` | Boolean | True if the admin manages tests (JiTesti). |
+| `is_finance` | Boolean | True if the admin manages payments (Finance). |
+| `department` | String | Admin's department. |
+| `position` | String | Admin's precise position. |
 | `uid` | String | The admin's user ID. |
 
 ---

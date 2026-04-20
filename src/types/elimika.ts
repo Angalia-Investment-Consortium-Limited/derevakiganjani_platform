@@ -48,6 +48,16 @@ export interface EnrollmentRequest {
     driver: string; // DriverProfile ID
 }
 
+export interface InteractiveQuestion {
+    id: string;
+    question_text_en: string;
+    question_text_sw?: string;
+    options: AnswerOption[];
+    correct_answer: string; // option_id
+    explanation_en: string;
+    explanation_sw?: string;
+}
+
 export interface Lesson {
     name: string; // Document ID
     lesson_id: string;
@@ -68,6 +78,7 @@ export interface Lesson {
     content_type?: string;
     duration_minutes?: number;
     image_url?: string;
+    interactive_questions?: InteractiveQuestion[];
 }
 
 export interface Quiz {

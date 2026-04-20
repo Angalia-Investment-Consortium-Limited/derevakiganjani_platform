@@ -37,6 +37,13 @@ const AuthRedirect = () => {
 
       case 'Admin':
       case 'Staff':
+      case 'Tutor':
+      case 'LicenseOfficer':
+      case 'TestOfficer':
+      case 'Finance':
+        navigate('/admin');
+        break;
+
       case 'Driver':
         navigate('/dashboard');
         break;

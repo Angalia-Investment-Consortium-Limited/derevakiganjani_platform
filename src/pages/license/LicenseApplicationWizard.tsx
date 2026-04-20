@@ -118,11 +118,11 @@ export default function LicenseApplicationWizard() {
       case 1:
         if (!formData.region) newErrors.region = t('Region Required');
         if (!formData.district) newErrors.district = t('District Required');
-        if (!formData.ward?.trim()) newErrors.ward = t('Ward Required');
-        if (!formData.exam_date) newErrors.exam_date = t('Requested Exam Date Required');
-        if (formData.exam_date && formData.exam_date < todayStr) newErrors.exam_date = t('Exam date cannot be in the past');
         
         if (applicationType === 'LATRA Exam') {
+          if (!formData.ward?.trim()) newErrors.ward = t('Ward Required');
+          if (!formData.exam_date) newErrors.exam_date = t('Requested Exam Date Required');
+          if (formData.exam_date && formData.exam_date < todayStr) newErrors.exam_date = t('Exam date cannot be in the past');
           if (!formData.latra_type) newErrors.latra_type = t('LATRA Type Required');
           if (!formData.street_address?.trim()) newErrors.street_address = t('Street Address Required');
         }
@@ -300,25 +300,27 @@ export default function LicenseApplicationWizard() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="ward">{t('Ward (Kata)')}</Label>
-                <Input id="ward" value={formData.ward || ''} onChange={(e) => updateFormData({ ward: e.target.value })} placeholder={t('Enter your ward')} />
-                {errors.ward && <p className="text-sm text-destructive">{errors.ward}</p>}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="exam_date">{t('Requested Exam Date')}</Label>
-                <Input type="date" id="exam_date" min={todayStr} value={formData.exam_date || ''} onChange={(e) => updateFormData({ exam_date: e.target.value })} />
-                {errors.exam_date && <p className="text-sm text-destructive">{errors.exam_date}</p>}
-              </div>
-            </div>
-
             {applicationType === 'LATRA Exam' && (
-              <div className="space-y-2">
-                <Label htmlFor="street_address">{t('Street Address')}</Label>
-                <Input id="street_address" value={formData.street_address || ''} onChange={(e) => updateFormData({ street_address: e.target.value })} placeholder={t('Enter your street name')} />
-                {errors.street_address && <p className="text-sm text-destructive">{errors.street_address}</p>}
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="ward">{t('Ward (Kata)')}</Label>
+                    <Input id="ward" value={formData.ward || ''} onChange={(e) => updateFormData({ ward: e.target.value })} placeholder={t('Enter your ward')} />
+                    {errors.ward && <p className="text-sm text-destructive">{errors.ward}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="exam_date">{t('Requested Exam Date')}</Label>
+                    <Input type="date" id="exam_date" min={todayStr} value={formData.exam_date || ''} onChange={(e) => updateFormData({ exam_date: e.target.value })} />
+                    {errors.exam_date && <p className="text-sm text-destructive">{errors.exam_date}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="street_address">{t('Street Address')}</Label>
+                  <Input id="street_address" value={formData.street_address || ''} onChange={(e) => updateFormData({ street_address: e.target.value })} placeholder={t('Enter your street name')} />
+                  {errors.street_address && <p className="text-sm text-destructive">{errors.street_address}</p>}
+                </div>
+              </>
             )}
             <div className="space-y-3">
               <Label>{t('License Category')} {t('(Select all that apply)')}</Label>
@@ -422,10 +424,14 @@ export default function LicenseApplicationWizard() {
               <div className="grid grid-cols-2 gap-2 bg-muted/20 p-2 rounded">
                  <p><strong>{t('Region')}:</strong> {formData.region}</p>
                  <p><strong>{t('District')}:</strong> {formData.district}</p>
-                 <p><strong>{t('Ward')}:</strong> {formData.ward}</p>
-                 <p><strong>{t('Requested Exam Date')}:</strong> {formData.exam_date}</p>
-                 {applicationType === 'LATRA Exam' && formData.street_address && (
-                   <p className="col-span-2"><strong>{t('Street Address')}:</strong> {formData.street_address}</p>
+                 {applicationType === 'LATRA Exam' && (
+                   <>
+                     <p><strong>{t('Ward')}:</strong> {formData.ward}</p>
+                     <p><strong>{t('Requested Exam Date')}:</strong> {formData.exam_date}</p>
+                     {formData.street_address && (
+                       <p className="col-span-2"><strong>{t('Street Address')}:</strong> {formData.street_address}</p>
+                     )}
+                   </>
                  )}
               </div>
               <p className="mt-2"><strong>{t('License Category')}:</strong> {formData.license_category?.join(', ')}</p>

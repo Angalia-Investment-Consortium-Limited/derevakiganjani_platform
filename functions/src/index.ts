@@ -2,6 +2,7 @@ export { initiateSelcomPayment } from "./initiateSelcomPayment";
 export { selcomWebhook } from "./selcomWebhook";
 export { initiateLicensePayment } from "./initiateLicensePayment";
 export { getAdminReports } from "./aggregations/adminReports";
+export { generateRecruitmentAnalytics } from "./aggregations/generateRecruitmentAnalytics";
 export { calculateJobMatches } from "./calculateJobMatches";
 export * as logging from "./logging/auditLogs";
 export { onNotificationCreated } from "./notifications/onNotificationCreated";
