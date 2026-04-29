@@ -3,6 +3,10 @@ import * as admin from "firebase-admin";
 import * as nodemailer from "nodemailer";
 import axios from "axios";
 import { logger } from "firebase-functions";
+import { Expo } from "expo-server-sdk";
+
+// Initialize Expo Client
+const expo = new Expo();
 
 // Initialise admin if not already initialised
 if (admin.apps.length === 0) {
@@ -55,24 +59,83 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
       // 1. Mark as sent instantly for in-app UI bell
       await snapshot.ref.update({ status: "SENT", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
 
-      // 2. Attempt to dispatch FCM web push notification
+      // 2. Attempt to dispatch Universal Push Notification (Web + Mobile)
       if (data.userId) {
         try {
           const userSnap = await admin.firestore().collection("users").doc(data.userId).get();
-          const fcmToken = userSnap.data()?.fcmToken;
+          const userData = userSnap.data();
           
-          if (fcmToken) {
-              await admin.messaging().send({
-                  token: fcmToken,
-                  notification: {
-                      title: title || "Dereva Kiganjani",
-                      body: message || "You have a new notification."
-                  }
-              });
-              logger.info(`FCM Push sent successfully to user: ${data.userId}`);
+          if (userData) {
+            let tokens: string[] = [];
+            
+            if (Array.isArray(userData.fcmTokens)) {
+              tokens.push(...userData.fcmTokens);
+            } 
+            if (typeof userData.fcmToken === 'string' && userData.fcmToken.trim() !== '') {
+              tokens.push(userData.fcmToken);
+            }
+            if (typeof userData.expoPushToken === 'string' && userData.expoPushToken.trim() !== '') {
+              tokens.push(userData.expoPushToken);
+            }
+            
+            tokens = [...new Set(tokens)];
+
+            let expoMessages: any[] = [];
+            let fcmWebTokens: string[] = [];
+
+            const titleStr = title || "Dereva Kiganjani";
+            const bodyStr = message || "You have a new notification.";
+
+            // 1. Sort tokens into Expo (Mobile) vs FCM (Web)
+            for (let token of tokens) {
+              if (Expo.isExpoPushToken(token)) {
+                expoMessages.push({
+                  to: token,
+                  sound: 'default',
+                  title: titleStr,
+                  body: bodyStr,
+                  data: { type: data.type || "SYSTEM", notificationId },
+                });
+              } else if (token) {
+                fcmWebTokens.push(token);
+              }
+            }
+
+            // 2. Send Mobile Notifications via Expo
+            if (expoMessages.length > 0) {
+              let chunks = expo.chunkPushNotifications(expoMessages);
+              for (let chunk of chunks) {
+                try {
+                  await expo.sendPushNotificationsAsync(chunk);
+                  logger.info(`Expo Push sent successfully for chunk`);
+                } catch (error) {
+                  logger.error("Error sending Expo Push:", error);
+                }
+              }
+            }
+
+            // 3. Send Web Notifications via Firebase Admin (FCM)
+            if (fcmWebTokens.length > 0) {
+              try {
+                if (fcmWebTokens.length === 1) {
+                  await admin.messaging().send({
+                    token: fcmWebTokens[0],
+                    notification: { title: titleStr, body: bodyStr }
+                  });
+                } else {
+                  await admin.messaging().sendEachForMulticast({
+                    tokens: fcmWebTokens,
+                    notification: { title: titleStr, body: bodyStr }
+                  });
+                }
+                logger.info(`FCM Web Push sent successfully to users`);
+              } catch (error) {
+                logger.error("Error sending FCM Web Push:", error);
+              }
+            }
           }
         } catch (e: any) {
-          logger.warn(`FCM dispatch failed for user ${data.userId}: ${e.message}`);
+          logger.warn(`Push dispatch failed for user ${data.userId}: ${e.message}`);
         }
       }
       

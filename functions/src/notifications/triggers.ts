@@ -16,11 +16,12 @@ const db = admin.firestore();
  */
 const sendNotification = async (userId: string, notification: any) => {
   // Save the notification to Firestore
-  const notificationRef = db.collection('users').doc(userId).collection('notifications');
+  const notificationRef = db.collection('notifications');
   await notificationRef.add({
     ...notification,
-    timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    read: false, // Mark as unread by default
+    userId: userId,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    isRead: false, // Mark as unread by default
   });
 
   // Send a push notification
@@ -72,8 +73,12 @@ export const onLicenseStatusChange = functions.firestore
       const message = `Your license application #${change.after.id.substring(0, 5)} has been ${after.status.toLowerCase()}.`;
 
       const notification = {
-        type: 'LICENSE_STATUS',
-        message: message,
+        type: 'license',
+        title_en: 'License Application Update',
+        title_sw: 'Taarifa ya Maombi ya Leseni',
+        message: message, // Used for push notification fallback
+        message_en: message,
+        message_sw: `Maombi yako ya leseni #${change.after.id.substring(0, 5)} yamekuwa ${after.status.toLowerCase() === 'approved' ? 'yameidhinishwa' : 'yamekataliwa'}.`,
         link: `/license/application/${change.after.id}`,
       };
 
