@@ -4,7 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ImageViewer } from '@/components/ui/image-viewer';
 import { 
   User, Phone, MapPin, Mail, Briefcase, Calendar, Award, 
   FileText, UserCheck, MessageSquare, ArrowLeft, Download 
@@ -75,7 +76,8 @@ const DriverProfile = () => {
             skills: data.skills || ['Driving', 'Safety Compliance', 'Vehicle Maintenance'],
             certificates: certsList,
             recentJobs: data.recentJobs || data.work_experience || [],
-            cvUrl: data.cvUrl || null
+            cvUrl: data.cvUrl || null,
+            avatar: data.avatar_url || data.avatar || null
           });
         } else {
           setError("Driver profile not found.");
@@ -137,11 +139,14 @@ const DriverProfile = () => {
             <Card>
               <CardHeader>
                 <div className="flex flex-col items-center text-center">
-                  <Avatar className="h-24 w-24 mb-4">
-                    <AvatarFallback className="text-2xl">
-                      {driver.name.split(' ').map((n: string) => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ImageViewer src={driver.avatar} alt={driver.name}>
+                    <Avatar className="h-24 w-24 mb-4">
+                      <AvatarImage src={driver.avatar} />
+                      <AvatarFallback className="text-2xl">
+                        {driver.name.split(' ').map((n: string) => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                  </ImageViewer>
                   <CardTitle className="text-2xl">{driver.name}</CardTitle>
                   <CardDescription className="mt-2">Professional Driver</CardDescription>
                   <div className="flex gap-2 mt-3">

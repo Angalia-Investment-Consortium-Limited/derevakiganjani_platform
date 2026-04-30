@@ -3,6 +3,8 @@ import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ImageViewer } from '@/components/ui/image-viewer';
 import { Building2, MapPin, Briefcase, MessageCircle, Phone, Mail, Globe } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -12,6 +14,7 @@ const EmployerProfile = () => {
 
   const employerProfile = {
     companyName: 'ABC Transport Ltd',
+    logo: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?w=500&h=500&fit=crop',
     industry: 'Transport & Logistics',
     companyType: 'Transport Company',
     region: 'Dar es Salaam',
@@ -75,9 +78,14 @@ We are always looking for talented, safety-conscious drivers to join our growing
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center text-center">
-                  <div className="h-32 w-32 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                    <Building2 className="h-16 w-16 text-primary" />
-                  </div>
+                  <ImageViewer src={employerProfile.logo} alt={employerProfile.companyName}>
+                    <Avatar className="h-32 w-32 mb-4 ring-2 ring-transparent transition-all hover:ring-primary/50">
+                      <AvatarImage src={employerProfile.logo} className="object-cover" />
+                      <AvatarFallback className="bg-primary/10">
+                        <Building2 className="h-16 w-16 text-primary" />
+                      </AvatarFallback>
+                    </Avatar>
+                  </ImageViewer>
                   
                   <h2 className="text-2xl font-bold mb-2">{employerProfile.companyName}</h2>
                   <Badge className="mb-4">{employerProfile.industry}</Badge>

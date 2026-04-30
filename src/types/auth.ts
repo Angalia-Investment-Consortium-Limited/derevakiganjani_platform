@@ -41,6 +41,7 @@ export interface AdminProfile {
   name: string;
   email: string;
   role: 'SuperAdmin' | 'Admin' | 'Staff';
+  avatar_url?: string;
 }
 
 export interface EmployerProfile {
@@ -62,6 +63,7 @@ export interface EmployerProfile {
     emailEnabled: boolean;
   };
   verified?: boolean; // Legacy
+  avatar_url?: string;
 }
 
 export interface DriverProfile {
@@ -87,4 +89,5 @@ export interface DriverProfile {
     smsEnabled: boolean;
     emailEnabled: boolean;
   };
+  avatar_url?: string;
 }

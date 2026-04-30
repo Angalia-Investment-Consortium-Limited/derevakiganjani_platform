@@ -7,6 +7,7 @@ import { AdminLayout } from '@/components/admin/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ImageViewer } from '@/components/ui/image-viewer';
 import { CheckCircle2, Award, Briefcase, MapPin, Phone, Mail, Loader2, AlertCircle } from 'lucide-react';
 
 // Define a more comprehensive type for the merged profile data
@@ -148,12 +149,14 @@ const AdminDriverProfileView = () => {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex flex-col items-center text-center">
-                  <Avatar className="h-32 w-32 mb-4">
-                    <AvatarImage src={profile.avatar} />
-                    <AvatarFallback className="text-2xl">
-                      {profile.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
+                  <ImageViewer src={profile.avatar} alt={profile.name}>
+                    <Avatar className="h-32 w-32 mb-4">
+                      <AvatarImage src={profile.avatar} />
+                      <AvatarFallback className="text-2xl">
+                        {profile.name.split(' ').map(n => n[0]).join('')}
+                      </AvatarFallback>
+                    </Avatar>
+                  </ImageViewer>
                   
                   <div className="flex items-center gap-2 mb-2">
                     <h2 className="text-2xl font-bold">{profile.name}</h2>
