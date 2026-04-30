@@ -89,6 +89,7 @@ export const navigationGroups = [
     label: 'Elimika (Learning)',
     items: [
       { title: 'Course Manager', icon: BookOpen, href: '/admin/courses', badge: null },
+      { title: 'All Lessons', icon: ClipboardList, href: '/admin/lessons', badge: null },
       { title: 'Lesson Builder', icon: FileText, href: '/admin/lesson-builder', badge: null },
       { title: 'Learner Progress', icon: TrendingUp, href: '/admin/learners', badge: null }
     ]

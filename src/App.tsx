@@ -43,6 +43,7 @@ import CourseManager from "./pages/admin/CourseManager";
 import CourseEditor from "./pages/admin/CourseEditor";
 import LearnerProgress from "./pages/admin/LearnerProgress";
 import LessonBuilder from "./pages/admin/LessonBuilder";
+import LessonManager from "./pages/admin/LessonManager";
 import QuizBuilder from "./pages/admin/QuizBuilder";
 import QuestionBankManager from "./pages/admin/QuestionBankManager";
 import QuestionEditor from "./pages/admin/QuestionEditor";
@@ -250,6 +251,11 @@ const App = () => (
               <Route path="/admin/lesson-builder" element={
                 <AdminRoleBasedRoute>
                   <LessonBuilder />
+                </AdminRoleBasedRoute>
+              } />
+              <Route path="/admin/lessons" element={
+                <AdminRoleBasedRoute>
+                  <LessonManager />
                 </AdminRoleBasedRoute>
               } />
               <Route path="/admin/course/:courseId/quiz" element={

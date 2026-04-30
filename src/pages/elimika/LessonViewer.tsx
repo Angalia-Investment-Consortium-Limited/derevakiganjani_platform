@@ -123,9 +123,26 @@ const LessonViewer = () => {
     );
   }
 
-  const lessonTitle = language === 'en' ? lesson.lesson_title_en : (lesson.lesson_title_sw || lesson.lesson_title_en);
-  const courseTitle = course ? (language === 'en' ? course.course_name_en : course.course_name_sw) : 'Course';
-  const lessonContent = language === 'en' ? lesson.content_en : (lesson.content_sw || lesson.content_en);
+  const getLocalizedText = (enText?: string, swText?: string) => {
+    const isHtmlEmpty = (html?: string) => {
+      if (!html) return true;
+      if (html.includes('<img') || html.includes('<video') || html.includes('<iframe')) return false;
+      return html.replace(/<[^>]*>?/gm, '').trim() === '';
+    };
+
+    const isEnEmpty = isHtmlEmpty(enText);
+    const isSwEmpty = isHtmlEmpty(swText);
+    
+    if (language === 'en') {
+      return isEnEmpty ? swText : enText;
+    } else {
+      return isSwEmpty ? enText : swText;
+    }
+  };
+
+  const lessonTitle = getLocalizedText(lesson.lesson_title_en, lesson.lesson_title_sw) || 'Lesson';
+  const courseTitle = course ? (getLocalizedText(course.course_name_en, course.course_name_sw) || 'Course') : 'Course';
+  const lessonContent = getLocalizedText(lesson.content_en, lesson.content_sw);
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -186,13 +203,13 @@ const LessonViewer = () => {
                 </div>
               )}
 
-              {lesson.content_type === 'image' && lesson.image_url && (
-                <div className="w-full overflow-hidden rounded-lg border">
-                  <img src={lesson.image_url} alt={lessonTitle} className="w-full object-cover" />
+              {lesson.image_url && (
+                <div className="w-full rounded-lg border mb-6 bg-muted/20 flex items-center justify-center p-2">
+                  <img src={lesson.image_url} alt={lessonTitle} className="max-w-full max-h-[500px] object-contain" />
                 </div>
               )}
 
-              <div className="prose prose-slate max-w-none dark:prose-invert"
+              <div className="prose prose-slate max-w-none dark:prose-invert break-words [&_*]:break-words overflow-x-auto"
                    dangerouslySetInnerHTML={{ __html: lessonContent || '' }}
               />
 
@@ -204,13 +221,13 @@ const LessonViewer = () => {
                          const isAnswered = !!selectedAnswers[qId];
                          const feedbackShown = !!showFeedback[qId];
                          const isCorrect = selectedAnswers[qId] === question.correct_answer;
-                         const explanationText = language === 'en' ? question.explanation_en : (question.explanation_sw || question.explanation_en);
+                         const explanationText = getLocalizedText(question.explanation_en, question.explanation_sw);
 
                          return (
                              <Card key={qId} className={`border-2 ${feedbackShown ? (isCorrect ? 'border-success' : 'border-destructive') : 'border-muted'}`}>
                                  <CardHeader className="bg-muted/10 pb-4">
                                      <CardTitle className="text-lg">
-                                         {index + 1}. {language === 'en' ? question.question_text_en : (question.question_text_sw || question.question_text_en)}
+                                         {index + 1}. {getLocalizedText(question.question_text_en, question.question_text_sw)}
                                      </CardTitle>
                                  </CardHeader>
                                  <CardContent className="pt-4 space-y-4">
@@ -234,7 +251,7 @@ const LessonViewer = () => {
                                                  <div key={option.option_id} className={`flex items-center space-x-2 p-4 rounded-lg border transition-all ${style}`}>
                                                      <RadioGroupItem value={option.option_id} id={`q_${qId}_opt_${option.option_id}`} />
                                                      <Label htmlFor={`q_${qId}_opt_${option.option_id}`} className="flex-1 cursor-pointer">
-                                                         {language === 'en' ? option.option_text_en : (option.option_text_sw || option.option_text_en)}
+                                                         {getLocalizedText(option.option_text_en, option.option_text_sw)}
                                                      </Label>
                                                      {feedbackShown && option.option_id === question.correct_answer && <CheckCircle2 className="h-5 w-5 text-success" />}
                                                      {feedbackShown && selectedAnswers[qId] === option.option_id && !isCorrect && <XCircle className="h-5 w-5 text-destructive" />}

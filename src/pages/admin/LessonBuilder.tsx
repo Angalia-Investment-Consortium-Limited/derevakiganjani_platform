@@ -14,7 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { db, uploadFile } from "@/lib/firebase";
 import { doc, getDoc, setDoc, addDoc, collection, query, getDocs } from "firebase/firestore";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 // Local interfaces for the form state
 interface FormAnswerOption {
   local_id: string;
@@ -63,6 +64,15 @@ const LessonBuilder = () => {
   
   const [courses, setCourses] = useState<{ id: string, name: string }[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState(courseId || "");
+
+  const quillModules = {
+    toolbar: [
+      [{ 'header': [1, 2, 3, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{'list': 'ordered'}, {'list': 'bullet'}],
+      ['link', 'clean']
+    ],
+  };
 
   useEffect(() => {
     // If we're opening LessonBuilder globally without a specific courseId
@@ -399,27 +409,29 @@ const LessonBuilder = () => {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="content">Main Content (English)</Label>
-                  <Textarea
-                    id="content"
-                    value={formData.content}
-                    onChange={(e) => setFormData({...formData, content: e.target.value})}
-                    placeholder="Enter the lesson content in HTML or plain text..."
-                    rows={10}
-                    className="font-mono text-sm"
-                  />
+                  <div className="bg-background [&_.ql-container]:min-h-[200px] [&_.ql-container]:text-base [&_.ql-toolbar]:bg-muted/50 [&_.ql-toolbar]:rounded-t-md [&_.ql-container]:rounded-b-md [&_.ql-editor]:min-h-[200px]">
+                    <ReactQuill 
+                      theme="snow"
+                      value={formData.content}
+                      onChange={(value) => setFormData({...formData, content: value})}
+                      modules={quillModules}
+                      placeholder="Enter the lesson content..."
+                    />
+                  </div>
                   <p className="text-xs text-muted-foreground">Supports HTML formatting</p>
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="contentSw">Main Content (Swahili)</Label>
-                  <Textarea
-                    id="contentSw"
-                    value={formData.contentSw}
-                    onChange={(e) => setFormData({...formData, contentSw: e.target.value})}
-                    placeholder="Enter the lesson content in Swahili..."
-                    rows={10}
-                    className="font-mono text-sm"
-                  />
+                  <div className="bg-background [&_.ql-container]:min-h-[200px] [&_.ql-container]:text-base [&_.ql-toolbar]:bg-muted/50 [&_.ql-toolbar]:rounded-t-md [&_.ql-container]:rounded-b-md [&_.ql-editor]:min-h-[200px]">
+                    <ReactQuill 
+                      theme="snow"
+                      value={formData.contentSw}
+                      onChange={(value) => setFormData({...formData, contentSw: value})}
+                      modules={quillModules}
+                      placeholder="Enter the lesson content in Swahili..."
+                    />
+                  </div>
                 </div>
               </CardContent>
             </Card>
