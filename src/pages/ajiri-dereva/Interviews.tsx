@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Plus, Edit, XCircle, CheckCircle2, Loader2, AlertTriangle } from 'lucide-react';
+import { Calendar, Clock, Plus, Edit, XCircle, CheckCircle2, Loader2, AlertTriangle, MessageCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -34,6 +34,7 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, getDocs, 
 import type { ShortlistItem } from '@/types/shortlist';
 import type { Job } from '@/types/jobs';
 import type { Interview } from '@/types/interviews';
+import { notificationService } from '@/services/notificationService';
 
 const Interviews = () => {
   const { toast } = useToast();
@@ -126,6 +127,18 @@ const Interviews = () => {
             jobTitle: job?.job_title || 'Unknown Job',
             status: 'Requested'
         });
+        
+        // Notify driver
+        if (candData?.driverId) {
+            const employerName = (user as any)?.full_name || (user as any)?.company_name || user?.email || "An employer";
+            await notificationService.sendSystem(
+                candData.driverId,
+                'Interview Scheduled',
+                `${employerName} has scheduled an interview with you for the position of ${job?.job_title} on ${newInterview.date} at ${newInterview.time}.`,
+                { jobId: newInterview.jobId }
+            );
+        }
+
         setShowScheduleModal(false);
         setNewInterview({ candidateId: '', jobId: '', date: '', time: '', mode: 'Online', notes: '' });
         toast({ title: "Success", description: "Interview scheduled successfully." });
@@ -192,7 +205,12 @@ const Interviews = () => {
                                 <TableCell><Badge variant="outline">{interview.mode}</Badge></TableCell>
                                 <TableCell><Badge className={getStatusColor(interview.status)}>{interview.status}</Badge></TableCell>
                                 <TableCell className="text-right">
-                                    <Button size="sm" variant="ghost" onClick={() => handleAction(interview.id, 'Cancelled')} title="Cancel"><XCircle className="h-4 w-4 text-destructive" /></Button>
+                                    <Button size="sm" variant="ghost" onClick={() => navigate(`/employer/messages?driverId=${interview.candidateId}&driverName=${encodeURIComponent(interview.candidateName)}&jobTitle=${encodeURIComponent(`Interview: ${interview.jobTitle} - ${interview.date}`)}`)} title="Message">
+                                        <MessageCircle className="h-4 w-4 text-primary" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={() => handleAction(interview.id, 'Cancelled')} title="Cancel">
+                                        <XCircle className="h-4 w-4 text-destructive" />
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}

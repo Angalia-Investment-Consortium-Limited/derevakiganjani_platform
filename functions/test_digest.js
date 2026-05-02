@@ -1,16 +1,10 @@
-import { onSchedule } from "firebase-functions/v2/scheduler";
-import * as admin from "firebase-admin";
-import * as nodemailer from "nodemailer";
-import { logger } from "firebase-functions";
+const admin = require("firebase-admin");
+const nodemailer = require("nodemailer");
 
 if (admin.apps.length === 0) {
-  admin.initializeApp();
+    admin.initializeApp();
 }
 
-/**
- * Configure Nodemailer SMTP Transporter
- * Using the same secure parameters as onNotificationCreated
- */
 const transporter = nodemailer.createTransport({
   host: "mail.mdvfleet.co.tz",
   port: 465,
@@ -21,55 +15,40 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/**
- * Scheduled Cloud Function that runs every day at 8:00 PM EAT
- * It aggregates platform statistics from the last 24 hours and emails them to the admin.
- */
-export const generateAdminDigest = onSchedule({
-  schedule: "0 20 * * *", // 20:00 (8:00 PM) daily
-  timeZone: "Africa/Dar_es_Salaam",
-  timeoutSeconds: 300, 
-}, async (event) => {
+async function runDigest() {
   const db = admin.firestore();
   
-  // Calculate the timestamp for 24 hours ago
   const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const firestorePrevTimestamp = admin.firestore.Timestamp.fromDate(twentyFourHoursAgo);
 
-  logger.info(`Starting daily admin digest generation from ${twentyFourHoursAgo.toISOString()}...`);
+  console.log(`Starting daily admin digest generation from ${twentyFourHoursAgo.toISOString()}...`);
 
   try {
-    // 1. Fetch New Employers
     const employersQuery = await db.collection("employer_profiles")
         .where("account_creation_date", ">=", firestorePrevTimestamp)
         .get();
     const newEmployersCount = employersQuery.size;
 
-    // 2. Fetch New Drivers
     const driversQuery = await db.collection("driver_profiles")
         .where("createdAt", ">=", firestorePrevTimestamp)
         .get();
     const newDriversCount = driversQuery.size;
 
-    // 3. Fetch New License Applications
     const licensesQuery = await db.collection("license_applications")
         .where("submittedOn", ">=", firestorePrevTimestamp)
         .get();
     const newLicensesCount = licensesQuery.size;
 
-    // 4. Fetch Support Tickets
     const supportQuery = await db.collection("support_requests")
         .where("createdAt", ">=", firestorePrevTimestamp)
         .get();
     const newSupportTickets = supportQuery.size;
 
-    // 5. Fetch Job Posts
     const jobsQuery = await db.collection("jobs")
         .where("posted_date", ">=", firestorePrevTimestamp)
         .get();
     const newJobPosts = jobsQuery.size;
 
-    // 6. Calculate Completed Payments Revenue
     const paymentsQuery = await db.collection("payments")
         .where("createdAt", ">=", firestorePrevTimestamp)
         .where("status", "==", "completed")
@@ -80,7 +59,6 @@ export const generateAdminDigest = onSchedule({
        totalRevenue += Number(amount);
     });
 
-    // 7. Fetch Failed Notifications / Errors
     const errorsQuery = await db.collection("notifications")
         .where("createdAt", ">=", firestorePrevTimestamp)
         .where("status", "==", "FAILED")
@@ -92,11 +70,6 @@ export const generateAdminDigest = onSchedule({
 
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; max-w-xl; color: #333; line-height: 1.6;">
-        <div style="text-align: center; margin-bottom: 20px;">
-          <img src="https://derevakiganjani.web.app/logo.png" alt="Dereva Kiganjani Logo" style="max-height: 80px;" />
-          <p style="font-style: italic; color: #555; margin-top: 10px;">Empowering safer drivers through digital services and continuous learning.</p>
-        </div>
-        
         <h2 style="color: #0b2241;">Dereva Kiganjani - Daily Administrator Digest</h2>
         <p>Here is a summary of the activity on the platform over the last 24 hours.</p>
         
@@ -143,27 +116,23 @@ export const generateAdminDigest = onSchedule({
         <p style="margin-top: 30px; font-size: 14px; color: #777;">
             Log in to the Admin Portal to review detailed metrics and respond to pending requests.
         </p>
-        
-        <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
-        <div style="text-align: center; font-size: 12px; color: #777;">
-          <p style="margin: 5px 0;"><strong>Contact Us</strong></p>
-          <p style="margin: 5px 0;">MDV Vehicle Fleet, Dar es Salaam, Tanzania</p>
-          <p style="margin: 5px 0;">+255 748 467 348</p>
-        </div>
       </div>
     `;
 
-    // 9. Dispatch Email
+    console.log("Email HTML generated. Attempting to send...");
+
     await transporter.sendMail({
-      from: '"Dereva Kiganjani Digest" <communicaton@mdvfleet.co.tz>',
-      to: ["david@mdvfleet.co.tz", "mdv@aicl.co.tz"], 
-      subject: `Daily Admin Digest - ${new Date().toLocaleDateString()}`,
+      from: '"Dereva Kiganjani Digest Test" <communicaton@mdvfleet.co.tz>',
+      to: ["david@mdvfleet.co.tz"], 
+      subject: `Test Daily Admin Digest - ${new Date().toLocaleDateString()}`,
       html: emailHtml,
     });
 
-    logger.info("Daily Admin Digest generated and emailed successfully.");
+    console.log("Daily Admin Digest generated and emailed successfully.");
 
-  } catch (error: any) {
-    logger.error("Failed to generate and send Admin Digest:", error);
+  } catch (error) {
+    console.error("Failed to generate and send Admin Digest:", error);
   }
-});
+}
+
+runDigest();

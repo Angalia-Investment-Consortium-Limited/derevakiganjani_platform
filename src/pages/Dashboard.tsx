@@ -15,11 +15,11 @@ const Dashboard = () => {
   const { user } = useAuth();
 
   const quickActions = [
-    { icon: GraduationCap, label: t('jiTesti'), description: 'Take a driving test', href: '/jitesti', color: 'text-secondary' },
-    { icon: BookOpen, label: t('elimika'), description: 'Continue learning', href: '/elimika', color: 'text-accent' },
-    { icon: FileText, label: t('leseni'), description: 'Renew license', href: '/license', color: 'text-primary' },
-    { icon: TrendingUp, label: 'Ajira ya Udereva', description: 'Find driver jobs', href: '/ajira/jobs', color: 'text-success' },
-    { icon: MessageSquare, label: 'Support', description: 'Contact us', href: '/support/request', color: 'text-indigo-500' },
+    { icon: GraduationCap, label: t('jiTesti'), description: t('takeDrivingTest'), href: '/jitesti', color: 'text-secondary' },
+    { icon: BookOpen, label: t('elimika'), description: t('continueLearning'), href: '/elimika', color: 'text-accent' },
+    { icon: FileText, label: t('leseni'), description: t('renewLicense'), href: '/license', color: 'text-primary' },
+    { icon: TrendingUp, label: t('ajiraYaUdereva'), description: t('findDriverJobs'), href: '/ajira/jobs', color: 'text-success' },
+    { icon: MessageSquare, label: t('support'), description: t('contactUs'), href: '/support/request', color: 'text-indigo-500' },
   ];
 
   return (
@@ -32,7 +32,7 @@ const Dashboard = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-3xl font-bold">{t('welcome')}, {user?.full_name || 'Driver'}!</h1>
-              <p className="text-muted-foreground mt-1">Here's your driver services overview</p>
+              <p className="text-muted-foreground mt-1">{t('driverServicesOverview')}</p>
             </div>
             <Button variant="outline" size="icon" onClick={() => navigate('/notifications')}>
               <Bell className="h-5 w-5" />

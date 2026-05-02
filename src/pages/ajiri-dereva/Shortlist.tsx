@@ -221,6 +221,7 @@ const Shortlist = () => {
                           <Button size="sm" variant="outline" onClick={() => handleUpdateStatus(driver.id, 'contacted')}>Send Request</Button>
                           <Button size="sm" variant="outline" onClick={() => navigate(`/employer/interviews/schedule/${driver.uid}`)}><Calendar className="h-4 w-4 mr-1" />Schedule Interview</Button>
                           <Button size="sm" variant="outline" onClick={() => handleContact(driver)}><MessageCircle className="h-4 w-4 mr-1" />WhatsApp</Button>
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/employer/messages?driverId=${driver.driverId}&driverName=${encodeURIComponent(driver.fullName || driver.full_name || `${driver.first_name || ''} ${driver.last_name || ''}`.trim() || 'Unknown Driver')}&jobTitle=${encodeURIComponent('Shortlisted Application')}`)}><MessageCircle className="h-4 w-4 mr-1" />Message</Button>
                           <Button size="sm" className="bg-success hover:bg-success/90" onClick={() => handleUpdateStatus(driver.id, 'hired')}><UserCheck className="h-4 w-4 mr-1" />Mark Hired</Button>
                         </div>
                       </div>

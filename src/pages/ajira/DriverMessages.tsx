@@ -2,14 +2,11 @@ import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, MessageCircle, Search, Loader2, AlertTriangle } from 'lucide-react';
+import { Send, MessageCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Breadcrumb,
   BreadcrumbList,
@@ -18,6 +15,7 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
@@ -25,6 +23,8 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface Conversation {
   id: string;
+  employerName?: string;
+  employerAvatar?: string;
   driverName: string;
   jobTitle: string;
   lastMessage: string;
@@ -41,12 +41,8 @@ interface Message {
   timestamp: any;
 }
 
-const Messages = () => {
+const DriverMessages = () => {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const urlDriverId = searchParams.get('driverId');
-  const urlDriverName = searchParams.get('driverName');
-  const urlJobTitle = searchParams.get('jobTitle');
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -63,7 +59,7 @@ const Messages = () => {
       return;
     }
 
-    const q = query(collection(db, 'conversations'), where('employerId', '==', user.uid), orderBy('lastMessageTimestamp', 'desc'));
+    const q = query(collection(db, 'conversations'), where('driverId', '==', user.uid), orderBy('lastMessageTimestamp', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const convos: Conversation[] = [];
@@ -75,49 +71,12 @@ const Messages = () => {
       setLoadingConvos(false);
     }, (err) => {
       console.error(err);
-      setError("Failed to load conversations.");
+      setError("Failed to load messages.");
       setLoadingConvos(false);
     });
 
     return () => unsubscribe();
   }, [user]);
-
-  // Deep linking logic
-  useEffect(() => {
-    if (!loadingConvos && user && urlDriverId) {
-      const existing = conversations.find(c => c.driverId === urlDriverId);
-      
-      if (existing) {
-        setSelectedConversation(existing);
-        setSearchParams(new URLSearchParams());
-      } else if (urlDriverName) {
-        // Create new conversation document
-        const startNew = async () => {
-          try {
-            await addDoc(collection(db, 'conversations'), {
-              employerId: user.uid,
-              employerName: (user as any).company_name || user.full_name || 'Employer',
-              employerAvatar: user.user_image || '',
-              driverId: urlDriverId,
-              driverName: decodeURIComponent(urlDriverName),
-              jobTitle: urlJobTitle ? decodeURIComponent(urlJobTitle) : 'Application Inquiry',
-              lastMessage: 'Conversation started',
-              lastMessageTimestamp: serverTimestamp(),
-              unread: 0,
-              jobId: 'direct'
-            });
-            // Let the onSnapshot pick it up and next render loop will find 'existing'
-          } catch (e) {
-            console.error(e);
-          }
-        };
-        startNew();
-      }
-    } else if (!loadingConvos && conversations.length > 0 && !selectedConversation && !urlDriverId) {
-      // Default to first conversation if no URL params
-      setSelectedConversation(conversations[0]);
-    }
-  }, [loadingConvos, conversations, urlDriverId, urlDriverName, user]);
 
   useEffect(() => {
     if (!selectedConversation) return;
@@ -149,20 +108,18 @@ const Messages = () => {
     try {
       await addDoc(messagesColRef, {
         text: messageText,
-        sender: 'employer',
+        sender: 'driver',
         timestamp: serverTimestamp(),
       });
 
       await updateDoc(conversationRef, {
         lastMessage: messageText,
         lastMessageTimestamp: serverTimestamp(),
-        // TODO: Handle unread logic
       });
 
       setMessageText('');
     } catch (error) {
       console.error("Error sending message:", error);
-      // Show toast notification
     }
   };
 
@@ -172,7 +129,7 @@ const Messages = () => {
       <main className="flex-1 container py-8">
         <Breadcrumb className="mb-6">
             <BreadcrumbList>
-                <BreadcrumbItem><BreadcrumbLink href="/employer/dashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
+                <BreadcrumbItem><BreadcrumbLink href="/dashboard">Dashboard</BreadcrumbLink></BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem><BreadcrumbPage>Messages</BreadcrumbPage></BreadcrumbItem>
             </BreadcrumbList>
@@ -181,15 +138,24 @@ const Messages = () => {
         <Card className="h-[700px]">
           <div className="grid grid-cols-1 md:grid-cols-3 h-full">
             <div className="border-r">
-              <CardHeader><CardTitle className="text-lg">Conversations</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-lg">Inbox</CardTitle></CardHeader>
               <ScrollArea className="h-[620px]">
                 {loadingConvos && <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                 {error && <div className="p-4 text-destructive">{error}</div>}
-                {!loadingConvos && conversations.length === 0 && <p className="p-4 text-muted-foreground">No conversations yet.</p>}
+                {!loadingConvos && conversations.length === 0 && <p className="p-4 text-muted-foreground">No messages yet.</p>}
                 <div className="space-y-1 p-4 pt-0">
                   {conversations.map((c) => (
                     <div key={c.id} onClick={() => setSelectedConversation(c)} className={`p-3 rounded-lg cursor-pointer ${selectedConversation?.id === c.id ? 'bg-primary/10' : 'hover:bg-muted'}`}>
-                      <p className="font-medium text-sm">{c.driverName}</p>
+                      <div className="flex items-center gap-3 mb-1">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={c.employerAvatar} />
+                          <AvatarFallback>{(c.employerName || 'E').charAt(0).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 overflow-hidden">
+                          <p className="font-medium text-sm truncate">{c.employerName || 'Employer'}</p>
+                          <p className="text-xs font-semibold text-primary truncate">{c.jobTitle}</p>
+                        </div>
+                      </div>
                       <p className="text-xs text-muted-foreground truncate">{c.lastMessage}</p>
                       <p className="text-xs text-muted-foreground mt-1">{c.lastMessageTimestamp ? formatDistanceToNow(c.lastMessageTimestamp.toDate()) : ''}</p>
                     </div>
@@ -201,15 +167,24 @@ const Messages = () => {
             <div className="md:col-span-2 flex flex-col">
               {selectedConversation ? (
                 <>
-                  <CardHeader className="border-b"><CardTitle>{selectedConversation.driverName}</CardTitle><CardDescription>{selectedConversation.jobTitle}</CardDescription></CardHeader>
+                  <CardHeader className="border-b flex flex-row items-center gap-4 py-4">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={selectedConversation.employerAvatar} />
+                      <AvatarFallback>{(selectedConversation.employerName || 'E').charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <CardTitle>{selectedConversation.employerName || 'Employer'}</CardTitle>
+                      <CardDescription>{selectedConversation.jobTitle}</CardDescription>
+                    </div>
+                  </CardHeader>
                   <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
                     {loadingMessages && <div className="flex justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
                     <div className="space-y-4">
                         {messages.map(m => (
-                            <div key={m.id} className={`flex ${m.sender === 'employer' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`max-w-[70%] rounded-lg p-3 ${m.sender === 'employer' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                            <div key={m.id} className={`flex ${m.sender === 'driver' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-[70%] rounded-lg p-3 ${m.sender === 'driver' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                                     <p className="text-sm">{m.text}</p>
-                                    <p className={`text-xs mt-1 ${m.sender === 'employer' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{m.timestamp ? formatDistanceToNow(m.timestamp.toDate()) : 'sending...'}</p>
+                                    <p className={`text-xs mt-1 ${m.sender === 'driver' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>{m.timestamp ? formatDistanceToNow(m.timestamp.toDate()) : 'sending...'}</p>
                                 </div>
                             </div>
                         ))}
@@ -238,4 +213,4 @@ const Messages = () => {
   );
 };
 
-export default Messages;
+export default DriverMessages;

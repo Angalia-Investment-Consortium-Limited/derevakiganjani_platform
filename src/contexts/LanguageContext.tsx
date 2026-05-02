@@ -51,6 +51,8 @@ const translations = {
     continue: 'Continue',
     back: 'Back',
     next: 'Next',
+    search: 'Search',
+    example: 'e.g.',
     
     // Dashboard
     welcome: 'Welcome',
@@ -59,6 +61,13 @@ const translations = {
     myResults: 'My Results',
     notifications: 'Notifications',
     recentActivity: 'Recent Activity',
+    driverServicesOverview: "Here's your driver services overview",
+    takeDrivingTest: 'Take a driving test',
+    continueLearning: 'Continue learning',
+    renewLicense: 'Renew license',
+    findDriverJobs: 'Find driver jobs',
+    support: 'Support',
+    contactUs: 'Contact us',
     
     // Test
     startTest: 'Start Test',
@@ -80,6 +89,28 @@ const translations = {
     licenseNumber: 'License Number',
     licenseCategory: 'License Category',
     uploadPhoto: 'Upload Photo',
+    
+    // Tracking & Applications
+    'Track Application': 'Track Application',
+    'Enter Reference To Check': 'Enter Reference To Check',
+    'Reference Number': 'Reference Number',
+    'Application Status': 'Application Status',
+    'Type': 'Type',
+    'Category': 'Category',
+    'Submitted': 'Submitted',
+    'Application Timeline': 'Application Timeline',
+    'Reviewing Note': 'Your application is currently under review by our team. You will be notified once a decision is made.',
+    'Renew License': 'Renew License',
+    'New License': 'New License',
+    submitted: 'Submitted',
+    paymentVerified: 'Payment Verified',
+    underReview: 'Under Review',
+    
+    // DB Enums / Statuses
+    status_pending: 'Pending',
+    status_reviewing: 'Reviewing',
+    status_approved: 'Approved',
+    status_rejected: 'Rejected',
     
     // Admin
     totalUsers: 'Total Users',
@@ -202,7 +233,7 @@ const translations = {
     
     // Contact Page
     contactTitle: 'Contact Us',
-    contactSubtitle: 'Get in touch with our team. We\'re here to help you with any questions or concerns.',
+    contactSubtitle: "Get in touch with our team. We're here to help you with any questions or concerns.",
     
     // Registration & Auth
     error: 'Error',
@@ -243,6 +274,8 @@ const translations = {
     continue: 'Endelea',
     back: 'Rudi',
     next: 'Ifuatayo',
+    search: 'Tafuta',
+    example: 'mf.',
     
     // Dashboard
     welcome: 'Karibu',
@@ -251,6 +284,13 @@ const translations = {
     myResults: 'Matokeo Yangu',
     notifications: 'Arifa',
     recentActivity: 'Shughuli za Hivi Karibuni',
+    driverServicesOverview: 'Huu ni muhtasari wako wa huduma za udereva',
+    takeDrivingTest: 'Fanya mtihani wa udereva',
+    continueLearning: 'Endelea kujifunza',
+    renewLicense: 'Kuhuisha leseni',
+    findDriverJobs: 'Tafuta kazi za udereva',
+    support: 'Msaada',
+    contactUs: 'Wasiliana nasi',
     
     // Test
     startTest: 'Anza Mtihani',
@@ -272,6 +312,28 @@ const translations = {
     licenseNumber: 'Nambari ya Leseni',
     licenseCategory: 'Aina ya Leseni',
     uploadPhoto: 'Pakia Picha',
+    
+    // Tracking & Applications
+    'Track Application': 'Fuatilia Maombi',
+    'Enter Reference To Check': 'Weka Kumbukumbu ili Kuangalia',
+    'Reference Number': 'Nambari ya Kumbukumbu',
+    'Application Status': 'Hali ya Maombi',
+    'Type': 'Aina',
+    'Category': 'Daraja',
+    'Submitted': 'Iliwasilishwa',
+    'Application Timeline': 'Mlolongo wa Maombi',
+    'Reviewing Note': 'Maombi yako yanapitiwa na timu yetu kwa sasa. Utajulishwa mara tu uamuzi utakapofanywa.',
+    'Renew License': 'Kuhuisha Leseni',
+    'New License': 'Leseni Mpya',
+    submitted: 'Iliwasilishwa',
+    paymentVerified: 'Malipo Yamethibitishwa',
+    underReview: 'Inapitiwa',
+    
+    // DB Enums / Statuses
+    status_pending: 'Inasubiri',
+    status_reviewing: 'Inapitiwa',
+    status_approved: 'Imeidhinishwa',
+    status_rejected: 'Imekataliwa',
     
     // Admin
     totalUsers: 'Watumiaji Jumla',
@@ -372,10 +434,29 @@ const translations = {
     // About Page
     aboutTitle: 'Kuhusu Dereva Kiganjani',
     aboutSubtitle: 'Jukwaa la kidijitali la MDV Vehicle Fleet Limited kwa kujifunza madereva, majaribio, leseni, na uajiri.',
+    whoWeAreTitle: 'Who We Are',
+    whoWeAreText: 'Dereva Kiganjani ni jukwaa kamili la kidijitali lililobuniwa kubadilisha huduma za udereva Tanzania. Tunatoa uzoefu usio na mshono kwa kujifunza udereva, majaribio, leseni, na ajira, tukihakikisha usalama, weledi, na ufanisi katika kila hatua.',
+    backedByMDVTitle: 'Inaungwa mkono na MDV Vehicle Fleet',
+    backedByMDVText: 'Dereva Kiganjani ni programu inayojivunia ya MDV Vehicle Fleet Limited, kampuni inayoongoza kwa usafirishaji na usimamizi wa vyombo vya usafiri nchini Tanzania.',
+    visitMDVWebsite: 'Tembelea Tovuti ya MDV',
+    whatWeOfferTitle: 'Tunachotoa',
+    elimikaAboutDesc: 'Elimu kamili ya udereva na kozi za multimedia na ufuatiliaji wa maendeleo.',
+    jiTestiAboutDesc: 'Majaribio ya udereva ya weledi na matokeo ya papo hapo na vyeti vya kidijitali.',
+    leseniAboutDesc: 'Maombi ya leseni yaliyorahisishwa na uhuishaji na ufuatiliaji wa hati.',
+    recruitmentLabel: 'Uajiri',
+    recruitmentAboutDesc: 'Unganisha madereva na waajiri kupitia wasifu uliothibitishwa na ulinganishaji wa kazi.',
+    impactStatsTitle: 'Athari Zetu',
+    driversTrainedLabel: 'Madereva Waliofunzwa',
+    testsCompletedLabel: 'Majaribio Yaliyokamilika',
+    licensesProcessedLabel: 'Leseni Zilizoshughulikiwa',
+    placementsMadeLabel: 'Ajira Zilizotolewa',
+    exploreServicesTitle: 'Uko Tayari Kuanza?',
+    exploreServicesText: 'Gundua huduma zetu kamili na ujiunge na maelfu ya madereva wanaotegemea Dereva Kiganjani.',
+    exploreServices: 'Gundua Huduma',
     
     // Contact Page
     contactTitle: 'Wasiliana Nasi',
-    contactSubtitle: 'Wasiliana na timu yetu. Tuko hapa kukusaidia na maswali au wasiwasi wowote.',
+    contactSubtitle: 'Wasiliana na timu yetu. Tuko hapa kukusaidia kwa maswali au wasiwasi wowote.',
     
     // Registration & Auth
     error: 'Hitilafu',

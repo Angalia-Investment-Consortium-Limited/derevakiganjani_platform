@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,81 +7,58 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Search, Download, FileText } from "lucide-react";
+import { Search, Download, FileText, Loader2 } from "lucide-react";
+import { useElimika } from "@/hooks/useElimika";
+import { formatDistanceToNow, isToday } from "date-fns";
 
 const LearnerProgress = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState("all");
 
-  const learners = [
-    {
-      id: 1,
-      name: "John Kamau",
-      course: "Road Safety Fundamentals",
-      progress: 75,
-      completedLessons: 9,
-      totalLessons: 12,
-      status: "in-progress",
-      lastActive: "2 hours ago",
-      score: 85
-    },
-    {
-      id: 2,
-      name: "Mary Wanjiku",
-      course: "Traffic Signs & Signals",
-      progress: 100,
-      completedLessons: 15,
-      totalLessons: 15,
-      status: "completed",
-      lastActive: "1 day ago",
-      score: 92
-    },
-    {
-      id: 3,
-      name: "Peter Ochieng",
-      course: "Defensive Driving",
-      progress: 45,
-      completedLessons: 8,
-      totalLessons: 18,
-      status: "in-progress",
-      lastActive: "3 hours ago",
-      score: 78
-    },
-    {
-      id: 4,
-      name: "Grace Akinyi",
-      course: "Road Safety Fundamentals",
-      progress: 100,
-      completedLessons: 12,
-      totalLessons: 12,
-      status: "completed",
-      lastActive: "2 days ago",
-      score: 95
-    },
-    {
-      id: 5,
-      name: "David Mwangi",
-      course: "Vehicle Maintenance Basics",
-      progress: 30,
-      completedLessons: 3,
-      totalLessons: 10,
-      status: "in-progress",
-      lastActive: "5 hours ago",
-      score: 72
+  const { useAdminEnrollments } = useElimika();
+  const { data: enrollments, isLoading } = useAdminEnrollments();
+
+  const uniqueCourses = useMemo(() => {
+    if (!enrollments) return [];
+    return Array.from(new Set(enrollments.map(e => e.courseName).filter(Boolean)));
+  }, [enrollments]);
+
+  const filteredLearners = useMemo(() => {
+    if (!enrollments) return [];
+    return enrollments.filter(learner => {
+      const matchesSearch = learner.learnerName?.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesCourse = courseFilter === "all" || learner.courseName === courseFilter;
+      return matchesSearch && matchesCourse;
+    });
+  }, [enrollments, searchQuery, courseFilter]);
+
+  const stats = useMemo(() => {
+    if (!enrollments || enrollments.length === 0) {
+      return { totalLearners: 0, activeToday: 0, completedCourses: 0, averageProgress: 0 };
     }
-  ];
+    
+    return {
+      totalLearners: enrollments.length,
+      activeToday: enrollments.filter(l => {
+        if (!l.last_accessed) return false;
+        try {
+          return isToday(l.last_accessed.toDate());
+        } catch {
+          return false;
+        }
+      }).length,
+      completedCourses: enrollments.filter(l => l.status === "Completed" || l.progress_percentage === 100).length,
+      averageProgress: Math.round(enrollments.reduce((acc, l) => acc + (l.progress_percentage || 0), 0) / enrollments.length)
+    };
+  }, [enrollments]);
 
-  const filteredLearners = learners.filter(learner => {
-    const matchesSearch = learner.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCourse = courseFilter === "all" || learner.course === courseFilter;
-    return matchesSearch && matchesCourse;
-  });
-
-  const stats = {
-    totalLearners: learners.length,
-    activeToday: learners.filter(l => l.lastActive.includes("hours")).length,
-    completedCourses: learners.filter(l => l.status === "completed").length,
-    averageProgress: Math.round(learners.reduce((acc, l) => acc + l.progress, 0) / learners.length)
+  const formatLastActive = (timestamp: any) => {
+    if (!timestamp) return 'Never';
+    try {
+      return formatDistanceToNow(timestamp.toDate(), { addSuffix: true });
+    } catch {
+      return 'Unknown';
+    }
   };
 
   return (
@@ -96,7 +73,9 @@ const LearnerProgress = () => {
             <CardContent className="p-6">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Total Learners</p>
-                <p className="text-3xl font-bold">{stats.totalLearners}</p>
+                <p className="text-3xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.totalLearners}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -104,7 +83,9 @@ const LearnerProgress = () => {
             <CardContent className="p-6">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Active Today</p>
-                <p className="text-3xl font-bold">{stats.activeToday}</p>
+                <p className="text-3xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.activeToday}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -112,7 +93,9 @@ const LearnerProgress = () => {
             <CardContent className="p-6">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Completed Courses</p>
-                <p className="text-3xl font-bold">{stats.completedCourses}</p>
+                <p className="text-3xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : stats.completedCourses}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -120,7 +103,9 @@ const LearnerProgress = () => {
             <CardContent className="p-6">
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Avg. Progress</p>
-                <p className="text-3xl font-bold">{stats.averageProgress}%</p>
+                <p className="text-3xl font-bold">
+                  {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : `${stats.averageProgress}%`}
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -145,10 +130,9 @@ const LearnerProgress = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Courses</SelectItem>
-                    <SelectItem value="Road Safety Fundamentals">Road Safety Fundamentals</SelectItem>
-                    <SelectItem value="Traffic Signs & Signals">Traffic Signs & Signals</SelectItem>
-                    <SelectItem value="Defensive Driving">Defensive Driving</SelectItem>
-                    <SelectItem value="Vehicle Maintenance Basics">Vehicle Maintenance Basics</SelectItem>
+                    {uniqueCourses.map(course => (
+                      <SelectItem key={course} value={course as string}>{course}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -165,47 +149,57 @@ const LearnerProgress = () => {
             </div>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Learner Name</TableHead>
-                  <TableHead>Course</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Lessons</TableHead>
-                  <TableHead>Score</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Active</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLearners.map((learner) => (
-                  <TableRow key={learner.id}>
-                    <TableCell className="font-medium">{learner.name}</TableCell>
-                    <TableCell>{learner.course}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Progress value={learner.progress} className="h-2 w-[100px]" />
-                        <span className="text-xs text-muted-foreground">{learner.progress}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {learner.completedLessons}/{learner.totalLessons}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={learner.score >= 85 ? "default" : "secondary"}>
-                        {learner.score}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={learner.status === "completed" ? "default" : "secondary"}>
-                        {learner.status === "completed" ? "Completed" : "In Progress"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{learner.lastActive}</TableCell>
+            {isLoading ? (
+              <div className="flex justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Learner Name</TableHead>
+                    <TableHead>Course</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead>Lessons</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Active</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredLearners.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No learners found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredLearners.map((learner) => (
+                      <TableRow key={learner.name}>
+                        <TableCell className="font-medium">{learner.learnerName}</TableCell>
+                        <TableCell>{learner.courseName}</TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <Progress value={learner.progress_percentage || 0} className="h-2 w-[100px]" />
+                            <span className="text-xs text-muted-foreground">{learner.progress_percentage || 0}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {learner.completed_lessons || 0}/{learner.totalLessons || 0}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={learner.status === "Completed" ? "default" : "secondary"}>
+                            {learner.status === "Completed" ? "Completed" : "In Progress"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatLastActive(learner.last_accessed)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
       </Card>
     </AdminLayout>

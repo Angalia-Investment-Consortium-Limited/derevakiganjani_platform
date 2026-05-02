@@ -57,6 +57,7 @@ import DriverJobProfile from "./pages/ajira/DriverJobProfile";
 import FindJobs from "./pages/ajira/FindJobs";
 import JobDetails from "./pages/ajira/JobDetails";
 import MyApplications from "./pages/ajira/MyApplications";
+import DriverMessages from "./pages/ajira/DriverMessages";
 import DriverPublicProfile from "./pages/shared/DriverPublicProfile";
 import EmployerProfile from "./pages/shared/EmployerProfile";
 import JobPostsManagement from "./pages/admin/JobPostsManagement";
@@ -112,6 +113,8 @@ import EmployerManagement from "./pages/admin/EmployerManagement";
 import AdminDriverProfileView from "./pages/admin/AdminDriverProfileView";
 import AuditLog from "./pages/admin/AuditLog";
 import OutsourceDesk from "./pages/admin/OutsourceDesk";
+import EmployerTicketsManagement from "./pages/admin/EmployerTicketsManagement";
+import EmployerSupport from "./pages/ajiri-dereva/EmployerSupport";
 
 const queryClient = new QueryClient();
 
@@ -288,6 +291,11 @@ const App = () => (
                   <LicenseRequestsManagement />
                 </AdminRoleBasedRoute>
               } />
+              <Route path="/admin/employer-tickets" element={
+                <AdminRoleBasedRoute>
+                  <EmployerTicketsManagement />
+                </AdminRoleBasedRoute>
+              } />
               <Route path="/admin/license-request/:id" element={
                 <AdminRoleBasedRoute>
                   <LicenseRequestDetail />
@@ -371,6 +379,13 @@ const App = () => (
                   </EmployerVerificationGuard>
                 </RoleBasedRoute>
               } />
+              <Route path="/employer/support" element={
+                <RoleBasedRoute allowedRoles={['Employer']}>
+                  <EmployerVerificationGuard>
+                    <EmployerSupport />
+                  </EmployerVerificationGuard>
+                </RoleBasedRoute>
+              } />
               <Route path="/ajiri-dereva/register" element={<EmployerRegistration />} />
               <Route path="/ajiri-dereva/post-job" element={
                 <RoleBasedRoute allowedRoles={['Employer']}>
@@ -412,6 +427,11 @@ const App = () => (
               <Route path="/ajira/applications" element={
                 <ProtectedRoute>
                   <MyApplications />
+                </ProtectedRoute>
+              } />
+              <Route path="/ajira/messages" element={
+                <ProtectedRoute>
+                  <DriverMessages />
                 </ProtectedRoute>
               } />
               <Route path="/driver/:driverId" element={<DriverPublicProfile />} />

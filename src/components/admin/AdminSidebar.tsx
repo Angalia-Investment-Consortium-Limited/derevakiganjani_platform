@@ -71,7 +71,8 @@ export const navigationGroups = [
   {
     label: 'Support',
     items: [
-      { title: 'General Requests', icon: MessageSquare, href: '/admin/support-requests', badge: null }
+      { title: 'General Requests', icon: MessageSquare, href: '/admin/support-requests', badge: null },
+      { title: 'Employer Tickets', icon: Building2, href: '/admin/employer-tickets', badge: null }
     ]
   },
   {

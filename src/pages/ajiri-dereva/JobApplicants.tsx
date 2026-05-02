@@ -243,7 +243,7 @@ const JobApplicants = () => {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => navigate(`/employer/messages?driverId=${app.driverId}&driverName=${encodeURIComponent(driverName)}`)}
+                                  onClick={() => navigate(`/employer/messages?driverId=${app.driverId}&driverName=${encodeURIComponent(driverName)}&jobTitle=${encodeURIComponent(jobTitle)}`)}
                                   title="Send Message"
                                 >
                                   <MessageSquare className="h-4 w-4" />

@@ -1,5 +1,8 @@
 export interface Interview {
     id: string;
+    candidateId?: string;
+    jobId?: string;
+    employerId?: string;
     candidateName: string;
     jobTitle: string;
     date: string;

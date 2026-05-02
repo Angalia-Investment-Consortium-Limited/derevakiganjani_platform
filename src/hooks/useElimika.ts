@@ -388,6 +388,59 @@ export const useElimika = () => {
     return { initiatePayment, loading };
   };
 
+  const useAdminEnrollments = () => {
+    const { data, error, mutate } = useSWR('admin_all_enrollments', async () => {
+      const snapshot = await getDocs(query(enrollmentsCollection, orderBy('enrollment_date', 'desc')));
+      
+      const enrollmentsData = snapshot.docs.map(doc => ({
+        ...doc.data(),
+        name: doc.id
+      })) as CourseEnrollment[];
+
+      // Collect unique IDs
+      const driverIds = [...new Set(enrollmentsData.map(e => e.driver))];
+      const courseIds = [...new Set(enrollmentsData.map(e => e.course))];
+
+      // Fetch related data in parallel
+      const [usersSnap, coursesSnap] = await Promise.all([
+        getDocs(collection(db, 'users')),
+        getDocs(coursesCollection)
+      ]);
+
+      const usersMap = new Map();
+      usersSnap.docs.forEach(doc => {
+        usersMap.set(doc.id, doc.data());
+      });
+
+      const coursesMap = new Map();
+      coursesSnap.docs.forEach(doc => {
+        coursesMap.set(doc.id, doc.data() as Course);
+      });
+
+      // Join data
+      const joinedData = enrollmentsData.map(enrollment => {
+        const user = usersMap.get(enrollment.driver);
+        const course = coursesMap.get(enrollment.course);
+        
+        return {
+          ...enrollment,
+          learnerName: user?.full_name || user?.displayName || 'Unknown Learner',
+          courseName: course?.course_name_en || 'Unknown Course',
+          totalLessons: course?.total_lessons || course?.lessons?.length || 0,
+        };
+      });
+
+      return joinedData;
+    });
+
+    return {
+      data,
+      isLoading: !error && !data,
+      isError: error,
+      mutate
+    };
+  };
+
   return {
     useCourses,
     useCourse,
@@ -402,5 +455,6 @@ export const useElimika = () => {
     useQuiz,
     useSaveQuiz,
     useCoursePayment,
+    useAdminEnrollments,
   };
 };

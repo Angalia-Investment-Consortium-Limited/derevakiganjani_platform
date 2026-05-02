@@ -29,8 +29,8 @@ const transporter = nodemailer.createTransport({
 /**
  * Beem Africa Configuration
  */
-const BEEM_API_KEY = "fe1fcc2c58d7d1bb";
-const BEEM_SECRET_KEY = "NTc4OWRmMTkyNDEwMjQwMTMxNWIzNjcxY2UzNDc3OTFmNzdkYmRkMDE5NTcwMWE2Yzg5MmI4MzRiM2NmMWZkYg==";
+const BEEM_API_KEY = "f6474a28e528b27c";
+const BEEM_SECRET_KEY = "Y2NlNmMxNjU5MDI2NTI1NmMzMmY5MDcyOGMyMjNjZDU2MjBjNDRiOTRiYjVmMjdmZDE0NTczNDE5NGNmYzFjZA==";
 const BEEM_SENDER_ID = "DerevaInfo";
 const BEEM_URL = "https://apisms.beem.africa/v1/send";
 
@@ -147,12 +147,15 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
       
       // Fetch Preferences & Email Fallback
       let emailEnabled = true;
+      let userName = "Valued User";
+      
       if (data.userId) {
          try {
              // 1. Try resolving email from root user
              const userDoc = await admin.firestore().collection("users").doc(data.userId).get();
              if (userDoc.exists) {
                  finalEmail = finalEmail || userDoc.data()?.email;
+                 userName = userDoc.data()?.full_name || userName;
              }
 
              // 2. Resolve preferences & fallback profile emails
@@ -167,6 +170,7 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
                      const prefs = empDoc.data()?.notificationPreferences;
                      if (prefs && prefs.emailEnabled === false) emailEnabled = false;
                      finalEmail = finalEmail || empDoc.data()?.company_email;
+                     userName = empDoc.data()?.company_name || userName;
                  }
              }
          } catch (e) {
@@ -184,12 +188,44 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
           return;
       }
 
+      let metadataHtml = "";
+      if (data.metadata && Object.keys(data.metadata).length > 0) {
+        metadataHtml = `<div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #0b2241; margin: 20px 0;">
+          <h3 style="margin-top: 0; color: #0b2241; font-size: 16px;">Details</h3>
+          <ul style="list-style-type: none; padding: 0; margin: 0; font-size: 14px;">`;
+        for (const [key, value] of Object.entries(data.metadata)) {
+          const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+          metadataHtml += `<li style="margin-bottom: 8px;"><strong>${formattedKey}:</strong> ${value}</li>`;
+        }
+        metadataHtml += `</ul></div>`;
+      }
+
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <img src="https://derevakiganjani.web.app/logo.png" alt="Dereva Kiganjani Logo" style="max-height: 80px;" />
+            <p style="font-style: italic; color: #555; margin-top: 10px;">Empowering safer drivers through digital services and continuous learning.</p>
+          </div>
+          <div style="margin-bottom: 30px;">
+            <p>Dear ${userName},</p>
+            <p>${message}</p>
+            ${metadataHtml}
+          </div>
+          <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+          <div style="text-align: center; font-size: 12px; color: #777;">
+            <p style="margin: 5px 0;"><strong>Contact Us</strong></p>
+            <p style="margin: 5px 0;">MDV Vehicle Fleet, Dar es Salaam, Tanzania</p>
+            <p style="margin: 5px 0;">+255 748 467 348</p>
+          </div>
+        </div>
+      `;
+
       await transporter.sendMail({
         from: '"Dereva Kiganjani" <communicaton@mdvfleet.co.tz>',
         to: finalEmail,
         subject: title || "New Notification - Dereva Kiganjani",
         text: message,
-        html: `<p>${message}</p>`,
+        html: emailHtml,
       });
 
       logger.info(`Email sent successfully to ${finalEmail} [ID: ${notificationId}]`);
@@ -199,6 +235,7 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
 
     if (type === "SMS") {
       let finalPhoneNumber = phoneNumber;
+      let userName = "";
 
       // Fetch Preferences & Number
       let smsEnabled = true;
@@ -207,6 +244,7 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
              const userDoc = await admin.firestore().collection("users").doc(data.userId).get();
              if (userDoc.exists) {
                  finalPhoneNumber = finalPhoneNumber || userDoc.data()?.mobile_no || userDoc.data()?.phoneNumber;
+                 userName = userDoc.data()?.full_name || userName;
              }
 
              const driverDoc = await admin.firestore().collection("driver_profiles").doc(data.userId).get();
@@ -220,6 +258,7 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
                      const prefs = empDoc.data()?.notificationPreferences;
                      if (prefs && prefs.smsEnabled === false) smsEnabled = false;
                      finalPhoneNumber = finalPhoneNumber || empDoc.data()?.company_phone;
+                     userName = empDoc.data()?.company_name || userName;
                  }
              }
          } catch (e) {
@@ -235,6 +274,22 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
           logger.info(`SMS dispatch skipped due to user preference: ${data.userId}`);
           await snapshot.ref.update({ status: "SKIPPED", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
           return;
+      }
+      
+      let finalSmsMessage = message;
+      if (userName && !message.toLowerCase().includes("dear")) {
+         const firstName = userName.split(' ')[0];
+         finalSmsMessage = `Dear ${firstName}, ${finalSmsMessage}`;
+      }
+      
+      if (data.metadata && Object.keys(data.metadata).length > 0) {
+         finalSmsMessage += "\\nDetails: ";
+         const metaParts = [];
+         for (const [key, value] of Object.entries(data.metadata)) {
+           const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+           metaParts.push(`${formattedKey}: ${value}`);
+         }
+         finalSmsMessage += metaParts.join(", ");
       }
 
       let fmtPhone = finalPhoneNumber.trim();
@@ -259,7 +314,7 @@ export const onNotificationCreated = onDocumentCreated("notifications/{notificat
           source_addr: BEEM_SENDER_ID,
           schedule_time: "",
           encoding: 0,
-          message: message,
+          message: finalSmsMessage,
           recipients: [recipient],
         },
         {

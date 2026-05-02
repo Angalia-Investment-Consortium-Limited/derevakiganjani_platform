@@ -125,6 +125,16 @@ export const Header = () => {
 
           {isAuthenticated ? (
             <div className="hidden md:flex items-center gap-4">
+              {/* Messages */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(user?.roles?.[0] === 'Employer' ? '/employer/messages' : '/ajira/messages')}
+                className="relative"
+              >
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+
               {/* Notifications */}
               <Button
                 variant="ghost"
@@ -225,9 +235,9 @@ export const Header = () => {
                         <Briefcase className="mr-2 h-4 w-4" />
                         <span>My Outsource Requests</span>
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate('/employer/messages')}>
+                      <DropdownMenuItem onClick={() => navigate('/employer/support')}>
                         <MessageSquare className="mr-2 h-4 w-4" />
-                        <span>Messages</span>
+                        <span>Contact Support</span>
                       </DropdownMenuItem>
                     </>
                   )}
@@ -386,9 +396,9 @@ export const Header = () => {
                       <Briefcase className="mr-2 h-4 w-4" />
                       My Outsource Requests
                     </Button>
-                    <Button variant="outline" onClick={() => { navigate('/employer/messages'); setMobileMenuOpen(false); }} className="w-full justify-start">
+                    <Button variant="outline" onClick={() => { navigate('/employer/support'); setMobileMenuOpen(false); }} className="w-full justify-start">
                       <MessageSquare className="mr-2 h-4 w-4" />
-                      Messages
+                      Contact Support
                     </Button>
                   </>
                 )}
