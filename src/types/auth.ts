@@ -84,7 +84,10 @@ export interface DriverProfile {
   experience?: string;
   location?: string;
   preferredVehicle?: string;
+  preferred_vehicle_types?: string[];
   languages?: string[];
+  license_category?: string;
+  license_categories?: string[];
   notificationPreferences?: {
     smsEnabled: boolean;
     emailEnabled: boolean;

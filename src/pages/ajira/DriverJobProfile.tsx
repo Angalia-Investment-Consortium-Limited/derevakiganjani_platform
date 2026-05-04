@@ -6,22 +6,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { User, Award, Briefcase, MapPin, Upload, Eye, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegions } from '@/hooks/useLicense';
+import { useCertificates } from '@/hooks/useCertificates';
+import { useCVCreation } from '@/hooks/useCVCreation';
 import type { DriverProfile } from '@/types/auth';
 
 const DriverJobProfile = () => {
   const { toast } = useToast();
   const { user, profile, updateProfile, isLoading: authLoading } = useAuth();
   const { regions, isLoading: regionsLoading } = useRegions();
+  const { certificates, isLoading: certsLoading } = useCertificates(user?.uid);
+  const { currentRequest, isLoading: cvLoading, requestCV } = useCVCreation();
   const [isSaving, setIsSaving] = useState(false);
+  const [cvPhone, setCvPhone] = useState(user?.phoneNumber || profile?.phone_number || '');
   const [formData, setFormData] = useState<Partial<DriverProfile>>({
     full_name: '',
     license_number: '',
-    license_category: '',
+    license_categories: [],
     years_of_experience: 0,
     preferred_vehicle_types: [],
     preferred_region: '',
@@ -41,6 +47,17 @@ const DriverJobProfile = () => {
 
   const handleSelectChange = (id: string, value: string | string[]) => {
     setFormData(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleCheckboxChange = (field: 'license_categories' | 'preferred_vehicle_types', value: string, checked: boolean) => {
+    setFormData(prev => {
+      const currentList = prev[field] || [];
+      if (checked) {
+        return { ...prev, [field]: [...currentList, value] };
+      } else {
+        return { ...prev, [field]: currentList.filter(item => item !== value) };
+      }
+    });
   };
 
   const handleSave = async () => {
@@ -116,20 +133,22 @@ const DriverJobProfile = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="license_category">License Category *</Label>
-                    <Select onValueChange={(value) => handleSelectChange('license_category', value)} value={formData.license_category}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="A">Category A - Motorcycle</SelectItem>
-                        <SelectItem value="B">Category B - Light Vehicle</SelectItem>
-                        <SelectItem value="C">Category C - Medium Vehicle</SelectItem>
-                        <SelectItem value="D">Category D - Heavy Vehicle</SelectItem>
-                        <SelectItem value="E">Category E - Trailer</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3">
+                    <Label>License Category(s) *</Label>
+                    <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
+                      {['A', 'B', 'C', 'D', 'E'].map(cat => (
+                        <div key={cat} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`cat-${cat}`}
+                            checked={(formData.license_categories || []).includes(cat)}
+                            onCheckedChange={(checked) => handleCheckboxChange('license_categories', cat, checked as boolean)}
+                          />
+                          <label htmlFor={`cat-${cat}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Category {cat}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -142,20 +161,22 @@ const DriverJobProfile = () => {
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="preferred_vehicle_types">Preferred Vehicle Type(s) *</Label>
-                    <Select onValueChange={(value) => handleSelectChange('preferred_vehicle_types', value.split(','))} value={formData.preferred_vehicle_types?.join(',')}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select vehicle types" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="car">Car</SelectItem>
-                        <SelectItem value="motorcycle">Motorcycle</SelectItem>
-                        <SelectItem value="bus">Bus</SelectItem>
-                        <SelectItem value="truck">Truck</SelectItem>
-                        <SelectItem value="trailer">Trailer</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-3">
+                    <Label>Preferred Vehicle Type(s) *</Label>
+                    <div className="grid grid-cols-2 gap-2 p-3 border rounded-md">
+                      {['Car', 'Motorcycle', 'Bus', 'Truck', 'Trailer'].map(vehicle => (
+                        <div key={vehicle} className="flex items-center space-x-2">
+                          <Checkbox 
+                            id={`veh-${vehicle}`}
+                            checked={(formData.preferred_vehicle_types || []).includes(vehicle.toLowerCase())}
+                            onCheckedChange={(checked) => handleCheckboxChange('preferred_vehicle_types', vehicle.toLowerCase(), checked as boolean)}
+                          />
+                          <label htmlFor={`veh-${vehicle}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            {vehicle}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -200,7 +221,7 @@ const DriverJobProfile = () => {
                     {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     {isSaving ? 'Saving...' : 'Save Profile'}
                   </Button>
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => window.location.href = `/driver/${user?.uid}`}>
                     <Eye className="h-4 w-4 mr-2" />
                     Preview Profile
                   </Button>
@@ -216,20 +237,83 @@ const DriverJobProfile = () => {
                 <CardDescription>Your achievements</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-success" />
-                    <span className="text-sm font-medium">JiTesti Passed</span>
-                  </div>
-                  <Badge className="bg-success/10 text-success">Verified</Badge>
+                {certsLoading ? (
+                  <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+                ) : certificates && certificates.length > 0 ? (
+                  certificates.map((cert) => (
+                    <div key={cert.id} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-success" />
+                        <span className="text-sm font-medium">{cert.course_name || 'Certificate Earned'}</span>
+                      </div>
+                      <Badge className="bg-success/10 text-success">Verified</Badge>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center p-4">No certificates earned yet. Complete tests to earn badges!</p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Kiganjani CV Creation</CardTitle>
+                <CardDescription>Get a professional CV tailored for driving jobs.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center bg-muted/50 p-3 rounded-lg border">
+                  <span className="font-medium">Service Fee</span>
+                  <span className="font-bold text-primary">7,000 TZS</span>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-lg border">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-success" />
-                    <span className="text-sm font-medium">Elimika Certified</span>
+                
+                {cvLoading ? (
+                  <div className="flex justify-center py-2"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                ) : !currentRequest ? (
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-muted-foreground">Mobile Money Number</label>
+                      <Input 
+                        placeholder="e.g. 255712345678" 
+                        value={cvPhone} 
+                        onChange={(e) => setCvPhone(e.target.value)}
+                      />
+                    </div>
+                    <Button className="w-full" onClick={() => requestCV(cvPhone)}>
+                      Request CV Generation
+                    </Button>
                   </div>
-                  <Badge className="bg-success/10 text-success">Verified</Badge>
-                </div>
+                ) : currentRequest.paymentStatus === 'Pending' ? (
+                  <div className="space-y-3">
+                     <div className="p-3 bg-secondary text-secondary-foreground rounded-lg border text-sm text-center">
+                      <p className="font-medium">Waiting for Payment</p>
+                      <p className="text-xs mt-1">Please enter your PIN on your mobile device.</p>
+                    </div>
+                  </div>
+                ) : currentRequest.requestStatus === 'Completed' ? (
+                  <div className="space-y-3">
+                    <div className="p-3 bg-success/10 text-success rounded-lg border border-success/20 text-sm text-center font-medium">
+                      Your CV is ready!
+                    </div>
+                    <Button 
+                      className="w-full bg-success hover:bg-success/90" 
+                      onClick={() => window.open(currentRequest.cvUrl, '_blank')}
+                      disabled={!currentRequest.cvUrl}
+                    >
+                      <Award className="h-4 w-4 mr-2" />
+                      Download KIGANJANI CV
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                     <div className="p-3 bg-warning/10 text-warning-foreground rounded-lg border border-warning/20 text-sm text-center">
+                      <p className="font-medium">CV Generation in Progress</p>
+                      <p className="text-xs mt-1">Our team is working on your professional CV.</p>
+                    </div>
+                    <Button className="w-full" disabled variant="outline">
+                      KIGANJANI CV coming soon...
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

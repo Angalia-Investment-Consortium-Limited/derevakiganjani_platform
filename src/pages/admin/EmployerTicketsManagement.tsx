@@ -17,7 +17,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Mail, CheckCircle, Clock } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { TicketChat } from "@/components/support/TicketChat";
+import { useAuth } from '@/contexts/AuthContext';
+import { MoreHorizontal, Mail, CheckCircle, Clock, MessageSquare } from 'lucide-react';
 
 interface EmployerTicket {
   id: string;
@@ -33,7 +42,10 @@ interface EmployerTicket {
 const EmployerTicketsManagement = () => {
   const [tickets, setTickets] = useState<EmployerTicket[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedTicket, setSelectedTicket] = useState<EmployerTicket | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, "employer_tickets"),
@@ -113,6 +125,12 @@ const EmployerTicketsManagement = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => {
+                setSelectedTicket(ticket);
+                setIsSheetOpen(true);
+              }}>
+                <MessageSquare className="mr-2 h-4 w-4" /> View & Respond
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => window.location.href = `mailto:${ticket.email}?subject=RE: ${ticket.subject}`}>
                 <Mail className="mr-2 h-4 w-4" /> Email Employer
               </DropdownMenuItem>
@@ -150,6 +168,27 @@ const EmployerTicketsManagement = () => {
           )}
         </CardContent>
       </Card>
+
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg flex flex-col p-0">
+          <SheetHeader className="p-6 border-b pb-4">
+            <SheetTitle>Ticket: {selectedTicket?.subject}</SheetTitle>
+            <SheetDescription>
+              From: {selectedTicket?.companyName} | Status: <span className="font-semibold">{selectedTicket?.status}</span>
+            </SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-hidden">
+            {selectedTicket && user && (
+              <TicketChat
+                ticketId={selectedTicket.id}
+                currentUserId={user.uid}
+                currentUserName={(user as any).full_name || 'Admin Support'}
+                currentUserRole="admin"
+              />
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </AdminLayout>
   );
 };

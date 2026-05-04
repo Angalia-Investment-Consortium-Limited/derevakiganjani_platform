@@ -115,6 +115,10 @@ import AuditLog from "./pages/admin/AuditLog";
 import OutsourceDesk from "./pages/admin/OutsourceDesk";
 import EmployerTicketsManagement from "./pages/admin/EmployerTicketsManagement";
 import EmployerSupport from "./pages/ajiri-dereva/EmployerSupport";
+import CVCreationRequests from "./pages/admin/CVCreationRequests";
+import CVBuilder from "./pages/admin/CVBuilder";
+import CVView from "./pages/cv/CVView";
+import { AdminLayoutRoot } from "./components/admin/AdminLayoutRoot";
 
 const queryClient = new QueryClient();
 
@@ -186,26 +190,10 @@ const App = () => (
                   <Notifications />
                 </ProtectedRoute>
               } />
-              <Route path="/admin" element={
-                <AdminRoleBasedRoute>
-                  <Admin />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/drivers" element={
-                <AdminRoleBasedRoute>
-                  <DriverManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/driver/:driverId" element={
-                <AdminRoleBasedRoute>
-                  <AdminDriverProfileView />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/employers" element={
-                <AdminRoleBasedRoute>
-                  <EmployerManagement />
-                </AdminRoleBasedRoute>
-              } />
+              
+              
+              
+              
               <Route path="/elimika" element={
                 <ProtectedRoute>
                   <CourseCatalog />
@@ -236,71 +224,19 @@ const App = () => (
                   <MyLearning />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/courses" element={
-                <AdminRoleBasedRoute>
-                  <CourseManager />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/course/:courseId" element={
-                <AdminRoleBasedRoute>
-                  <CourseEditor />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/course/:courseId/lesson/:lessonId" element={
-                <AdminRoleBasedRoute>
-                  <LessonBuilder />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/lesson-builder" element={
-                <AdminRoleBasedRoute>
-                  <LessonBuilder />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/lessons" element={
-                <AdminRoleBasedRoute>
-                  <LessonManager />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/course/:courseId/quiz" element={
-                <AdminRoleBasedRoute>
-                  <QuizBuilder />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/learners" element={
-                <AdminRoleBasedRoute>
-                  <LearnerProgress />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/questions" element={
-                <AdminRoleBasedRoute>
-                  <QuestionBankManager />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/question/:questionId" element={
-                <AdminRoleBasedRoute>
-                  <QuestionEditor />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/test-config" element={
-                <AdminRoleBasedRoute>
-                  <TestConfiguration />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/support-requests" element={
-                <AdminRoleBasedRoute>
-                  <LicenseRequestsManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/employer-tickets" element={
-                <AdminRoleBasedRoute>
-                  <EmployerTicketsManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/license-request/:id" element={
-                <AdminRoleBasedRoute>
-                  <LicenseRequestDetail />
-                </AdminRoleBasedRoute>
-              } />
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
               <Route path="/employer/pending-verification" element={
                 <RoleBasedRoute allowedRoles={['Employer']}>
                   <PendingVerification />
@@ -429,6 +365,11 @@ const App = () => (
                   <MyApplications />
                 </ProtectedRoute>
               } />
+              <Route path="/cv/view/:id" element={
+                <ProtectedRoute>
+                  <CVView />
+                </ProtectedRoute>
+              } />
               <Route path="/ajira/messages" element={
                 <ProtectedRoute>
                   <DriverMessages />
@@ -436,113 +377,31 @@ const App = () => (
               } />
               <Route path="/driver/:driverId" element={<DriverPublicProfile />} />
               <Route path="/employer/:employerId" element={<EmployerProfile />} />
-              <Route path="/admin/job-posts" element={
-                <AdminRoleBasedRoute>
-                  <JobPostsManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/job-management" element={
-                <AdminRoleBasedRoute>
-                  <JobManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/job-applicants/:jobId" element={
-                <AdminRoleBasedRoute>
-                  <AdminJobApplicants />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/jobs/new" element={
-                <AdminRoleBasedRoute>
-                  <JobPostForm />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/jobs/:id" element={
-                <AdminRoleBasedRoute>
-                  <JobPostDetail />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/jobs/:id/edit" element={
-                <AdminRoleBasedRoute>
-                  <JobPostForm />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/payments" element={
-                <AdminRoleBasedRoute>
-                  <PaymentsManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/certificates" element={
-                <AdminRoleBasedRoute>
-                  <CertificatesManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/reports" element={
-                <AdminRoleBasedRoute>
-                  <ReportsCenter />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/matching" element={
-                <AdminRoleBasedRoute>
-                  <MatchingMonitor />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/outsource" element={
-                <AdminRoleBasedRoute>
-                  <OutsourceDesk />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/recruitment-reports" element={
-                <AdminRoleBasedRoute>
-                  <RecruitmentReports />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/users" element={
-                <AdminRoleBasedRoute>
-                  <UsersManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/users/new" element={
-                <AdminRoleBasedRoute>
-                  <UserForm />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/users/:id/edit" element={
-                <AdminRoleBasedRoute>
-                  <UserForm />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/settings/roles" element={
-                <AdminRoleBasedRoute>
-                  <RolesPermissions />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/audit-log" element={
-                <AdminRoleBasedRoute>
-                  <AuditLog />
-                </AdminRoleBasedRoute>
-              } />
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
+              
 
               {/* JiTesti Routes */}
-              <Route path="/admin/jitesti/categories" element={
-                <AdminRoleBasedRoute>
-                  <JitestiCategoryManager />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/jitesti/tests" element={
-                <AdminRoleBasedRoute>
-                  <JitestiTestManager />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/jitesti/results" element={
-                <AdminRoleBasedRoute>
-                  <JitestiResultsPage />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/jitesti/results/:attemptId" element={
-                <AdminRoleBasedRoute>
-                  <JitestiResultDetail />
-                </AdminRoleBasedRoute>
-              } />
+              
+              
+              
+              
 
               <Route path="/jitesti" element={
                 <ProtectedRoute>
@@ -593,33 +452,240 @@ const App = () => (
                   <ApplicationDetails />
                 </ProtectedRoute>
               } />
-              <Route path="/admin/license-applications" element={
-                <AdminRoleBasedRoute>
-                  <LicenseApplicationsManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/license-application/:id" element={
-                <AdminRoleBasedRoute>
-                  <LicenseApplicationReview />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/license-statistics" element={
-                <AdminRoleBasedRoute>
-                  <LicenseStatistics />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/employer-verification" element={
-                <AdminRoleBasedRoute>
-                  <EmployerVerificationManagement />
-                </AdminRoleBasedRoute>
-              } />
-              <Route path="/admin/employer-review/:id" element={
-                <AdminRoleBasedRoute>
-                  <EmployerReview />
-                </AdminRoleBasedRoute>
-              } />
+              
+              
+              
+              
+              
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/whatsapp-privacy-policy" element={<WhatsAppPrivacyPolicy />} />
+              <Route path="/admin" element={<AdminLayoutRoot />}>
+              <Route index element={
+                              <AdminRoleBasedRoute>
+                                <Admin />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="drivers" element={
+                              <AdminRoleBasedRoute>
+                                <DriverManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="driver/:driverId" element={
+                              <AdminRoleBasedRoute>
+                                <AdminDriverProfileView />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="employers" element={
+                              <AdminRoleBasedRoute>
+                                <EmployerManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="courses" element={
+                              <AdminRoleBasedRoute>
+                                <CourseManager />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="course/:courseId" element={
+                              <AdminRoleBasedRoute>
+                                <CourseEditor />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="course/:courseId/lesson/:lessonId" element={
+                              <AdminRoleBasedRoute>
+                                <LessonBuilder />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="lesson-builder" element={
+                              <AdminRoleBasedRoute>
+                                <LessonBuilder />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="lessons" element={
+                              <AdminRoleBasedRoute>
+                                <LessonManager />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="course/:courseId/quiz" element={
+                              <AdminRoleBasedRoute>
+                                <QuizBuilder />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="learners" element={
+                              <AdminRoleBasedRoute>
+                                <LearnerProgress />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="questions" element={
+                              <AdminRoleBasedRoute>
+                                <QuestionBankManager />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="question/:questionId" element={
+                              <AdminRoleBasedRoute>
+                                <QuestionEditor />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="test-config" element={
+                              <AdminRoleBasedRoute>
+                                <TestConfiguration />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="support-requests" element={
+                              <AdminRoleBasedRoute>
+                                <LicenseRequestsManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="employer-tickets" element={
+                              <AdminRoleBasedRoute>
+                                <EmployerTicketsManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="license-request/:id" element={
+                              <AdminRoleBasedRoute>
+                                <LicenseRequestDetail />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="job-posts" element={
+                              <AdminRoleBasedRoute>
+                                <JobPostsManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="job-management" element={
+                              <AdminRoleBasedRoute>
+                                <JobManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="job-applicants/:jobId" element={
+                              <AdminRoleBasedRoute>
+                                <AdminJobApplicants />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="jobs/new" element={
+                              <AdminRoleBasedRoute>
+                                <JobPostForm />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="jobs/:id" element={
+                              <AdminRoleBasedRoute>
+                                <JobPostDetail />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="jobs/:id/edit" element={
+                              <AdminRoleBasedRoute>
+                                <JobPostForm />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="payments" element={
+                              <AdminRoleBasedRoute>
+                                <PaymentsManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="certificates" element={
+                              <AdminRoleBasedRoute>
+                                <CertificatesManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="reports" element={
+                              <AdminRoleBasedRoute>
+                                <ReportsCenter />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="matching" element={
+                              <AdminRoleBasedRoute>
+                                <MatchingMonitor />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="outsource" element={
+                              <AdminRoleBasedRoute>
+                                <OutsourceDesk />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="recruitment-reports" element={
+                              <AdminRoleBasedRoute>
+                                <RecruitmentReports />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="cv-requests" element={
+                              <AdminRoleBasedRoute>
+                                <CVCreationRequests />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="cv-builder/:requestId" element={
+                              <AdminRoleBasedRoute>
+                                <CVBuilder />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="users" element={
+                              <AdminRoleBasedRoute>
+                                <UsersManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="users/new" element={
+                              <AdminRoleBasedRoute>
+                                <UserForm />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="users/:id/edit" element={
+                              <AdminRoleBasedRoute>
+                                <UserForm />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="settings/roles" element={
+                              <AdminRoleBasedRoute>
+                                <RolesPermissions />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="audit-log" element={
+                              <AdminRoleBasedRoute>
+                                <AuditLog />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="jitesti/categories" element={
+                              <AdminRoleBasedRoute>
+                                <JitestiCategoryManager />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="jitesti/tests" element={
+                              <AdminRoleBasedRoute>
+                                <JitestiTestManager />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="jitesti/results" element={
+                              <AdminRoleBasedRoute>
+                                <JitestiResultsPage />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="jitesti/results/:attemptId" element={
+                              <AdminRoleBasedRoute>
+                                <JitestiResultDetail />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="license-applications" element={
+                              <AdminRoleBasedRoute>
+                                <LicenseApplicationsManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="license-application/:id" element={
+                              <AdminRoleBasedRoute>
+                                <LicenseApplicationReview />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="license-statistics" element={
+                              <AdminRoleBasedRoute>
+                                <LicenseStatistics />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="employer-verification" element={
+                              <AdminRoleBasedRoute>
+                                <EmployerVerificationManagement />
+                              </AdminRoleBasedRoute>
+                            } />
+              <Route path="employer-review/:id" element={
+                              <AdminRoleBasedRoute>
+                                <EmployerReview />
+                              </AdminRoleBasedRoute>
+                            } />
+            </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </TooltipProvider>

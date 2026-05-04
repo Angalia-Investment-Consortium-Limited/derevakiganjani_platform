@@ -132,13 +132,20 @@ export const useElimika = () => {
 
   const useDriverEnrollments = (driverProfileId: string | undefined) => {
     const q = driverProfileId
-        ? query(enrollmentsCollection, where('driver', '==', driverProfileId), orderBy('last_accessed', 'desc'))
+        ? query(enrollmentsCollection, where('driver', '==', driverProfileId))
         : null;
 
     const { data, error } = useSWR(q, fetcher);
 
+    // Sort by last_accessed descending in memory
+    const sortedData = data ? [...data].sort((a: any, b: any) => {
+        const dateA = a.last_accessed?.toMillis ? a.last_accessed.toMillis() : 0;
+        const dateB = b.last_accessed?.toMillis ? b.last_accessed.toMillis() : 0;
+        return dateB - dateA;
+    }) : undefined;
+
     return {
-        data: data as CourseEnrollment[] | undefined,
+        data: sortedData as CourseEnrollment[] | undefined,
         isLoading: !error && !data && !!driverProfileId,
         isError: error,
     };

@@ -48,7 +48,19 @@ export const generateCertificate = async (data: CertificateData, userId: string)
     doc.setLineWidth(1.5);
     doc.rect(5, 5, doc.internal.pageSize.width - 10, doc.internal.pageSize.height - 10);
 
-    // 1. Add Main Logo (Further Enlarged)
+    // 1. Certificate ID (Top Right)
+    const certId = `DK-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${new Date().getFullYear()}`;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Certificate ID: ${certId}`, 195, 15, { align: 'right' });
+
+    // 2. Add MDV Logo (Top Left)
+    if (mdvLogoDataUrl) {
+        doc.addImage(mdvLogoDataUrl, 'PNG', 15, 15, 40, 20);
+    }
+
+    // 3. Add Main Logo (Top Center)
     if (logoDataUrl) {
         doc.addImage(logoDataUrl, 'PNG', 70, 15, 70, 35);
     }
@@ -107,7 +119,16 @@ export const generateCertificate = async (data: CertificateData, userId: string)
         doc.addImage(mdvLogoDataUrl, 'PNG', 150, signatureY + 10, 30, 15);
         doc.setFontSize(10);
         doc.setTextColor(100,100,100);
-        doc.text('Issued by: MDV Vehicle Fleet Limited', 155, signatureY + 30, { align: 'center' });
+        doc.text('Issued by: MDV Vehicle Fleet Limited', 165, signatureY + 30, { align: 'center' });
+    }
+
+    // 5. Add Dereva Kiganjani Footer (Bottom Center)
+    const footerY = 265;
+    if (logoDataUrl) {
+        doc.addImage(logoDataUrl, 'PNG', 95, footerY, 20, 10);
+        doc.setFontSize(9);
+        doc.setTextColor(150, 150, 150);
+        doc.text('Generated from the Dereva Kiganjani platform', 105, footerY + 15, { align: 'center' });
     }
     
     // --- PDF Generation and Upload ---

@@ -15,12 +15,27 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const FindJobs = () => {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const [filters, setFilters] = useState({ searchTerm: '', vehicleType: '', licenseCategory: '', region: '', jobType: '' });
+  
+  // Job Alert State
+  const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+  const [alertSettings, setAlertSettings] = useState({
+    vehicleType: 'all',
+    licenseCategory: 'all',
+    region: 'all',
+    jobType: 'all',
+    email: true,
+    sms: true,
+    system: true,
+  });
+
   // Since useJobs expects an array of Filter objects, we map our state to it:
   const jobFilters = useMemo(() => {
     const arr = [];
@@ -35,9 +50,14 @@ const FindJobs = () => {
   const { jobs, isLoading: jobsLoading } = useJobs(jobFilters);
   const { regions, isLoading: regionsLoading } = useRegions();
   const [applying, setApplying] = useState<string | null>(null);
+  const [savingAlert, setSavingAlert] = useState(false);
 
   const handleFilterChange = (filterName: string, value: string) => {
     setFilters(prev => ({ ...prev, [filterName]: value }));
+  };
+
+  const handleAlertSettingChange = (settingName: string, value: any) => {
+    setAlertSettings(prev => ({ ...prev, [settingName]: value }));
   };
 
   const handleApply = async (jobId: string) => {
@@ -61,7 +81,46 @@ const FindJobs = () => {
     } finally {
       setApplying(null);
     }
-  }
+  };
+
+  const handleSaveAlert = async () => {
+    if (!currentUser) {
+      toast({ title: 'Error', description: 'You must be logged in to set a job alert.', variant: 'destructive' });
+      return;
+    }
+
+    if (!alertSettings.email && !alertSettings.sms && !alertSettings.system) {
+      toast({ title: 'Warning', description: 'Please select at least one notification method.', variant: 'destructive' });
+      return;
+    }
+
+    setSavingAlert(true);
+    try {
+      await addDoc(collection(db, 'job_alerts'), {
+        userId: currentUser.uid,
+        filters: {
+          vehicleType: alertSettings.vehicleType,
+          licenseCategory: alertSettings.licenseCategory,
+          region: alertSettings.region,
+          jobType: alertSettings.jobType,
+        },
+        notifications: {
+          email: alertSettings.email,
+          sms: alertSettings.sms,
+          system: alertSettings.system,
+        },
+        createdAt: Timestamp.now(),
+        status: 'active'
+      });
+      
+      toast({ title: 'Success', description: 'Job alert saved successfully!' });
+      setIsAlertModalOpen(false);
+    } catch (error) {
+      toast({ title: 'Error', description: 'Failed to save job alert.', variant: 'destructive' });
+    } finally {
+      setSavingAlert(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -134,7 +193,6 @@ const FindJobs = () => {
                   <SelectItem value="Part-time">Part-time</SelectItem>
                 </SelectContent>
               </Select>
-              {/* Salary range filter is not implemented in the hook yet */}
             </div>
           </CardContent>
         </Card>
@@ -143,7 +201,6 @@ const FindJobs = () => {
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
               <p className="text-muted-foreground">{jobs.length} jobs found</p>
-              {/* Sort by is not implemented in the hook yet */}
             </div>
 
             {jobsLoading ? (
@@ -190,7 +247,6 @@ const FindJobs = () => {
 
                     <div className="flex justify-between items-center pt-3 border-t">
                       <span className="text-sm text-muted-foreground">
-                        {/* Application count not available on job object yet */}
                       </span>
                       <Button size="sm" onClick={(e) => { e.stopPropagation(); navigate(`/ajira/job/${job.id}`); }}>
                         View Job Details
@@ -209,9 +265,117 @@ const FindJobs = () => {
                 <CardDescription>Get notified about new jobs</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button className="w-full">
-                  Set Job Alert
-                </Button>
+                <Dialog open={isAlertModalOpen} onOpenChange={setIsAlertModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full">
+                      Set Job Alert
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                      <DialogTitle>Set Job Alert</DialogTitle>
+                      <DialogDescription>
+                        Choose the criteria for jobs you want to be notified about.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="grid gap-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <Select value={alertSettings.vehicleType} onValueChange={(v) => handleAlertSettingChange('vehicleType', v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Vehicle Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Vehicles</SelectItem>
+                            <SelectItem value="Car">Car</SelectItem>
+                            <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                            <SelectItem value="Bus">Bus</SelectItem>
+                            <SelectItem value="Truck">Truck</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <Select value={alertSettings.licenseCategory} onValueChange={(v) => handleAlertSettingChange('licenseCategory', v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="License Category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Categories</SelectItem>
+                            <SelectItem value="A">Category A</SelectItem>
+                            <SelectItem value="B">Category B</SelectItem>
+                            <SelectItem value="C">Category C</SelectItem>
+                            <SelectItem value="D">Category D</SelectItem>
+                            <SelectItem value="E">Category E</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <Select value={alertSettings.region} onValueChange={(v) => handleAlertSettingChange('region', v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Region" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Regions</SelectItem>
+                            {regions.map(region => (
+                              <SelectItem key={region.id} value={region.name}>{region.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        
+                        <Select value={alertSettings.jobType} onValueChange={(v) => handleAlertSettingChange('jobType', v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Job Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="Full-time">Full-time</SelectItem>
+                            <SelectItem value="Contract">Contract</SelectItem>
+                            <SelectItem value="Temporary">Temporary</SelectItem>
+                            <SelectItem value="Part-time">Part-time</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-3 pt-4 border-t">
+                        <h4 className="text-sm font-medium">Notification Methods</h4>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="alert-email" 
+                            checked={alertSettings.email} 
+                            onCheckedChange={(c) => handleAlertSettingChange('email', !!c)} 
+                          />
+                          <label htmlFor="alert-email" className="text-sm font-medium leading-none cursor-pointer">
+                            Email Notification
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="alert-sms" 
+                            checked={alertSettings.sms} 
+                            onCheckedChange={(c) => handleAlertSettingChange('sms', !!c)} 
+                          />
+                          <label htmlFor="alert-sms" className="text-sm font-medium leading-none cursor-pointer">
+                            SMS Notification
+                          </label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="alert-system" 
+                            checked={alertSettings.system} 
+                            onCheckedChange={(c) => handleAlertSettingChange('system', !!c)} 
+                          />
+                          <label htmlFor="alert-system" className="text-sm font-medium leading-none cursor-pointer">
+                            System Notification
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setIsAlertModalOpen(false)}>Cancel</Button>
+                      <Button onClick={handleSaveAlert} disabled={savingAlert}>
+                        {savingAlert && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Save Alert
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </Card>
 

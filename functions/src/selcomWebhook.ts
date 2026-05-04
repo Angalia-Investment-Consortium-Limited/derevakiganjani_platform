@@ -66,6 +66,17 @@ export const selcomWebhook = onRequest({ region: 'us-central1' }, async (req, re
             const newAppStatus = newPaymentStatus === 'completed' ? 'pending-review' : 'payment-failed';
             await appRef.update({ status: newAppStatus });
             logger.info(`Updated license_application ${paymentData.applicationId} to status: ${newAppStatus}`);
+        } else if (paymentData.service === 'CVCreation') {
+            const cvRef = db.collection("cv_requests");
+            const cvQuery = await cvRef.where("paymentId", "==", paymentDoc.id).limit(1).get();
+            if (!cvQuery.empty) {
+                const cvDoc = cvQuery.docs[0];
+                const newCVStatus = newPaymentStatus === 'completed' ? 'Paid' : 'Failed';
+                await cvDoc.ref.update({ paymentStatus: newCVStatus });
+                logger.info(`Updated cv_request ${cvDoc.id} to paymentStatus: ${newCVStatus}`);
+            } else {
+                logger.error(`Could not find a matching cv_request document for payment ${paymentDoc.id}`);
+            }
         } else {
             const testAttemptsRef = db.collection("test_attempts");
             const testAttemptQuery = await testAttemptsRef.where("paymentId", "==", paymentDoc.id).limit(1).get();

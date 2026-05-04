@@ -101,7 +101,8 @@ export const navigationGroups = [
       { title: 'Job Management', icon: Briefcase, href: '/admin/job-management', badge: null },
       { title: 'AI Matching Monitor', icon: Sparkles, href: '/admin/matching', badge: null },
       { title: 'Recruitment Analytics', icon: BarChart3, href: '/admin/recruitment-reports', badge: null },
-      { title: 'Outsource Desk', icon: Building2, href: '/admin/outsource', badge: null }
+      { title: 'Outsource Desk', icon: Building2, href: '/admin/outsource', badge: null },
+      { title: 'CV Requests', icon: FileText, href: '/admin/cv-requests', badge: null }
     ]
   },
   {

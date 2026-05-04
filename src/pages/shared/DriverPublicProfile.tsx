@@ -1,53 +1,107 @@
+import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CheckCircle2, Award, Briefcase, MapPin, MessageCircle, Phone, Mail } from 'lucide-react';
+import { CheckCircle2, Award, Briefcase, MapPin, MessageCircle, Phone, Mail, Loader2 } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 const DriverPublicProfile = () => {
-  const { driverId: _driverId } = useParams();
+  const { driverId } = useParams<{ driverId: string }>();
+  const [driverProfile, setDriverProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const driverProfile = {
-    name: 'John Mwamba',
-    license: 'D',
-    licenseNumber: 'TZ123456789',
-    experience: '5 years',
-    location: 'Dar es Salaam, Kinondoni',
-    preferredVehicles: ['Truck', 'Trailer'],
-    languages: ['English', 'Swahili'],
-    badges: ['JiTesti Passed', 'Elimika Certified'],
-    avatar: '',
-    verified: true,
-    phone: '+255 700 000 000',
-    email: 'john.mwamba@example.com',
-    about: 'Experienced truck driver with over 5 years in long-haul transportation. Proven track record of safe driving and timely deliveries. Familiar with routes across Tanzania and East Africa.',
-    certifications: [
-      { name: 'JiTesti - Category D', date: '2024', verified: true },
-      { name: 'Elimika Defensive Driving', date: '2024', verified: true },
-      { name: 'First Aid Certificate', date: '2023', verified: false },
-    ],
-    workHistory: [
-      {
-        company: 'XYZ Logistics',
-        position: 'Heavy Truck Driver',
-        duration: '2021 - 2024',
-        description: 'Long-haul transportation across East Africa',
-      },
-      {
-        company: 'ABC Transport',
-        position: 'Delivery Driver',
-        duration: '2019 - 2021',
-        description: 'Local and regional deliveries',
-      },
-    ],
-  };
+  useEffect(() => {
+    if (!driverId) {
+      setError('Driver ID is missing.');
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchDriverProfile = async () => {
+      setIsLoading(true);
+      try {
+        const userDocRef = doc(db, 'users', driverId);
+        const driverProfileDocRef = doc(db, 'driver_profiles', driverId);
+
+        const userDocSnap = await getDoc(userDocRef);
+        const driverProfileDocSnap = await getDoc(driverProfileDocRef);
+
+        if (!userDocSnap.exists()) {
+          throw new Error('Driver not found.');
+        }
+
+        const userData = userDocSnap.data();
+        const driverProfileData = driverProfileDocSnap.exists() ? driverProfileDocSnap.data() : {};
+
+        const combinedProfile = {
+          name: userData.full_name || 'N/A',
+          license: driverProfileData.license_categories?.[0] || driverProfileData.license?.class || 'N/A',
+          licenseNumber: driverProfileData.license_number || driverProfileData.license?.number || 'N/A',
+          experience: driverProfileData.years_of_experience ? `${driverProfileData.years_of_experience} years` : 'N/A',
+          location: driverProfileData.preferred_region || (driverProfileData.location ? `${driverProfileData.location?.district || ''}, ${driverProfileData.location?.region || ''}` : 'N/A'),
+          preferredVehicles: driverProfileData.preferred_vehicle_types || driverProfileData.preferred_vehicles || [],
+          languages: driverProfileData.languages || [],
+          badges: [] as string[],
+          avatar: driverProfileData.avatar_url || driverProfileData.profile_image || '',
+          verified: userData.isVerified || false,
+          phone: userData.phoneNumber || userData.mobile_no || 'N/A',
+          email: userData.email || 'N/A',
+          about: driverProfileData.bio || driverProfileData.about_me || 'No biography provided.',
+          certifications: driverProfileData.certifications || [],
+          workHistory: driverProfileData.work_history || [],
+        };
+
+        if (driverProfileData.jitesti_passed) combinedProfile.badges.push('JiTesti Passed');
+        if (driverProfileData.elimika_certified) combinedProfile.badges.push('Elimika Certified');
+
+        setDriverProfile(combinedProfile);
+      } catch (e: any) {
+        console.error("Error fetching driver profile:", e);
+        setError(e.message || 'Failed to fetch driver profile.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchDriverProfile();
+  }, [driverId]);
 
   const handleContact = () => {
-    window.open(`https://wa.me/${driverProfile.phone.replace(/\s/g, '')}?text=Hello, I'm interested in your driver profile`, '_blank');
+    if (driverProfile?.phone && driverProfile.phone !== 'N/A') {
+      window.open(`https://wa.me/${driverProfile.phone.replace(/\s/g, '')}?text=Hello, I'm interested in your driver profile`, '_blank');
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container py-8 flex justify-center items-center">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <p className="ml-2">Loading profile...</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error || !driverProfile) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container py-8 flex justify-center items-center">
+          <p className="text-red-500">{error || 'Profile not found.'}</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -62,7 +116,7 @@ const DriverPublicProfile = () => {
                   <Avatar className="h-32 w-32 mb-4">
                     <AvatarImage src={driverProfile.avatar} />
                     <AvatarFallback className="text-2xl">
-                      {driverProfile.name.split(' ').map(n => n[0]).join('')}
+                      {driverProfile.name.split(' ').map((n: string) => n[0]).join('')}
                     </AvatarFallback>
                   </Avatar>
                   
@@ -74,7 +128,7 @@ const DriverPublicProfile = () => {
                   </div>
                   
                   <div className="flex flex-wrap gap-2 justify-center mb-4">
-                    {driverProfile.badges.map((badge, i) => (
+                    {driverProfile.badges.map((badge: string, i: number) => (
                       <Badge key={i} className="bg-success/10 text-success">
                         {badge}
                       </Badge>
@@ -89,7 +143,7 @@ const DriverPublicProfile = () => {
                 <CardTitle className="text-lg">Contact Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button className="w-full" onClick={handleContact}>
+                <Button className="w-full" onClick={handleContact} disabled={!driverProfile.phone || driverProfile.phone === 'N/A'}>
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Contact via WhatsApp
                 </Button>
@@ -165,19 +219,19 @@ const DriverPublicProfile = () => {
 
                 <div>
                   <h4 className="font-semibold mb-2">Preferred Vehicles</h4>
-                  <div className="flex gap-2">
-                    {driverProfile.preferredVehicles.map((vehicle, i) => (
+                  <div className="flex gap-2 flex-wrap">
+                    {driverProfile.preferredVehicles && driverProfile.preferredVehicles.length > 0 ? driverProfile.preferredVehicles.map((vehicle: string, i: number) => (
                       <Badge key={i} variant="outline">{vehicle}</Badge>
-                    ))}
+                    )) : <span className="text-sm text-muted-foreground">None specified</span>}
                   </div>
                 </div>
 
                 <div>
                   <h4 className="font-semibold mb-2">Languages</h4>
-                  <div className="flex gap-2">
-                    {driverProfile.languages.map((lang, i) => (
+                  <div className="flex gap-2 flex-wrap">
+                    {driverProfile.languages && driverProfile.languages.length > 0 ? driverProfile.languages.map((lang: string, i: number) => (
                       <Badge key={i} variant="outline">{lang}</Badge>
-                    ))}
+                    )) : <span className="text-sm text-muted-foreground">None specified</span>}
                   </div>
                 </div>
               </CardContent>
@@ -189,7 +243,7 @@ const DriverPublicProfile = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {driverProfile.certifications.map((cert, i) => (
+                  {driverProfile.certifications && driverProfile.certifications.length > 0 ? driverProfile.certifications.map((cert: any, i: number) => (
                     <div key={i} className="flex items-center justify-between p-3 rounded-lg border">
                       <div>
                         <div className="flex items-center gap-2">
@@ -204,7 +258,7 @@ const DriverPublicProfile = () => {
                         <Badge className="bg-success/10 text-success">Verified</Badge>
                       )}
                     </div>
-                  ))}
+                  )) : <p className="text-sm text-muted-foreground">No certifications listed.</p>}
                 </div>
               </CardContent>
             </Card>
@@ -215,14 +269,14 @@ const DriverPublicProfile = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {driverProfile.workHistory.map((job, i) => (
+                  {driverProfile.workHistory && driverProfile.workHistory.length > 0 ? driverProfile.workHistory.map((job: any, i: number) => (
                     <div key={i} className="border-l-2 border-primary pl-4">
                       <h4 className="font-semibold">{job.position}</h4>
                       <p className="text-sm text-muted-foreground">{job.company}</p>
                       <p className="text-sm text-muted-foreground">{job.duration}</p>
                       <p className="text-sm mt-2">{job.description}</p>
                     </div>
-                  ))}
+                  )) : <p className="text-sm text-muted-foreground">No work history provided.</p>}
                 </div>
               </CardContent>
             </Card>

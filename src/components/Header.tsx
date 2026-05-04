@@ -193,7 +193,7 @@ export const Header = () => {
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate('/elimika/my-learning')}>
                         <Award className="mr-2 h-4 w-4" />
-                        <span>My Certificates</span>
+                        <span>My Awards</span>
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate('/jitesti/my-history')}>
                         <FileText className="mr-2 h-4 w-4" />
@@ -342,7 +342,7 @@ export const Header = () => {
                       className="w-full justify-start"
                     >
                       <Award className="mr-2 h-4 w-4" />
-                      My Certificates
+                      My Awards
                     </Button>
                     <Button
                       variant="outline"

@@ -7,3 +7,5 @@ export { calculateJobMatches } from "./calculateJobMatches";
 export * as logging from "./logging/auditLogs";
 export { onNotificationCreated } from "./notifications/onNotificationCreated";
 export { generateAdminDigest } from "./notifications/generateAdminDigest";
+export { onNewJobPosted } from "./notifications/onNewJobPosted";
+export { initiateCVPayment } from "./initiateCVPayment";

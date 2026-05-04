@@ -20,6 +20,14 @@ import {
   BreadcrumbSeparator,
   BreadcrumbPage,
 } from '@/components/ui/breadcrumb';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
+import { TicketChat } from '@/components/support/TicketChat';
 
 export default function EmployerSupport() {
   const { t } = useLanguage();
@@ -31,7 +39,8 @@ export default function EmployerSupport() {
   const [error, setError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [myTickets, setMyTickets] = useState<any[]>([]);
-
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
   useEffect(() => {
     if (!user) return;
     const q = query(collection(db, 'employer_tickets'), where('employerId', '==', user.uid));
@@ -164,7 +173,14 @@ export default function EmployerSupport() {
                 ) : (
                   <div className="space-y-4">
                     {myTickets.map(ticket => (
-                      <div key={ticket.id} className="border-b pb-3 last:border-0 last:pb-0">
+                      <div 
+                        key={ticket.id} 
+                        className="border-b pb-3 last:border-0 last:pb-0 cursor-pointer hover:bg-gray-50 p-2 rounded-md transition-colors"
+                        onClick={() => {
+                          setSelectedTicket(ticket);
+                          setIsSheetOpen(true);
+                        }}
+                      >
                         <div className="flex justify-between items-start mb-1">
                           <h4 className="font-medium text-sm line-clamp-1">{ticket.subject}</h4>
                           <span className={`text-xs px-2 py-0.5 rounded-full ${ticket.status === 'Open' ? 'bg-blue-100 text-blue-700' : ticket.status === 'Resolved' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
@@ -180,6 +196,27 @@ export default function EmployerSupport() {
             </Card>
           </div>
         </div>
+
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetContent side="right" className="w-full sm:max-w-md md:max-w-lg flex flex-col p-0">
+            <SheetHeader className="p-6 border-b pb-4">
+              <SheetTitle>Ticket: {selectedTicket?.subject}</SheetTitle>
+              <SheetDescription>
+                Status: <span className="font-semibold">{selectedTicket?.status}</span>
+              </SheetDescription>
+            </SheetHeader>
+            <div className="flex-1 overflow-hidden">
+              {selectedTicket && user && (
+                <TicketChat
+                  ticketId={selectedTicket.id}
+                  currentUserId={user.uid}
+                  currentUserName={(user as any).company_name || user.full_name || 'Employer'}
+                  currentUserRole="employer"
+                />
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
       </main>
       <Footer />
     </div>
