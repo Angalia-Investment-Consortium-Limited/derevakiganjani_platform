@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Download, Eye, CheckCircle, XCircle, Filter, Loader2, ArrowUpDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import { collection, onSnapshot, doc, updateDoc, Timestamp, query, orderBy } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc, updateDoc, Timestamp, query, orderBy } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { format } from 'date-fns';
 import { notificationService } from '@/services/notificationService';
@@ -55,13 +55,36 @@ const PaymentsManagement = () => {
   useEffect(() => {
     setIsLoading(true);
     const q = query(collection(db, 'payments'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const paymentsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        // TODO: Fetch user name based on userId
-        userName: `User ${doc.data().userId.substring(0, 5)}...`
-      } as Payment));
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
+      const paymentsPromises = snapshot.docs.map(async (paymentDoc) => {
+        const data = paymentDoc.data();
+        let fetchedUserName = '';
+        
+        if (data.userId) {
+            try {
+                const userDocSnap = await getDoc(doc(db, 'users', data.userId));
+                if (userDocSnap.exists()) {
+                    const userData = userDocSnap.data();
+                    fetchedUserName = userData.full_name || userData.email || '';
+                }
+            } catch (error) {
+                console.error("Error fetching user for payment:", error);
+            }
+        }
+        
+        const shortUserId = data.userId ? data.userId.substring(0, 5) + '...' : 'Unknown';
+        const displayUserName = fetchedUserName 
+            ? `${fetchedUserName} (${shortUserId})` 
+            : `User ${shortUserId}`;
+
+        return {
+          id: paymentDoc.id,
+          ...data,
+          userName: displayUserName
+        } as Payment;
+      });
+
+      const paymentsData = await Promise.all(paymentsPromises);
       setPayments(paymentsData);
       setIsLoading(false);
     });

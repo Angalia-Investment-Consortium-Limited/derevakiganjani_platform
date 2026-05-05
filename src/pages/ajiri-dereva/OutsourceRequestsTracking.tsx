@@ -32,12 +32,17 @@ const OutsourceRequestsTracking = () => {
 
     const q = query(
       collection(db, 'outsource_contracts'),
-      where('employerId', '==', employerId),
-      orderBy('createdAt', 'desc')
+      where('employerId', '==', employerId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort locally to avoid requiring a composite index
+      data.sort((a: any, b: any) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return timeB - timeA;
+      });
       setRequests(data);
       setIsLoading(false);
     }, (error) => {

@@ -34,8 +34,15 @@ export const useEmployerDashboard = (): EmployerDashboardData => {
         const allAppsQuery = query(collection(db, 'job_applications'), where('employerId', '==', employerId));
         const allAppsSnapshot = await getDocs(allAppsQuery);
         const totalApplicants = allAppsSnapshot.size;
-        const shortlisted = allAppsSnapshot.docs.filter(doc => doc.data().status === 'Shortlisted').length;
-        const interviews = allAppsSnapshot.docs.filter(doc => doc.data().status === 'Interview').length;
+        
+        const shortlistQuery = query(collection(db, 'shortlists'), where('employerId', '==', employerId));
+        const shortlistSnapshot = await getCountFromServer(shortlistQuery);
+        const shortlisted = shortlistSnapshot.data().count;
+
+        const interviewsQuery = query(collection(db, 'interviews'), where('employerId', '==', employerId));
+        const interviewsSnapshot = await getCountFromServer(interviewsQuery);
+        const interviews = interviewsSnapshot.data().count;
+
         const hired = allAppsSnapshot.docs.filter(doc => doc.data().status === 'Hired').length;
         setStats({ totalJobPosts, totalApplicants, shortlisted, interviews, hired });
 
