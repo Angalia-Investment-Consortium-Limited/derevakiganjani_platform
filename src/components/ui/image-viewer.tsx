@@ -1,5 +1,5 @@
 import { Dialog, DialogContent, DialogTrigger, DialogTitle } from "@/components/ui/dialog";
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
 
 interface ImageViewerProps {
   src: string | undefined | null;

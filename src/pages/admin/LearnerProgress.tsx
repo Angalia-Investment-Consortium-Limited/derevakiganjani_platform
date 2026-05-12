@@ -61,6 +61,42 @@ const LearnerProgress = () => {
     }
   };
 
+  const handleExportCSV = () => {
+    if (!filteredLearners || filteredLearners.length === 0) return;
+
+    const headers = ['Learner Name', 'Course', 'Progress (%)', 'Lessons', 'Status', 'Last Active'];
+    
+    const csvContent = [
+      headers.join(','),
+      ...filteredLearners.map(learner => {
+        return [
+          `"${learner.learnerName || ''}"`,
+          `"${learner.courseName || ''}"`,
+          learner.progress_percentage || 0,
+          `"${learner.completed_lessons || 0}/${learner.totalLessons || 0}"`,
+          `"${learner.status === "Completed" ? "Completed" : "In Progress"}"`,
+          `"${formatLastActive(learner.last_accessed)}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    if (link.download !== undefined) {
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `learner_progress_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  };
+
+  const handlePrintReport = () => {
+    window.print();
+  };
+
   return (
     <AdminLayout>
       <div className="mb-8">
@@ -136,12 +172,12 @@ const LearnerProgress = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline">
+              <div className="flex gap-2 print:hidden">
+                <Button variant="outline" onClick={handleExportCSV}>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
                 </Button>
-                <Button variant="outline">
+                <Button variant="outline" onClick={handlePrintReport}>
                   <FileText className="mr-2 h-4 w-4" />
                   Print Report
                 </Button>

@@ -85,14 +85,28 @@ const JobPostForm = () => {
   useEffect(() => {
     if (isEditMode && job) {
       const { required_skills, benefits, posted_date, salary, ...restOfJob } = job;
+
+      const formatToYYYYMMDD = (val: any) => {
+        if (!val) return '';
+        try {
+          if (typeof val === 'string') return val.split('T')[0];
+          if (val.seconds) return new Date(val.seconds * 1000).toISOString().split('T')[0];
+          if (val instanceof Date) return val.toISOString().split('T')[0];
+          return new Date(val).toISOString().split('T')[0];
+        } catch (e) {
+          console.error("Invalid date value:", val);
+          return '';
+        }
+      };
+
       setFormData({
         ...restOfJob,
         salaryMin: salary?.from || 0,
         salaryMax: salary?.to || 0,
         required_skills: Array.isArray(required_skills) ? required_skills.join(', ') : '',
         benefits: Array.isArray(benefits) ? benefits.join(', ') : '',
-        application_deadline: job.application_deadline ? new Date((job.application_deadline as any).seconds * 1000).toISOString().split('T')[0] : '',
-        startDate: job.startDate ? new Date((job.startDate as any).seconds * 1000).toISOString().split('T')[0] : '',
+        application_deadline: formatToYYYYMMDD(job.application_deadline),
+        startDate: formatToYYYYMMDD(job.startDate),
       });
     }
   }, [isEditMode, job]);
