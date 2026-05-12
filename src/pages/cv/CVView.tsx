@@ -11,7 +11,7 @@ import { jsPDF } from 'jspdf';
 import { Header } from '@/components/Header';
 import { Footer } from '@/components/Footer';
 import { useAuth } from '@/contexts/AuthContext';
-import { AdminLayout } from '@/components/admin/AdminLayout';
+import { StandaloneAdminLayout } from '@/components/admin/StandaloneAdminLayout';
 
 const CVView = () => {
   const { id } = useParams(); // cv_request / cv id
@@ -75,9 +75,9 @@ const CVView = () => {
   const renderLayout = (content: React.ReactNode) => {
     if (isAdmin) {
       return (
-        <AdminLayout>
+        <StandaloneAdminLayout>
           {content}
-        </AdminLayout>
+        </StandaloneAdminLayout>
       );
     }
     return (
