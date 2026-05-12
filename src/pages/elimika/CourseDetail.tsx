@@ -338,19 +338,6 @@ const CourseDetail = () => {
               </Card>
             )}
 
-            {enrollment && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{language === 'en' ? 'Practice Quiz' : 'Zoezi la Maswali'}</CardTitle>
-                  <CardDescription>{language === 'en' ? 'Test your knowledge' : 'Jaribu ujuzi wako'}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" className="w-full" onClick={() => navigate(`/elimika/quiz/${courseId}`)}>
-                    {language === 'en' ? 'Take Practice Quiz' : 'Fanya Zoezi'}
-                  </Button>
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </main>

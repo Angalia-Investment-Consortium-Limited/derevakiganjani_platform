@@ -8,6 +8,7 @@ import { db } from '@/lib/firebase';
 import { useLanguage } from '@/contexts/LanguageContext';
 const DerevaLogo = "/logo.png";
 import { useAuth } from '@/contexts/AuthContext';
+import { useCVCreation } from '@/hooks/useCVCreation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ export const Header = () => {
   const { language, setLanguage, t } = useLanguage();
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
+  const { currentRequest: cvRequest } = useCVCreation();
 
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -182,10 +184,19 @@ export const Header = () => {
                   )}
                   {user?.roles?.[0] === 'Driver' && (
                     <>
-                      <DropdownMenuItem disabled>
+                      <DropdownMenuItem 
+                        disabled={!(cvRequest?.requestStatus === 'Completed' && cvRequest?.cvUrl)}
+                        onClick={() => {
+                          if (cvRequest?.requestStatus === 'Completed' && cvRequest?.cvUrl) {
+                            window.open(cvRequest.cvUrl, '_blank');
+                          }
+                        }}
+                      >
                         <User className="mr-2 h-4 w-4" />
                         <span>Kiganjani Driver CV</span>
-                        <span className="ml-auto text-xs text-muted-foreground">Coming Soon</span>
+                        {!(cvRequest?.requestStatus === 'Completed' && cvRequest?.cvUrl) && (
+                          <span className="ml-auto text-xs text-muted-foreground">Coming Soon</span>
+                        )}
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate('/ajira/applications')}>
                         <Briefcase className="mr-2 h-4 w-4" />
@@ -332,6 +343,20 @@ export const Header = () => {
                 </Button>
                 {user?.roles?.[0] === 'Driver' && (
                   <>
+                    <Button
+                      variant="outline"
+                      disabled={!(cvRequest?.requestStatus === 'Completed' && cvRequest?.cvUrl)}
+                      onClick={() => { 
+                        if (cvRequest?.requestStatus === 'Completed' && cvRequest?.cvUrl) {
+                          window.open(cvRequest.cvUrl, '_blank');
+                          setMobileMenuOpen(false);
+                        }
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      Kiganjani Driver CV {!(cvRequest?.requestStatus === 'Completed' && cvRequest?.cvUrl) && "(Coming Soon)"}
+                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => { navigate('/ajira/applications'); setMobileMenuOpen(false); }}

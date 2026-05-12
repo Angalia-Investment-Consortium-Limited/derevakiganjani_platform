@@ -71,9 +71,6 @@ const EnrollmentCard = ({ enrollment }: { enrollment: CourseEnrollment }) => {
                   <Button onClick={() => navigate(`/elimika/course/${enrollment.course}`)}>
                     {language === 'en' ? 'Resume Learning' : 'Endelea Kujifunza'}
                   </Button>
-                  <Button variant="outline" onClick={() => navigate(`/elimika/quiz/${enrollment.course}`)}>
-                    {language === 'en' ? 'Practice Quiz' : 'Zoezi la Maswali'}
-                  </Button>
                 </>
               )}
             </div>
