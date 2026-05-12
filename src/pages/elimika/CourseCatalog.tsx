@@ -23,7 +23,7 @@ const CourseCatalog = () => {
   
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 500);
-  const [levelFilter, setLevelFilter] = useState<"all" | "Basic" | "Intermediate" | "Advanced">("all");
+  const [levelFilter, setLevelFilter] = useState<"all" | "Basic" | "Intermediate" | "Advanced" | "Motorcycle">("all");
 
   // Build filters
   const filters: CourseFilters = {};
@@ -69,7 +69,7 @@ const CourseCatalog = () => {
               className="pl-10"
             />
           </div>
-          <Select value={levelFilter} onValueChange={(value) => setLevelFilter(value as "all" | "Basic" | "Intermediate" | "Advanced")}>
+          <Select value={levelFilter} onValueChange={(value) => setLevelFilter(value as "all" | "Basic" | "Intermediate" | "Advanced" | "Motorcycle")}>
             <SelectTrigger className="w-full md:w-[200px]">
               <SelectValue placeholder="Filter by level" />
             </SelectTrigger>
@@ -78,6 +78,7 @@ const CourseCatalog = () => {
               <SelectItem value="Basic">Basic</SelectItem>
               <SelectItem value="Intermediate">Intermediate</SelectItem>
               <SelectItem value="Advanced">Advanced</SelectItem>
+              <SelectItem value="Motorcycle">Motorcycle</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -168,7 +169,7 @@ const CourseCatalog = () => {
                           variant={
                             course.level === "Basic" 
                               ? "secondary" 
-                              : course.level === "Intermediate" 
+                              : course.level === "Intermediate" || course.level === "Motorcycle"
                               ? "default" 
                               : "destructive"
                           }

@@ -108,7 +108,9 @@ const PaymentPage: React.FC = () => {
                     setStatus(`Payment status: ${data.status}`);
                     if (data.status === 'started' || data.status === 'not_started') {
                         unsubscribe();
-                        navigate(`/jitesti/test/${testAttemptId}`);
+                        navigate(`/jitesti/receipt/${testAttemptId}`, { 
+                            state: { next: `/jitesti/test/${testAttemptId}` }
+                        });
                     } else if (data.status === 'failed' || data.status === 'payment_failed') {
                         unsubscribe();
                         setError('Payment failed. Please try again or check your balance.');

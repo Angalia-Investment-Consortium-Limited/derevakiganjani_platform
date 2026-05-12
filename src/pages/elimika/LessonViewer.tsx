@@ -39,6 +39,11 @@ const LessonViewer = () => {
   const [currentQIndex, setCurrentQIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [showFeedback, setShowFeedback] = useState<Record<string, boolean>>({});
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [lessonId]);
 
   const interactiveQuestions = lesson?.interactive_questions || [];
   const hasQuestions = interactiveQuestions.length > 0;
@@ -140,6 +145,25 @@ const LessonViewer = () => {
     }
   };
 
+  const getEmbedUrl = (url?: string) => {
+    if (!url) return '';
+    let processedUrl = url.trim();
+    if (!processedUrl.match(/^(https?:\/\/|\/|data:)/)) {
+      processedUrl = `https://${processedUrl}`;
+    }
+
+    if (processedUrl.includes('youtube.com/watch?v=')) {
+      return processedUrl.replace('watch?v=', 'embed/').split('&')[0];
+    } else if (processedUrl.includes('youtu.be/')) {
+      const videoId = processedUrl.split('youtu.be/')[1].split('?')[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    } else if (processedUrl.includes('vimeo.com/')) {
+      const videoId = processedUrl.split('vimeo.com/')[1].split('?')[0];
+      return `https://player.vimeo.com/video/${videoId}`;
+    }
+    return processedUrl;
+  };
+
   const lessonTitle = getLocalizedText(lesson.lesson_title_en, lesson.lesson_title_sw) || 'Lesson';
   const courseTitle = course ? (getLocalizedText(course.course_name_en, course.course_name_sw) || 'Course') : 'Course';
   const lessonContent = getLocalizedText(lesson.content_en, lesson.content_sw);
@@ -189,23 +213,40 @@ const LessonViewer = () => {
             <CardContent className="space-y-6">
               {lesson.video_url && (
                 <div className="aspect-video w-full overflow-hidden rounded-lg border bg-black">
-                   {/* Simplified video display, assuming it's a direct URL or YouTube embed handled by iframe */}
-                   {lesson.video_url.includes('youtube.com') || lesson.video_url.includes('youtu.be') ? (
+                   {(getEmbedUrl(lesson.video_url).includes('youtube.com/embed') || getEmbedUrl(lesson.video_url).includes('player.vimeo.com')) ? (
                      <iframe
-                        src={lesson.video_url.replace('watch?v=', 'embed/')}
+                        src={getEmbedUrl(lesson.video_url)}
                         className="w-full h-full"
                         allowFullScreen
                         title={lessonTitle}
                     />
                    ) : (
-                    <video src={lesson.video_url} controls className="w-full h-full" />
+                    <video src={getEmbedUrl(lesson.video_url)} controls playsInline className="w-full h-full" />
                    )}
                 </div>
               )}
 
-              {lesson.image_url && (
+              {lesson.image_url && !imageError && (
                 <div className="w-full rounded-lg border mb-6 bg-muted/20 flex items-center justify-center p-2">
-                  <img src={lesson.image_url} alt={lessonTitle} className="max-w-full max-h-[500px] object-contain" />
+                  <img 
+                    src={lesson.image_url.trim().match(/^(https?:\/\/|\/|data:)/) ? lesson.image_url.trim() : `https://${lesson.image_url.trim()}`} 
+                    alt={lessonTitle} 
+                    className="max-w-full max-h-[500px] object-contain" 
+                    onError={() => setImageError(true)}
+                  />
+                </div>
+              )}
+
+              {lesson.pdf_url && (
+                <div className="flex items-center p-4 border rounded-lg mb-6 bg-muted/20">
+                  <FileText className="h-8 w-8 text-primary mr-4" />
+                  <div className="flex-1">
+                    <h4 className="font-medium">{language === 'en' ? 'Lesson Document (PDF)' : 'Hati ya Somo (PDF)'}</h4>
+                    <p className="text-sm text-muted-foreground">{language === 'en' ? 'View the attached document for this lesson.' : 'Tazama hati iliyoambatishwa kwa somo hili.'}</p>
+                  </div>
+                  <Button variant="outline" onClick={() => window.open(lesson.pdf_url, '_blank')}>
+                    {language === 'en' ? 'Open PDF' : 'Fungua PDF'}
+                  </Button>
                 </div>
               )}
 

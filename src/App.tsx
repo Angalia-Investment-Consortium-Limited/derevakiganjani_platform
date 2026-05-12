@@ -98,6 +98,8 @@ import EmployerReview from "./pages/admin/EmployerReview";
 import JobManagement from "./pages/admin/JobManagement";
 import TestCategories from "./pages/jitesti/TestCategories";
 import PaymentPage from "./pages/jitesti/PaymentPage";
+import ReceiptPage from "./pages/jitesti/ReceiptPage";
+import MyReceipts from "./pages/MyReceipts";
 import TestPage from "./pages/jitesti/TestPage";
 import TestResultPage from "./pages/jitesti/TestResultPage";
 import TestHistoryPage from "./pages/jitesti/TestHistoryPage";
@@ -411,6 +413,16 @@ const App = () => (
               <Route path="/jitesti/payment/:categoryId" element={
                 <ProtectedRoute>
                   <PaymentPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/jitesti/receipt/:testAttemptId" element={
+                <ProtectedRoute>
+                  <ReceiptPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/my-receipts" element={
+                <ProtectedRoute>
+                  <MyReceipts />
                 </ProtectedRoute>
               } />
               <Route path="/jitesti/test/:testAttemptId" element={

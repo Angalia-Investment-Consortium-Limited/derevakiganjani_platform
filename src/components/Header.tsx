@@ -203,6 +203,10 @@ export const Header = () => {
                         <FileText className="mr-2 h-4 w-4" />
                         <span>My License Applications</span>
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate('/my-receipts')}>
+                        <FileText className="mr-2 h-4 w-4" />
+                        <span>My Receipts</span>
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate('/support/my-requests')}>
                         <MessageSquare className="mr-2 h-4 w-4" />
                         <span>Contact Support</span>
@@ -359,6 +363,14 @@ export const Header = () => {
                     >
                       <FileText className="mr-2 h-4 w-4" />
                       My License Applications
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { navigate('/my-receipts'); setMobileMenuOpen(false); }}
+                      className="w-full justify-start"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      My Receipts
                     </Button>
                     <Button
                       variant="outline"

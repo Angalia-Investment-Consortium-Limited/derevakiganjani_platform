@@ -13,7 +13,7 @@ import { Plus, Save, X, Loader2, Edit, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/lib/firebase";
 import { useElimika } from "@/hooks/useElimika";
-import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp, deleteDoc, updateDoc } from "firebase/firestore";
 import type { Course } from "@/types/elimika";
 
 const CourseEditor = () => {
@@ -35,8 +35,16 @@ const CourseEditor = () => {
   });
   const { useLessons } = useElimika();
   const { data: fetchedLessons, isLoading: isLessonsLoading } = useLessons(!isNew ? courseId : undefined);
+  const [orderedLessons, setOrderedLessons] = useState<any[]>([]);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (fetchedLessons) {
+      setOrderedLessons([...fetchedLessons].sort((a, b) => (a.lesson_order || 0) - (b.lesson_order || 0)));
+    }
+  }, [fetchedLessons]);
 
   useEffect(() => {
     if (isNew) return;
@@ -79,12 +87,12 @@ const CourseEditor = () => {
   };
 
   const handleSelectChange = (id: string, value: string) => {
-      setFormData(prev => ({ ...prev, [id]: value }));
+    setFormData(prev => ({ ...prev, [id]: value }));
   };
-  
+
   const handleSwitchChange = (id: string, checked: boolean) => {
     const isFreeValue = checked ? 1 : 0;
-    setFormData(prev => ({...prev, [id]: isFreeValue, price: isFreeValue === 1 ? 0 : prev.price}));
+    setFormData(prev => ({ ...prev, [id]: isFreeValue, price: isFreeValue === 1 ? 0 : prev.price }));
   };
 
   const handleSave = async () => {
@@ -136,6 +144,94 @@ const CourseEditor = () => {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (isNew || !courseId) return;
+    if (window.confirm("Are you sure you want to delete this course? This action cannot be undone.")) {
+      setIsSaving(true);
+      try {
+        await deleteDoc(doc(db, "courses", courseId));
+        toast({
+          title: "Course Deleted",
+          description: "The course has been successfully deleted.",
+        });
+        navigate("/admin/courses");
+      } catch (error) {
+        console.error("Error deleting course:", error);
+        toast({
+          variant: "destructive",
+          title: "Delete Failed",
+          description: "An error occurred while deleting the course.",
+        });
+        setIsSaving(false);
+      }
+    }
+  };
+
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDrop = async (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+
+    const newOrdered = [...orderedLessons];
+    const draggedItem = newOrdered[draggedIndex];
+    newOrdered.splice(draggedIndex, 1);
+    newOrdered.splice(index, 0, draggedItem);
+
+    setOrderedLessons(newOrdered);
+    setDraggedIndex(null);
+
+    try {
+      await Promise.all(newOrdered.map((lesson, idx) => {
+        const lessonRef = doc(db, 'lessons', lesson.name);
+        // Also update local state order property so UI reflects it immediately
+        lesson.lesson_order = idx + 1;
+        return updateDoc(lessonRef, { lesson_order: idx + 1 });
+      }));
+      toast({
+        title: "Lessons Reordered",
+        description: "The lesson order has been saved.",
+      });
+    } catch (error) {
+      console.error("Error reordering lessons:", error);
+      toast({
+        variant: "destructive",
+        title: "Reorder Failed",
+        description: "Could not save the new lesson order.",
+      });
+    }
+  };
+
+  const handleRemoveLesson = async (e: React.MouseEvent, lesson: any) => {
+    e.stopPropagation();
+    if (window.confirm(`Are you sure you want to remove "${lesson.lesson_title_en}" from this course? The lesson will not be deleted, just unassigned.`)) {
+      try {
+        const lessonRef = doc(db, 'lessons', lesson.name);
+        await updateDoc(lessonRef, { course: null, course_id: null });
+        setOrderedLessons(prev => prev.filter(l => l.name !== lesson.name));
+        toast({
+          title: "Lesson Removed",
+          description: "The lesson has been removed from this course.",
+        });
+      } catch (error) {
+        console.error("Error removing lesson:", error);
+        toast({
+          variant: "destructive",
+          title: "Remove Failed",
+          description: "Could not remove the lesson from the course.",
+        });
+      }
     }
   };
 
@@ -191,7 +287,7 @@ const CourseEditor = () => {
           <Card>
             <CardHeader><CardTitle>Publishing</CardTitle></CardHeader>
             <CardContent className="space-y-6">
-               <div className="space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)} disabled={isSaving}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -206,7 +302,7 @@ const CourseEditor = () => {
                   <span>Free Course</span>
                   <span className="font-normal leading-snug text-muted-foreground">Is this course free for all users?</span>
                 </Label>
-                <Switch id="is_free" checked={formData.is_free === 1} onCheckedChange={(checked) => handleSwitchChange('is_free', checked)} disabled={isSaving}/>
+                <Switch id="is_free" checked={formData.is_free === 1} onCheckedChange={(checked) => handleSwitchChange('is_free', checked)} disabled={isSaving} />
               </div>
               {formData.is_free === 0 && (
                 <div className="space-y-2">
@@ -214,37 +310,43 @@ const CourseEditor = () => {
                   <Input id="price" type="number" value={formData.price} onChange={handleInputChange} placeholder="e.g., 500" disabled={isSaving} />
                 </div>
               )}
-               <Button className="w-full" onClick={handleSave} disabled={isSaving}>
+              <Button className="w-full" onClick={handleSave} disabled={isSaving}>
                 {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 {isNew ? "Create Course" : "Save Changes"}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate("/admin/courses")} disabled={isSaving}>
                 Cancel
               </Button>
+              {!isNew && (
+                <Button variant="destructive" className="w-full" onClick={handleDelete} disabled={isSaving}>
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete Course
+                </Button>
+              )}
             </CardContent>
           </Card>
-          
-           <Card>
+
+          <Card>
             <CardHeader><CardTitle>Configuration</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-               <div className="space-y-2">
-                <Label htmlFor="level">Difficulty Level</Label>
+              <div className="space-y-2">
+                <Label htmlFor="level">Experience Level</Label>
                 <Select value={formData.level} onValueChange={(value) => handleSelectChange('level', value)} disabled={isSaving}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Basic">Basic</SelectItem>
                     <SelectItem value="Intermediate">Intermediate</SelectItem>
                     <SelectItem value="Advanced">Advanced</SelectItem>
+                    <SelectItem value="Motorcycle">Motorcycle</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="duration_hours">Estimated Duration (Hours)</Label>
-                <Input id="duration_hours" type="number" value={formData.duration_hours} onChange={handleInputChange} placeholder="e.g., 4" disabled={isSaving}/>
+                <Input id="duration_hours" type="number" value={formData.duration_hours} onChange={handleInputChange} placeholder="e.g., 4" disabled={isSaving} />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Lessons</CardTitle>
@@ -253,29 +355,42 @@ const CourseEditor = () => {
               </Button>
             </CardHeader>
             <CardContent>
-               {isNew ? (
-                 <p className="text-sm text-muted-foreground">Save the course first before adding lessons.</p>
-               ) : isLessonsLoading ? (
-                 <p className="text-sm text-muted-foreground flex items-center"><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading lessons...</p>
-               ) : (
-                 <div className="space-y-2">
-                   {(!fetchedLessons || fetchedLessons.length === 0) ? (
-                     <p className="text-sm text-muted-foreground">No lessons yet.</p>
-                   ) : (
-                     [...fetchedLessons].sort((a,b) => (a.lesson_order || 0) - (b.lesson_order || 0)).map((lesson, idx) => (
-                       <div key={lesson.name || idx} className="flex items-center justify-between p-3 border rounded-md">
-                         <div className="flex flex-col">
-                           <span className="font-medium text-sm">{lesson.lesson_title_en}</span>
-                           <span className="text-xs text-muted-foreground">Order: {lesson.lesson_order} • Duration: {lesson.duration_minutes} min</span>
-                         </div>
-                         <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/course/${courseId}/lesson/${lesson.name}`)}>
-                           <Edit className="h-4 w-4" />
-                         </Button>
-                       </div>
-                     ))
-                   )}
-                 </div>
-               )}
+              {isNew ? (
+                <p className="text-sm text-muted-foreground">Save the course first before adding lessons.</p>
+              ) : isLessonsLoading ? (
+                <p className="text-sm text-muted-foreground flex items-center"><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading lessons...</p>
+              ) : (
+                <div className="space-y-2">
+                  {orderedLessons.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No lessons yet.</p>
+                  ) : (
+                    orderedLessons.map((lesson, idx) => (
+                      <div
+                        key={lesson.name || idx}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, idx)}
+                        className={`flex items-center justify-between p-3 border rounded-md cursor-move hover:bg-muted/50 transition-colors ${draggedIndex === idx ? 'opacity-50 border-primary' : ''}`}
+                        title="Drag to reorder"
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium text-sm">{lesson.lesson_title_en}</span>
+                          <span className="text-xs text-muted-foreground">Order: {lesson.lesson_order} • Duration: {lesson.duration_minutes} min</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => navigate(`/admin/course/${courseId}/lesson/${lesson.name}`)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={(e) => handleRemoveLesson(e, lesson)}>
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
 

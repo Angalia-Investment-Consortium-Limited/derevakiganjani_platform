@@ -27,6 +27,7 @@ type ActiveTestAttempt = {
   status: 'not_started' | 'started';
   startTime?: { toDate: () => Date };
   durationInMinutes?: number;
+  accumulatedSeconds?: number;
 };
 
 // Fetch function for active categories, with correct Firestore field mapping
@@ -63,7 +64,8 @@ const fetchActiveUserTests = async (userId: string): Promise<ActiveTestAttempt[]
             categoryTitle: doc.data().categoryTitle,
             status: doc.data().status,
             startTime: doc.data().startTime,
-            durationInMinutes: doc.data().durationInMinutes
+            durationInMinutes: doc.data().durationInMinutes,
+            accumulatedSeconds: doc.data().accumulatedSeconds
         }))
         // Filter out essentially expired tests so the list doesn't get long
         .filter(test => {
@@ -71,7 +73,8 @@ const fetchActiveUserTests = async (userId: string): Promise<ActiveTestAttempt[]
             if (!test.startTime) return true;
             
             const duration = test.durationInMinutes || 120; // fallback cleanly
-            const endTime = test.startTime.toDate().getTime() + (duration * 60 * 1000);
+            const accumulatedSecs = test.accumulatedSeconds || 0;
+            const endTime = test.startTime.toDate().getTime() + (duration * 60 * 1000) - (accumulatedSecs * 1000);
             
             return Date.now() < endTime;
         });

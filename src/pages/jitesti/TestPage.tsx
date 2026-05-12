@@ -31,6 +31,7 @@ type TestAttempt = {
     status: 'not_started' | 'started' | 'completed';
     score?: number;
     savedAnswers?: { [qid: string]: number };
+    accumulatedSeconds?: number;
 };
 
 type Question = {
@@ -231,7 +232,8 @@ const TestPage: React.FC = () => {
     useEffect(() => {
         if (!testAttempt || testAttempt.status === 'completed' || !testAttempt.startTime || !questions.length) return;
         const duration = testAttempt.durationInMinutes || 120;
-        const endTime = testAttempt.startTime.toDate().getTime() + duration * 60 * 1000;
+        const accumulatedSecs = testAttempt.accumulatedSeconds || 0;
+        const endTime = testAttempt.startTime.toDate().getTime() + (duration * 60 * 1000) - (accumulatedSecs * 1000);
         
         if (Date.now() >= endTime && testAttempt.status === 'started') {
              if (!submitTestMutation.isPending && !submitTestMutation.isSuccess) {
@@ -370,7 +372,7 @@ const TestPage: React.FC = () => {
                                      toast({ title: "Error starting test", description: e.message, variant: "destructive" });
                                  }
                              }} size="lg" className="w-full text-xl py-8 shadow-md">
-                                 START TEST NOW
+                                 {testAttempt.accumulatedSeconds ? "RESUME TEST NOW" : "START TEST NOW"}
                              </Button>
                          </CardFooter>
                     </Card>
@@ -395,8 +397,27 @@ const TestPage: React.FC = () => {
                             <div>
                                <CardTitle className="uppercase text-xl text-primary">{testDef?.test_title_en || testAttempt.categoryTitle}</CardTitle>
                             </div>
-                            <div className="text-lg font-bold bg-primary text-primary-foreground px-4 py-1.5 rounded-full shadow-sm">
-                                {timeLeft !== null ? formatTime(timeLeft) : "..."}
+                            <div className="flex items-center gap-4">
+                                <div className="text-lg font-bold bg-primary text-primary-foreground px-4 py-1.5 rounded-full shadow-sm">
+                                    {timeLeft !== null ? formatTime(timeLeft) : "..."}
+                                </div>
+                                <Button variant="destructive" size="sm" onClick={async () => {
+                                    if (testAttempt?.startTime && testAttempt.status === 'started') {
+                                        try {
+                                            const sessionElapsed = Math.floor((Date.now() - testAttempt.startTime.toDate().getTime()) / 1000);
+                                            const accumulated = (testAttempt.accumulatedSeconds || 0) + sessionElapsed;
+                                            await updateDoc(doc(db, 'test_attempts', testAttemptId), {
+                                                accumulatedSeconds: accumulated,
+                                                startTime: null
+                                            });
+                                            navigate('/jitesti');
+                                        } catch (e: any) {
+                                            toast({ title: "Error pausing test", description: e.message, variant: "destructive" });
+                                        }
+                                    }
+                                }}>
+                                    Close Test
+                                </Button>
                             </div>
                         </div>
                         {currentQuestion && (

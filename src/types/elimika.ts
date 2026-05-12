@@ -15,7 +15,7 @@ export interface Course {
     author: string;
     status: 'Draft' | 'Published' | string;
     is_active: number;
-    level: 'Basic' | 'Intermediate' | 'Advanced' | string;
+    level: 'Basic' | 'Intermediate' | 'Advanced' | 'Motorcycle' | string;
     thumbnail_emoji?: string;
     total_lessons?: number;
     duration_hours?: number;
@@ -78,6 +78,7 @@ export interface Lesson {
     content_type?: string;
     duration_minutes?: number;
     image_url?: string;
+    pdf_url?: string;
     interactive_questions?: InteractiveQuestion[];
 }
 
