@@ -41,12 +41,26 @@ import { Plus, Search, MoreVertical, Download, Loader2, Trash2 } from 'lucide-re
 import { useToast } from '@/hooks/use-toast';
 import { useUserManagement } from '@/hooks/useUserManagement';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { MessageSquare } from 'lucide-react';
+import { collection, doc, setDoc, Timestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const UsersManagement = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { user: currentUser } = useAuth();
 
   const {
     users,
@@ -71,6 +85,11 @@ const UsersManagement = () => {
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const [messageDialogOpen, setMessageDialogOpen] = useState(false);
+  const [userToMessage, setUserToMessage] = useState<{ id: string; name: string; role: string } | null>(null);
+  const [messageContent, setMessageContent] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   useEffect(() => {
     refresh();
@@ -121,6 +140,65 @@ const UsersManagement = () => {
         description: err?.message || t('Failed To Delete User'),
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleSendMessageClick = (userId: string, userName: string, role: string) => {
+    setUserToMessage({ id: userId, name: userName, role });
+    setMessageContent('');
+    setMessageDialogOpen(true);
+  };
+
+  const handleSendMessageConfirm = async () => {
+    if (!userToMessage || !messageContent.trim() || !currentUser?.uid) return;
+
+    try {
+      setIsSendingMessage(true);
+      
+      const isEmployer = userToMessage.role === 'Employer';
+      const collectionName = isEmployer ? 'employer_tickets' : 'support_requests';
+      const ticketRef = doc(collection(db, collectionName));
+
+      const ticketData: any = {
+        subject: "Message from Admin",
+        description: messageContent,
+        status: "Open",
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      };
+
+      if (isEmployer) {
+        ticketData.employerId = userToMessage.id;
+      } else {
+        ticketData.userId = userToMessage.id;
+        ticketData.driverId = userToMessage.id;
+      }
+
+      await setDoc(ticketRef, ticketData);
+
+      const msgRef = doc(collection(db, collectionName, ticketRef.id, 'messages'));
+      await setDoc(msgRef, {
+        senderId: currentUser.uid,
+        senderType: 'admin',
+        text: messageContent,
+        createdAt: Timestamp.now()
+      });
+
+      toast({
+        title: 'Message Sent',
+        description: `Your message has been sent to ${userToMessage.name}.`,
+      });
+
+      setMessageDialogOpen(false);
+      setUserToMessage(null);
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to send message.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingMessage(false);
     }
   };
 
@@ -295,6 +373,13 @@ const UsersManagement = () => {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
+                                onClick={() => handleSendMessageClick(user.id, user.full_name || 'User', user.roles?.[0] || 'Driver')}
+                              >
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                {t('Send Message') || 'Send Message'}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
                                 onClick={() => handleDeleteClick(user.id, user.full_name)}
                                 className="text-destructive focus:text-destructive"
                               >
@@ -372,6 +457,34 @@ const UsersManagement = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={messageDialogOpen} onOpenChange={setMessageDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Send Message</DialogTitle>
+            <DialogDescription>
+              Start a new conversation with {userToMessage?.name}. They will be able to reply from their support section.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Textarea
+              placeholder="Type your message here..."
+              value={messageContent}
+              onChange={(e) => setMessageContent(e.target.value)}
+              className="min-h-[120px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMessageDialogOpen(false)} disabled={isSendingMessage}>
+              Cancel
+            </Button>
+            <Button onClick={handleSendMessageConfirm} disabled={isSendingMessage}>
+              {isSendingMessage ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <MessageSquare className="h-4 w-4 mr-2" />}
+              Send
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 };

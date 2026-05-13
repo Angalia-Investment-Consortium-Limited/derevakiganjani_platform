@@ -125,6 +125,13 @@ const JobDetailDriver = () => {
                   <div className="flex items-start gap-2">
                     <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
                     <div>
+                      <p className="text-xs text-muted-foreground">Industry</p>
+                      <p className="font-medium">{job.job_industry || 'Not specified'}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Briefcase className="h-5 w-5 text-muted-foreground mt-0.5" />
+                    <div>
                       <p className="text-xs text-muted-foreground">Vehicle</p>
                       <p className="font-medium">{job.vehicleType}</p>
                     </div>
@@ -181,9 +188,26 @@ const JobDetailDriver = () => {
                 </div>
 
                 <div className="pt-4 border-t">
-                  <h3 className="font-semibold text-lg mb-3">Job Description</h3>
+                  <h3 className="font-semibold text-lg mb-3">Job Summary</h3>
                   <p className="text-muted-foreground whitespace-pre-line">{job.job_description}</p>
                 </div>
+
+                {job.responsibilities && (
+                <div className="pt-4 border-t">
+                  <h3 className="font-semibold text-lg mb-3">Job Responsibilities</h3>
+                  <p className="text-muted-foreground whitespace-pre-line">{Array.isArray(job.responsibilities) ? job.responsibilities.join('\n') : job.responsibilities}</p>
+                </div>
+                )}
+
+                {job.application_link && (
+                <div className="pt-4 border-t">
+                  <h3 className="font-semibold text-lg mb-3">How to Apply</h3>
+                  <p className="text-muted-foreground mb-2">Click to apply on the employer’s platform:</p>
+                  <a href={job.application_link as string} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium break-all flex items-center">
+                    {job.application_link as string}
+                  </a>
+                </div>
+                )}
 
                 <div className="pt-4 border-t">
                   <h3 className="font-semibold text-lg mb-3">Requirements</h3>
@@ -242,9 +266,11 @@ const JobDetailDriver = () => {
                 <CardDescription>Submit your application now</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
+                {!job.application_link && (
                 <Button className="w-full" size="lg" onClick={handleApply} disabled={isApplying || hasApplied}>
                   {hasApplied ? 'Already Applied' : isApplying ? 'Applying...' : 'Apply Now'}
                 </Button>
+                )}
                 <Button className="w-full" variant="outline" onClick={handleSaveJob}>
                   <BookmarkPlus className="h-4 w-4 mr-2" />
                   Save Job

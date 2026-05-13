@@ -6,6 +6,7 @@ export interface Job {
     employerName: string;
     job_title: string;
     job_type: 'Full-time' | 'Contract' | 'Temporary' | 'Part-time' | 'full-time' | 'contract' | 'temporary' | 'part-time' | '';
+    job_industry?: string;
     region: string;
     district: string;
     salary: {
@@ -16,6 +17,8 @@ export interface Job {
     application_deadline: Timestamp | string;
     required_license_category: string[];
     job_description: string;
+    responsibilities?: string | string[];
+    application_link?: string;
     required_skills: string[];
     benefits: string[];
     posted_date: Timestamp;

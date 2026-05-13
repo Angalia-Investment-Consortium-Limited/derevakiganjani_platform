@@ -281,7 +281,30 @@ const JobPostForm = () => {
           <Card>
             <CardHeader><CardTitle>{t('Description And Dates')}</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div><Label htmlFor="description">{t('Job Description')} *</Label><Textarea id="description" value={formData.job_description || ''} onChange={(e) => setFormData({ ...formData, job_description: e.target.value })} placeholder={t('Job Description Placeholder')} rows={6} /></div>
+              <div><Label htmlFor="description">{t('Job Summary')} *</Label><Textarea id="description" value={formData.job_description || ''} onChange={(e) => setFormData({ ...formData, job_description: e.target.value })} placeholder={t('Job Summary Placeholder')} rows={6} /></div>
+              
+              <div>
+                <Label htmlFor="responsibilities">{t('Job Responsibilities')}</Label>
+                <Textarea 
+                  id="responsibilities" 
+                  value={formData.responsibilities ? (Array.isArray(formData.responsibilities) ? formData.responsibilities.join('\n') : formData.responsibilities) : ''} 
+                  onChange={(e) => setFormData({ ...formData, responsibilities: e.target.value })} 
+                  placeholder="List responsibilities using bullet points. For example: Qualification and experience, Required training and certification etc." 
+                  rows={6} 
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="application_link">{t('External Application Link (Optional)')}</Label>
+                <Input 
+                  id="application_link" 
+                  type="url"
+                  value={formData.application_link as string || ''} 
+                  onChange={(e) => setFormData({ ...formData, application_link: e.target.value })} 
+                  placeholder="https://yourcompany.com/careers/apply" 
+                />
+                <p className="text-xs text-muted-foreground mt-1">If provided, drivers will be redirected to this link to apply instead of applying within the MDV platform.</p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><Label htmlFor="deadline">{t('Application Deadline')}</Label><Input id="deadline" type="date" value={formData.application_deadline as string || ''} onChange={(e) => setFormData({ ...formData, application_deadline: e.target.value })} /></div>
                 <div><Label htmlFor="startDate">{t('Start Date (Optional)')}</Label><Input id="startDate" type="date" value={formData.startDate as string || ''} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} /></div>

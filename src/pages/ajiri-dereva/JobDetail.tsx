@@ -131,14 +131,30 @@ const JobDetail = () => {
                 </div>
 
                 <div>
-                  <h3 className="font-semibold mb-2">Job Description</h3>
+                  <h3 className="font-semibold mb-2">Job Summary</h3>
                   <p className="text-muted-foreground whitespace-pre-line">{job.job_description}</p>
                 </div>
+
+                {job.responsibilities && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Job Responsibilities</h3>
+                    <p className="text-muted-foreground whitespace-pre-line">{Array.isArray(job.responsibilities) ? job.responsibilities.join('\n') : job.responsibilities}</p>
+                  </div>
+                )}
 
                 <div>
                   <h3 className="font-semibold mb-2">Requirements</h3>
                   <p className="text-muted-foreground whitespace-pre-line">{Array.isArray(job.required_skills) ? job.required_skills.join('\n') : job.required_skills}</p>
                 </div>
+
+                {job.application_link && (
+                  <div>
+                    <h3 className="font-semibold mb-2">External Application Link</h3>
+                    <a href={job.application_link as string} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                      {job.application_link as string}
+                    </a>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4 pt-4 border-t">
                   <div>
@@ -152,6 +168,10 @@ const JobDetail = () => {
                   <div>
                     <p className="text-sm text-muted-foreground">Start Date</p>
                     <p className="font-medium">{job.startDate && typeof job.startDate === 'object' && 'seconds' in job.startDate ? new Date((job.startDate as any).seconds * 1000).toLocaleDateString() : typeof job.startDate === 'string' ? job.startDate : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Deadline</p>
+                    <p className="font-medium">{job.application_deadline && typeof job.application_deadline === 'object' && 'seconds' in job.application_deadline ? new Date((job.application_deadline as any).seconds * 1000).toLocaleDateString() : typeof job.application_deadline === 'string' ? job.application_deadline : 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Applications</p>

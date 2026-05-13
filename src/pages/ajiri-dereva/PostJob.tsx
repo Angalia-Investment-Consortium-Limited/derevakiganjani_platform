@@ -43,7 +43,19 @@ const PostJob = () => {
   type PostJobFormData = Omit<Job, 'salary' | 'posted_date'> & {
     salaryMin?: number;
     salaryMax?: number;
+    job_industry_specified?: string;
   };
+
+  const jobIndustries = [
+    "Transportation & Logistics",
+    "Construction",
+    "Agriculture",
+    "Tourism & Hospitality",
+    "Manufacturing",
+    "Retail & Trade",
+    "Public Sector",
+    "Others"
+  ];
 
   const initialFormData: Partial<PostJobFormData> = {
     job_title: '',
@@ -54,10 +66,14 @@ const PostJob = () => {
     salaryMin: undefined,
     salaryMax: undefined,
     job_description: '',
+    responsibilities: '',
+    application_link: '',
     required_skills: [],
     benefits: [],
     required_license_category: [],
     application_deadline: '',
+    job_industry: '',
+    job_industry_specified: '',
   };
   const [formData, setFormData] = useState<Partial<PostJobFormData>>(initialFormData);
   const [newSkill, setNewSkill] = useState('');
@@ -80,10 +96,14 @@ const PostJob = () => {
               salaryMin: data.salary?.from || 0,
               salaryMax: data.salary?.to || 0,
               job_description: data.job_description || '',
+              responsibilities: data.responsibilities ? (Array.isArray(data.responsibilities) ? data.responsibilities.join('\n') : data.responsibilities) : '',
+              application_link: data.application_link || '',
               required_skills: data.required_skills || [],
               benefits: data.benefits || [],
               required_license_category: data.required_license_category || [],
               application_deadline: data.application_deadline || '',
+              job_industry: (data.job_industry && !jobIndustries.includes(data.job_industry)) ? 'Others' : (data.job_industry || ''),
+              job_industry_specified: (data.job_industry && !jobIndustries.includes(data.job_industry)) ? data.job_industry : '',
             };
             setFormData(fetchedData);
           }
@@ -145,9 +165,10 @@ const PostJob = () => {
     });
   };
 
-  const requiredFields: (keyof PostJobFormData)[] = ['job_title', 'job_type', 'region', 'district', 'job_description', 'application_deadline', 'required_license_category'];
+  const requiredFields: (keyof PostJobFormData)[] = ['job_title', 'job_type', 'region', 'district', 'job_description', 'application_deadline', 'required_license_category', 'job_industry'];
   const isFormValid = useMemo(() => {
-    return requiredFields.every(field => formData[field] && (Array.isArray(formData[field]) ? (formData[field] as any[]).length > 0 : true));
+    return requiredFields.every(field => formData[field] && (Array.isArray(formData[field]) ? (formData[field] as any[]).length > 0 : true)) &&
+      (formData.job_industry === 'Others' ? !!formData.job_industry_specified : true);
   }, [formData]);
 
   const handleSubmit = async (status: 'Published' | 'Draft') => {
@@ -162,9 +183,11 @@ const PostJob = () => {
 
     setIsSaving(true);
     try {
-      const { salaryMin, salaryMax, ...jobData } = formData;
+      const { salaryMin, salaryMax, job_industry_specified, ...jobData } = formData;
+      const finalIndustry = jobData.job_industry === 'Others' ? job_industry_specified : jobData.job_industry;
       const jobPayload = {
         ...jobData,
+        job_industry: finalIndustry,
         salary: {
             from: salaryMin || 0,
             to: salaryMax || 0
@@ -261,6 +284,24 @@ const PostJob = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
+                <Label htmlFor="jobIndustry">Job Industry *</Label>
+                <Select onValueChange={(v) => handleSelectChange('job_industry', v)} value={formData.job_industry} disabled={isSaving}>
+                  <SelectTrigger><SelectValue placeholder="Select industry" /></SelectTrigger>
+                  <SelectContent>
+                    {jobIndustries.map(ind => <SelectItem key={ind} value={ind}>{ind}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              {formData.job_industry === 'Others' && (
+                <div className="space-y-2">
+                  <Label htmlFor="job_industry_specified">Specify Industry *</Label>
+                  <Input id="job_industry_specified" value={formData.job_industry_specified} onChange={handleInputChange} disabled={isSaving} placeholder="Enter custom industry" />
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
                 <Label htmlFor="region">Location - Region *</Label>
                 <Select onValueChange={(v) => handleSelectChange('region', v)} value={formData.region} disabled={isSaving || regionsLoading}>
                   <SelectTrigger><SelectValue placeholder="Select region" /></SelectTrigger>
@@ -319,8 +360,33 @@ const PostJob = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description">Job Description *</Label>
+              <Label htmlFor="description">Job Summary *</Label>
               <Textarea id="job_description" rows={6} value={formData.job_description} onChange={handleInputChange} disabled={isSaving} />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="responsibilities">Job Responsibilities</Label>
+              <Textarea 
+                id="responsibilities" 
+                rows={6} 
+                value={formData.responsibilities as string || ''} 
+                onChange={handleInputChange} 
+                disabled={isSaving} 
+                placeholder="List responsibilities using bullet points (e.g. -, *, or numbers). For example: Qualification and experience, Required training and certification etc." 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="application_link">External Application Link (Optional)</Label>
+              <Input 
+                id="application_link" 
+                type="url" 
+                value={formData.application_link as string || ''} 
+                onChange={handleInputChange} 
+                disabled={isSaving} 
+                placeholder="https://yourcompany.com/careers/apply" 
+              />
+              <p className="text-xs text-muted-foreground">If provided, drivers will be redirected to this link to apply instead of applying within the MDV platform.</p>
             </div>
 
             <div className="space-y-4">
