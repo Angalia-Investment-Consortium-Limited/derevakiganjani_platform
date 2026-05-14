@@ -47,6 +47,20 @@ const LicenseApplicationReview = () => {
 
         if (appDocSnap.exists()) {
           const appData = { id: appDocSnap.id, ...appDocSnap.data() } as LicenseApplication;
+          
+          if (!appData.phoneNumber && appData.userId) {
+              try {
+                  const userDocRef = doc(db, "users", appData.userId);
+                  const userDocSnap = await getDoc(userDocRef);
+                  if (userDocSnap.exists()) {
+                      const userData = userDocSnap.data();
+                      appData.phoneNumber = userData.phoneNumber || userData.mobile_no || userData.phone || '';
+                  }
+              } catch (e) {
+                  console.error("Failed to fetch user data for phone number", e);
+              }
+          }
+
           setApplication(appData);
           setAdminNotes(appData.adminNotes || "");
           setApplicantAdvice(appData.applicantAdvice || "");

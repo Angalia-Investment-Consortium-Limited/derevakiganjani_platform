@@ -121,8 +121,6 @@ import CVCreationRequests from "./pages/admin/CVCreationRequests";
 import CVBuilder from "./pages/admin/CVBuilder";
 import CVView from "./pages/cv/CVView";
 import { AdminLayoutRoot } from "./components/admin/AdminLayoutRoot";
-import Broadcasts from "./pages/admin/Broadcasts";
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -553,11 +551,7 @@ const App = () => (
                                 <EmployerTicketsManagement />
                               </AdminRoleBasedRoute>
                             } />
-              <Route path="broadcasts" element={
-                              <AdminRoleBasedRoute>
-                                <Broadcasts />
-                              </AdminRoleBasedRoute>
-                            } />
+
               <Route path="license-request/:id" element={
                               <AdminRoleBasedRoute>
                                 <LicenseRequestDetail />

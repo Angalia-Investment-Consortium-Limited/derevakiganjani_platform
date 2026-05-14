@@ -60,48 +60,74 @@ export const useUserManagement = () => {
       try {
         const baseQuery = buildQuery();
 
-        if (currentPage === 0) {
-          const countSnapshot = await getCountFromServer(baseQuery);
-          setTotal(countSnapshot.data().count);
-        }
+        if (searchQuery) {
+          const allDocsSnapshot = await getDocs(query(baseQuery, orderBy('createdAt', 'desc')));
+          const lowercasedQuery = searchQuery.toLowerCase();
+          
+          const matchedDocs = allDocsSnapshot.docs.filter(doc => {
+            const data = doc.data();
+            return (data.full_name?.toLowerCase() || '').includes(lowercasedQuery) ||
+                   (data.email?.toLowerCase() || '').includes(lowercasedQuery) ||
+                   (data.mobile_no || '').includes(lowercasedQuery) ||
+                   (data.phoneNumber || '').includes(lowercasedQuery);
+          });
+          
+          setTotal(matchedDocs.length);
+          
+          const startIndex = currentPage * PAGE_SIZE;
+          const paginatedDocs = matchedDocs.slice(startIndex, startIndex + PAGE_SIZE);
+          
+          const usersData = await Promise.all(paginatedDocs.map(async (userDoc) => {
+            const userData = { ...userDoc.data(), id: userDoc.id, uid: userDoc.id } as unknown as User;
+            const role = userData.roles?.[0] as UserRole;
+            let profileData: AdminProfile | EmployerProfile | DriverProfile | null = null;
 
-        let pageQuery = query(baseQuery, orderBy('createdAt', 'desc'), limit(PAGE_SIZE));
-        const cursor = pageCursors.current[currentPage];
-        if (cursor) {
-          pageQuery = query(pageQuery, startAfter(cursor));
-        }
-
-        const querySnapshot = await getDocs(pageQuery);
-        const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
-        if (lastVisible) {
-          pageCursors.current[currentPage + 1] = lastVisible;
-        }
-
-        const usersData = await Promise.all(querySnapshot.docs.map(async (userDoc) => {
-          const userData = { ...userDoc.data(), id: userDoc.id, uid: userDoc.id } as User;
-          const role = userData.roles?.[0] as UserRole;
-          let profileData: AdminProfile | EmployerProfile | DriverProfile | null = null;
-
-          if (role && roleCollectionMap[role]) {
-            const profileRef = doc(db, roleCollectionMap[role], userDoc.id);
-            const profileSnap = await getDoc(profileRef);
-            if (profileSnap.exists()) {
-              profileData = profileSnap.data() as any;
+            if (role && roleCollectionMap[role]) {
+              const profileRef = doc(db, roleCollectionMap[role], userDoc.id);
+              const profileSnap = await getDoc(profileRef);
+              if (profileSnap.exists()) {
+                profileData = profileSnap.data() as any;
+              }
             }
+
+            return { ...userData, ...profileData };
+          }));
+          
+          setUsers(usersData);
+        } else {
+          if (currentPage === 0) {
+            const countSnapshot = await getCountFromServer(baseQuery);
+            setTotal(countSnapshot.data().count);
           }
 
-          return { ...userData, ...profileData };
-        }));
+          let pageQuery = query(baseQuery, orderBy('createdAt', 'desc'), limit(PAGE_SIZE));
+          const cursor = pageCursors.current[currentPage];
+          if (cursor) {
+            pageQuery = query(pageQuery, startAfter(cursor));
+          }
 
-        if (searchQuery) {
-          const lowercasedQuery = searchQuery.toLowerCase();
-          const filteredUsers = usersData.filter(user => 
-            user.full_name?.toLowerCase().includes(lowercasedQuery) ||
-            user.email?.toLowerCase().includes(lowercasedQuery) ||
-            user.mobile_no?.includes(lowercasedQuery)
-          );
-          setUsers(filteredUsers);
-        } else {
+          const querySnapshot = await getDocs(pageQuery);
+          const lastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+          if (lastVisible) {
+            pageCursors.current[currentPage + 1] = lastVisible;
+          }
+
+          const usersData = await Promise.all(querySnapshot.docs.map(async (userDoc) => {
+            const userData = { ...userDoc.data(), id: userDoc.id, uid: userDoc.id } as unknown as User;
+            const role = userData.roles?.[0] as UserRole;
+            let profileData: AdminProfile | EmployerProfile | DriverProfile | null = null;
+
+            if (role && roleCollectionMap[role]) {
+              const profileRef = doc(db, roleCollectionMap[role], userDoc.id);
+              const profileSnap = await getDoc(profileRef);
+              if (profileSnap.exists()) {
+                profileData = profileSnap.data() as any;
+              }
+            }
+
+            return { ...userData, ...profileData };
+          }));
+
           setUsers(usersData);
         }
 
@@ -226,7 +252,7 @@ export const useUser = (userId: string | null) => {
         throw new Error('User not found');
       }
 
-      const userData = { id: userSnap.id, ...userSnap.data() } as User;
+      const userData = { id: userSnap.id, ...userSnap.data() } as unknown as User;
       const role = userData.roles?.[0] as UserRole;
       let profileData = {};
 

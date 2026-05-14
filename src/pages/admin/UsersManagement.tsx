@@ -87,7 +87,7 @@ const UsersManagement = () => {
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const [messageDialogOpen, setMessageDialogOpen] = useState(false);
-  const [userToMessage, setUserToMessage] = useState<{ id: string; name: string; role: string } | null>(null);
+  const [userToMessage, setUserToMessage] = useState<{ id: string; name: string; role: string; email: string } | null>(null);
   const [messageContent, setMessageContent] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
 
@@ -143,8 +143,8 @@ const UsersManagement = () => {
     }
   };
 
-  const handleSendMessageClick = (userId: string, userName: string, role: string) => {
-    setUserToMessage({ id: userId, name: userName, role });
+  const handleSendMessageClick = (userId: string, userName: string, role: string, email: string) => {
+    setUserToMessage({ id: userId, name: userName, role, email });
     setMessageContent('');
     setMessageDialogOpen(true);
   };
@@ -156,33 +156,64 @@ const UsersManagement = () => {
       setIsSendingMessage(true);
       
       const isEmployer = userToMessage.role === 'Employer';
-      const collectionName = isEmployer ? 'employer_tickets' : 'support_requests';
-      const ticketRef = doc(collection(db, collectionName));
-
-      const ticketData: any = {
-        subject: "Message from Admin",
-        description: messageContent,
-        status: "Open",
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      };
 
       if (isEmployer) {
-        ticketData.employerId = userToMessage.id;
+        const ticketRef = doc(collection(db, 'employer_tickets'));
+        await setDoc(ticketRef, {
+          subject: "Message from Admin",
+          description: messageContent,
+          status: "Open",
+          employerId: userToMessage.id,
+          createdAt: Timestamp.now(),
+          updatedAt: Timestamp.now()
+        });
+
+        const msgRef = doc(collection(db, 'employer_tickets', ticketRef.id, 'messages'));
+        await setDoc(msgRef, {
+          senderId: currentUser.uid,
+          senderRole: 'admin',
+          senderName: 'Admin',
+          text: messageContent,
+          createdAt: Timestamp.now()
+        });
       } else {
-        ticketData.userId = userToMessage.id;
-        ticketData.driverId = userToMessage.id;
+        const ticketRef = doc(collection(db, 'license_requests'));
+        await setDoc(ticketRef, {
+          subject: "Message from Admin",
+          details: "Please see admin response.",
+          adminNotes: messageContent,
+          status: "in-review",
+          userId: userToMessage.id,
+          email: userToMessage.email || 'N/A',
+          fullName: userToMessage.name || 'N/A',
+          submittedOn: Timestamp.now(),
+          lastUpdated: Timestamp.now()
+        });
       }
 
-      await setDoc(ticketRef, ticketData);
-
-      const msgRef = doc(collection(db, collectionName, ticketRef.id, 'messages'));
-      await setDoc(msgRef, {
-        senderId: currentUser.uid,
-        senderType: 'admin',
-        text: messageContent,
-        createdAt: Timestamp.now()
+      // Create system notification
+      await setDoc(doc(collection(db, 'notifications')), {
+        type: 'SYSTEM',
+        status: 'PENDING',
+        userId: userToMessage.id,
+        title: 'New Message from Support',
+        message: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
+        createdAt: Timestamp.now(),
+        read: false,
+        isRead: false
       });
+
+      // Create email notification
+      if (userToMessage.email && userToMessage.email !== 'N/A') {
+        await setDoc(doc(collection(db, 'mail')), {
+          to: userToMessage.email,
+          message: {
+            subject: 'New Support Message from Dereva Kiganjani',
+            html: `<p>Hello ${userToMessage.name},</p><p>You have received a new message from the admin team:</p><p><em>"${messageContent}"</em></p><p>Please open the Dereva Kiganjani app to view the full details and respond if necessary.</p>`,
+            text: `Hello ${userToMessage.name},\n\nYou have received a new message from the admin team:\n\n"${messageContent}"\n\nPlease open the Dereva Kiganjani app to view the full details.`
+          }
+        });
+      }
 
       toast({
         title: 'Message Sent',
@@ -373,7 +404,7 @@ const UsersManagement = () => {
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
-                                onClick={() => handleSendMessageClick(user.id, user.full_name || 'User', user.roles?.[0] || 'Driver')}
+                                onClick={() => handleSendMessageClick(user.id, user.full_name || 'User', user.roles?.[0] || 'Driver', user.email || '')}
                               >
                                 <MessageSquare className="h-4 w-4 mr-2" />
                                 {t('Send Message') || 'Send Message'}

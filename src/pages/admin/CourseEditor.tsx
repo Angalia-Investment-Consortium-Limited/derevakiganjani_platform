@@ -109,6 +109,7 @@ const CourseEditor = () => {
         total_lessons: fetchedLessons?.length || 0,
         is_active: 1,
         modified: serverTimestamp(),
+        updated_at: serverTimestamp(),
       };
 
       if (formData.status === 'Published') {
@@ -120,6 +121,7 @@ const CourseEditor = () => {
           ...dataToSave,
           name: formData.course_name_en.toLowerCase().replace(/\s+/g, '-').slice(0, 50),
           created: serverTimestamp(),
+          created_at: serverTimestamp(),
         });
         await setDoc(doc(db, "courses", courseRef.id), { name: courseRef.id }, { merge: true });
 

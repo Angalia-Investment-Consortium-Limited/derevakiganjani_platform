@@ -39,7 +39,8 @@ import {
   orderBy, 
   doc, 
   deleteDoc, 
-  writeBatch 
+  writeBatch,
+  serverTimestamp
 } from "firebase/firestore";
 
 const CourseManager = () => {
@@ -155,7 +156,11 @@ const CourseManager = () => {
           batch.delete(docRef);
         } else {
           const newStatus = action === "publish" ? "Published" : "Draft";
-          batch.update(docRef, { status: newStatus });
+          batch.update(docRef, { 
+            status: newStatus,
+            modified: serverTimestamp(),
+            updated_at: serverTimestamp()
+          });
         }
       });
 

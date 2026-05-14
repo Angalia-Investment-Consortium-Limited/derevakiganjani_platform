@@ -29,7 +29,7 @@ export const useEmployerDashboard = (): EmployerDashboardData => {
         // --- Global Stats Calculation ---
         const jobsQuery = query(collection(db, 'jobs'), where('employerId', '==', employerId));
         const jobsSnapshot = await getDocs(jobsQuery);
-        const totalJobPosts = jobsSnapshot.size;
+        const totalJobPosts = jobsSnapshot.docs.filter(doc => doc.data().status !== 'Draft' && doc.data().status !== 'draft').length;
 
         const allAppsQuery = query(collection(db, 'job_applications'), where('employerId', '==', employerId));
         const allAppsSnapshot = await getDocs(allAppsQuery);
