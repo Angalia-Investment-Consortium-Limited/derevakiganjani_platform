@@ -16,11 +16,15 @@ export interface Job {
     minimum_experience_years: number;
     application_deadline: Timestamp | string;
     required_license_category: string[];
+    required_qualification_and_experience?: string[];
+    required_training_and_certification?: string[];
     job_description: string;
     responsibilities?: string | string[];
     application_link?: string;
     required_skills: string[];
-    benefits: string[];
+    skills_required_html?: string;
+    benefits?: string[];
+    how_to_apply?: string;
     posted_date: Timestamp;
     status: 'Open' | 'Closed' | 'Draft' | 'Published'; // Keep Published for compat if needed temporarily, but Schema says Open/Closed/Draft
     expire_date?: Timestamp | string;

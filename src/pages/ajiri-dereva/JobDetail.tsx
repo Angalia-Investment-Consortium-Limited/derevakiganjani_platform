@@ -142,10 +142,43 @@ const JobDetail = () => {
                   </div>
                 )}
 
+                {job.required_qualification_and_experience && job.required_qualification_and_experience.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Required Qualification and Experience</h3>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {job.required_qualification_and_experience.map((item: string, i: number) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {job.required_training_and_certification && job.required_training_and_certification.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Required Training and Certification</h3>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {job.required_training_and_certification.map((item: string, i: number) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
                 <div>
-                  <h3 className="font-semibold mb-2">Requirements</h3>
-                  <p className="text-muted-foreground whitespace-pre-line">{Array.isArray(job.required_skills) ? job.required_skills.join('\n') : job.required_skills}</p>
+                  <h3 className="font-semibold mb-2">Skills Required</h3>
+                  {job.skills_required_html ? (
+                    <div className="prose prose-sm max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: job.skills_required_html }} />
+                  ) : (
+                    <p className="text-muted-foreground whitespace-pre-line">{Array.isArray(job.required_skills) ? job.required_skills.join('\n') : job.required_skills}</p>
+                  )}
                 </div>
+
+                {job.how_to_apply && (
+                  <div>
+                    <h3 className="font-semibold mb-2">How to Apply</h3>
+                    <p className="text-muted-foreground">{job.how_to_apply}</p>
+                  </div>
+                )}
 
                 {job.application_link && (
                   <div>

@@ -6,6 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Briefcase, Calendar, DollarSign, MapPin, FileText, Loader2, PlusCircle, XCircle } from 'lucide-react';
@@ -69,8 +71,12 @@ const PostJob = () => {
     responsibilities: '',
     application_link: '',
     required_skills: [],
+    skills_required_html: '',
     benefits: [],
     required_license_category: [],
+    required_qualification_and_experience: [],
+    required_training_and_certification: [],
+    how_to_apply: '',
     application_deadline: '',
     job_industry: '',
     job_industry_specified: '',
@@ -99,8 +105,12 @@ const PostJob = () => {
               responsibilities: data.responsibilities ? (Array.isArray(data.responsibilities) ? data.responsibilities.join('\n') : data.responsibilities) : '',
               application_link: data.application_link || '',
               required_skills: data.required_skills || [],
+              skills_required_html: data.skills_required_html || '',
               benefits: data.benefits || [],
               required_license_category: data.required_license_category || [],
+              required_qualification_and_experience: data.required_qualification_and_experience || [],
+              required_training_and_certification: data.required_training_and_certification || [],
+              how_to_apply: data.how_to_apply || '',
               application_deadline: data.application_deadline || '',
               job_industry: (data.job_industry && !jobIndustries.includes(data.job_industry)) ? 'Others' : (data.job_industry || ''),
               job_industry_specified: (data.job_industry && !jobIndustries.includes(data.job_industry)) ? data.job_industry : '',
@@ -117,13 +127,59 @@ const PostJob = () => {
   }, [editId, toast]);
 
   const licenseCategories = [
-    { id: 'A', label: 'A - Motorcycle' },
-    { id: 'B', label: 'B - Car' },
-    { id: 'C1', label: 'C1 - Medium Truck' },
-    { id: 'C2', label: 'C2 - Medium Bus' },
-    { id: 'C3', label: 'C3 - Medium Vehicle with Trailer' },
-    { id: 'D', label: 'D - Heavy Bus' },
-    { id: 'E', label: 'E - Heavy Truck with Trailer' },
+    { id: 'A', label: 'A - Motorcycles' },
+    { id: 'A1', label: 'A1 - Motor tricycle' },
+    { id: 'A2', label: 'A2 - Light motorcycle' },
+    { id: 'A3', label: 'A3 - Motorcycle (disable)' },
+    { id: 'B', label: 'B - Light vehicles' },
+    { id: 'B1', label: 'B1 - Light vehicle (disable)' },
+    { id: 'C', label: 'C - Trucks' },
+    { id: 'C1', label: 'C1 - Medium trucks' },
+    { id: 'C2', label: 'C2 - Medium buses' },
+    { id: 'C3', label: 'C3 - Medium vehicle with trailer' },
+    { id: 'D', label: 'D - Heavy buses' },
+    { id: 'E', label: 'E - Heavy trucks with trailer' },
+    { id: 'F', label: 'F - Tractors' },
+    { id: 'G', label: 'G - Earth-moving equipment' },
+  ];
+
+  const qualificationsOptions = [
+    "Primary Education (STD VII)",
+    "Secondary Education (Form IV)",
+    "Advance Secondary Education (Form VI)",
+    "Certificate",
+    "Diploma",
+    "Advance Diploma",
+    "Bachelor's Degree",
+    "Valid driver’s license with clean records",
+    "Experience in driving heavy goods vehicles",
+    "Experience in driving light vehicles",
+    "Experience in driving buses"
+  ];
+
+  const trainingOptions = [
+    "VIP grade II certificate from NIT",
+    "VIP grade I certificate from NIT",
+    "Senior Driver certificate from NIT",
+    "PSV certificate from NIT",
+    "PSV certificate from VETA",
+    "PSV certificate from NIT or VETA",
+    "An HGV certificate from NIT",
+    "An HGV certificate from VETA",
+    "An HGV certificate from NIT or VETA",
+    "Defensive Driving Certificate",
+    "GCLA Certificate",
+    "Knowledge of Four-Wheel Drive (4WD) System",
+    "Knowledge of First Aid and CPR procedures",
+    "OSHA Fit for Job test report/certificate",
+    "LATRA certification",
+    "Travel Passport/National ID"
+  ];
+
+  const howToApplyOptions = [
+    "Clicking this link to apply (directs driver to the employer’s platform)",
+    "Attach CV to apply",
+    "Use the driver job profile to apply"
   ];
 
   const { regions, isLoading: regionsLoading } = useRegions();
@@ -161,6 +217,17 @@ const PostJob = () => {
         return { ...prev, required_license_category: existing.filter(c => c !== category) };
       } else {
         return { ...prev, required_license_category: [...existing, category] };
+      }
+    });
+  };
+
+  const handleMultiSelectChange = (field: 'required_qualification_and_experience' | 'required_training_and_certification', value: string) => {
+    setFormData(prev => {
+      const existing = prev[field] || [];
+      if (existing.includes(value)) {
+        return { ...prev, [field]: existing.filter((v: string) => v !== value) };
+      } else {
+        return { ...prev, [field]: [...existing, value] };
       }
     });
   };
@@ -212,6 +279,11 @@ const PostJob = () => {
              await notificationService.sendSystem(employerProfile.userId, `Job ${verb}`, `Your job post '${jobPayload.job_title}' has been successfully ${verb}.`, { jobId: editId || "" });
              if (employerProfile.company_email) {
                  await notificationService.sendEmail(employerProfile.company_email, `Job ${verb}`, `Hello ${employerProfile.company_name}, your job post '${jobPayload.job_title}' is now ${verb} and visible.`, employerProfile.userId);
+             }
+             
+             // Send system-wide alert to all drivers
+             if (!editId) {
+               await notificationService.sendSystem('ALL_DRIVERS', `New Job Alert: ${jobPayload.job_title}`, `${employerProfile.company_name} is looking for a driver. Tap to view details and apply!`, { jobId: jobPayload.job_title, isGlobal: true });
              }
           } catch(e) { console.error("Notification fail: ", e) }
       }
@@ -389,36 +461,67 @@ const PostJob = () => {
               <p className="text-xs text-muted-foreground">If provided, drivers will be redirected to this link to apply instead of applying within the MDV platform.</p>
             </div>
 
-            <div className="space-y-4">
-              <Label>Skills Required</Label>
-              <div className="flex flex-wrap gap-2">
-                {formData.required_skills?.map((skill, i) => (
-                  <Badge key={i} variant="secondary" className="flex items-center gap-1">
-                    {skill}
-                    <XCircle className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveItem('required_skills', i)} />
-                  </Badge>
+            <div className="space-y-2">
+              <Label>Required Qualification and Experience</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {qualificationsOptions.map(option => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`qual-${option}`}
+                      checked={formData.required_qualification_and_experience?.includes(option)}
+                      onCheckedChange={() => handleMultiSelectChange('required_qualification_and_experience', option)}
+                      disabled={isSaving}
+                    />
+                    <Label htmlFor={`qual-${option}`} className="font-normal text-sm">
+                      {option}
+                    </Label>
+                  </div>
                 ))}
-              </div>
-              <div className="flex gap-2">
-                <Input value={newSkill} onChange={(e) => setNewSkill(e.target.value)} placeholder="e.g., Defensive Driving" />
-                <Button variant="outline" size="icon" onClick={() => handleAddItem('required_skills', newSkill)}><PlusCircle className="h-4 w-4" /></Button>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <Label>Benefits</Label>
-              <div className="flex flex-wrap gap-2">
-                {formData.benefits?.map((benefit, i) => (
-                  <Badge key={i} variant="default" className="flex items-center gap-1">
-                    {benefit}
-                    <XCircle className="h-3 w-3 cursor-pointer" onClick={() => handleRemoveItem('benefits', i)} />
-                  </Badge>
+            <div className="space-y-2">
+              <Label>Required Training and Certification</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {trainingOptions.map(option => (
+                  <div key={option} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`train-${option}`}
+                      checked={formData.required_training_and_certification?.includes(option)}
+                      onCheckedChange={() => handleMultiSelectChange('required_training_and_certification', option)}
+                      disabled={isSaving}
+                    />
+                    <Label htmlFor={`train-${option}`} className="font-normal text-sm">
+                      {option}
+                    </Label>
+                  </div>
                 ))}
               </div>
-              <div className="flex gap-2">
-                <Input value={newBenefit} onChange={(e) => setNewBenefit(e.target.value)} placeholder="e.g., Health Insurance" />
-                <Button variant="outline" size="icon" onClick={() => handleAddItem('benefits', newBenefit)}><PlusCircle className="h-4 w-4" /></Button>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Skills Required</Label>
+              <div className="bg-background rounded-md border">
+                <ReactQuill 
+                  theme="snow" 
+                  value={formData.skills_required_html || ''} 
+                  onChange={(content) => setFormData(prev => ({...prev, skills_required_html: content}))} 
+                  readOnly={isSaving}
+                  className="min-h-[150px]"
+                />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="howToApply">How to Apply (Optional)</Label>
+              <Select onValueChange={(v) => handleSelectChange('how_to_apply', v)} value={formData.how_to_apply || ''} disabled={isSaving}>
+                <SelectTrigger><SelectValue placeholder="Select how candidates should apply" /></SelectTrigger>
+                <SelectContent>
+                  {howToApplyOptions.map(option => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex gap-3 pt-4 border-t">

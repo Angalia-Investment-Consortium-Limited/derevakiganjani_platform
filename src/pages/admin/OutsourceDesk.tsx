@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Eye, Edit, Loader2, CheckCircle2 } from 'lucide-react';
+import { Eye, Edit, Loader2, CheckCircle2, Download } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -186,10 +186,48 @@ const OutsourceDesk = () => {
                     {selectedContract.numberOfDrivers || 1} Drivers Required
                   </span>
                 </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-sm font-semibold text-muted-foreground">Specialized Requirements</span>
+                </div>
                 <span className="text-sm border p-3 rounded bg-muted/30">
                   {selectedContract.requirements || "No specialized requirements listed."}
                 </span>
-                <div className="flex justify-between text-sm text-muted-foreground mt-2">
+                
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                     <span className="text-sm font-semibold text-muted-foreground">Qualifications</span>
+                     {selectedContract.requiredQualifications?.length > 0 ? (
+                       <ul className="list-disc pl-4 text-sm mt-1">
+                         {selectedContract.requiredQualifications.map((q: string) => <li key={q}>{q}</li>)}
+                       </ul>
+                     ) : (
+                       <p className="text-sm text-muted-foreground mt-1">None specified</p>
+                     )}
+                  </div>
+                  <div>
+                     <span className="text-sm font-semibold text-muted-foreground">Trainings & Certs</span>
+                     {selectedContract.requiredTrainings?.length > 0 ? (
+                       <ul className="list-disc pl-4 text-sm mt-1">
+                         {selectedContract.requiredTrainings.map((t: string) => <li key={t}>{t}</li>)}
+                       </ul>
+                     ) : (
+                       <p className="text-sm text-muted-foreground mt-1">None specified</p>
+                     )}
+                  </div>
+                </div>
+
+                {selectedContract.companyDocumentUrl && (
+                  <div className="mt-4 pt-4 border-t">
+                    <span className="text-sm font-semibold text-muted-foreground block mb-2">Company Activities Document</span>
+                    <a href={selectedContract.companyDocumentUrl} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
+                         <Download className="h-4 w-4 mr-2" /> Download Document
+                      </Button>
+                    </a>
+                  </div>
+                )}
+
+                <div className="flex justify-between text-sm text-muted-foreground mt-4 pt-4 border-t">
                   <span>Contact: <strong>{selectedContract.contactNumber || 'N/A'}</strong></span>
                   <span>Expected Start: <strong>{selectedContract.startDate}</strong></span>
                 </div>

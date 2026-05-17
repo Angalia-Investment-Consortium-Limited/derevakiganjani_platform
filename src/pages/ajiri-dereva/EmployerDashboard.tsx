@@ -4,27 +4,49 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Briefcase, Users, UserCheck, Calendar, TrendingUp, Bell, Plus, Eye, Loader2, Info } from 'lucide-react';
+import { Briefcase, Users, UserCheck, Calendar, TrendingUp, Bell, Plus, Eye, Loader2, Info, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployerDashboard } from '@/hooks/useEmployerDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import type { EmployerProfile } from '@/types/auth';
+import { useState, useEffect } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const EmployerDashboard = () => {
   const navigate = useNavigate();
   const { stats, recentApplicants, recentJobPosts, loading: dashboardLoading } = useEmployerDashboard();
   const { profile, profileLoading: authLoading } = useAuth();
+  const { t } = useLanguage();
 
   const employerProfile = profile as EmployerProfile;
+  const [isAlertDismissed, setIsAlertDismissed] = useState(false);
+
+  useEffect(() => {
+    if (employerProfile?.remarks) {
+      const dismissedRemarks = localStorage.getItem('dismissed_admin_note');
+      if (dismissedRemarks === employerProfile.remarks) {
+        setIsAlertDismissed(true);
+      } else {
+        setIsAlertDismissed(false);
+      }
+    }
+  }, [employerProfile?.remarks]);
+
+  const handleDismissAlert = () => {
+    if (employerProfile?.remarks) {
+      localStorage.setItem('dismissed_admin_note', employerProfile.remarks);
+      setIsAlertDismissed(true);
+    }
+  };
 
   const statCards = [
-    { title: 'Total Job Posts', value: stats.totalJobPosts, icon: Briefcase, color: 'text-destructive' },
-    { title: 'Total Applicants', value: stats.totalApplicants, icon: Users, color: 'text-blue-500' },
-    { title: 'Shortlisted', value: stats.shortlisted, icon: UserCheck, color: 'text-success' },
-    { title: 'Interviews', value: stats.interviews, icon: Calendar, color: 'text-warning' },
-    { title: 'Hired', value: stats.hired, icon: TrendingUp, color: 'text-green-600' },
-    { title: 'Notifications', value: '3', icon: Bell, color: 'text-destructive' }, // Placeholder
+    { title: t('totalJobsPosted') || 'Total Job Posts', value: stats.totalJobPosts, icon: Briefcase, color: 'text-destructive' },
+    { title: t('totalApplications') || 'Total Applicants', value: stats.totalApplicants, icon: Users, color: 'text-blue-500' },
+    { title: t('shortlistedCandidates') || 'Shortlisted', value: stats.shortlisted, icon: UserCheck, color: 'text-success' },
+    { title: t('interviewsConducted') || 'Interviews', value: stats.interviews, icon: Calendar, color: 'text-warning' },
+    { title: t('hires') || 'Hired', value: stats.hired, icon: TrendingUp, color: 'text-green-600' },
+    { title: t('notifications') || 'Notifications', value: '3', icon: Bell, color: 'text-destructive' }, // Placeholder
   ];
 
   const getStatusColor = (status: string) => {
@@ -48,18 +70,26 @@ const EmployerDashboard = () => {
       
       <main className="flex-1 container py-8">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold">Employer Dashboard</h1>
-          <p className="text-muted-foreground">Dashibodi ya Mwajiri</p>
+          <h1 className="text-3xl font-bold">{t('employerDashboard') || 'Employer Dashboard'}</h1>
+          <p className="text-muted-foreground">{t('dashboard') || 'Dashibodi'}</p>
         </div>
 
         {/* Corrected field name from verification_status to verificationStatus */}
-        {employerProfile?.remarks && employerProfile.verificationStatus?.toLowerCase() === 'verified' && (
-            <Alert className="mb-6 bg-green-50 border-green-200 text-green-800">
+        {!isAlertDismissed && employerProfile?.remarks && employerProfile.verificationStatus?.toLowerCase() === 'verified' && (
+            <Alert className="mb-6 bg-green-50 border-green-200 text-green-800 relative pr-10">
                 <Info className="h-4 w-4 !text-green-600" />
-                <AlertTitle>Note from Admin</AlertTitle>
+                <AlertTitle>{t('noteFromAdmin')}</AlertTitle>
                 <AlertDescription>
                     {employerProfile.remarks}
                 </AlertDescription>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="absolute top-2 right-2 h-6 w-6 rounded-full hover:bg-green-100" 
+                  onClick={handleDismissAlert}
+                >
+                  <X className="h-4 w-4 text-green-800" />
+                </Button>
             </Alert>
         )}
 
@@ -84,11 +114,11 @@ const EmployerDashboard = () => {
             <CardHeader>
               <div className="flex justify-between items-center">
                 <div>
-                  <CardTitle>Recent Applicants</CardTitle>
-                  <CardDescription>Latest applications to your job posts</CardDescription>
+                  <CardTitle>{t('recentApplicants') || 'Recent Applicants'}</CardTitle>
+                  <CardDescription>{t('recentApplicantsDesc') || 'Latest applications to your job posts'}</CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => navigate('/employer/jobs')}>
-                  View All
+                  {t('viewAll') || 'View All'}
                 </Button>
               </div>
             </CardHeader>
@@ -138,31 +168,31 @@ const EmployerDashboard = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription>Common tasks</CardDescription>
+              <CardTitle>{t('quickActions') || 'Quick Actions'}</CardTitle>
+              <CardDescription>{t('quickActionsDesc') || 'Common tasks'}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <Button className="w-full" onClick={() => navigate('/ajiri-dereva/post-job')}>
                 <Plus className="h-4 w-4 mr-2" />
-                Post New Job
+                {t('postNewJob') || 'Post New Job'}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/jobs')}>
-                Manage Job Posts
+                {t('manageJobPosts') || 'Manage Job Posts'}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/shortlist')}>
-                View Shortlist
+                {t('viewShortlist') || 'View Shortlist'}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/interviews')}>
-                Schedule Interview
+                {t('scheduleInterview') || 'Schedule Interview'}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/outsource')}>
-                Outsource a Driver
+                {t('outsourceDriver') || 'Outsource a Driver'}
               </Button>
               <Button variant="outline" className="w-full border-primary/20 hover:bg-primary/5" onClick={() => navigate('/employer/outsource-requests')}>
-                My Outsource Requests
+                {t('myOutsourceRequests') || 'My Outsource Requests'}
               </Button>
               <Button variant="outline" className="w-full" onClick={() => navigate('/employer/messages')}>
-                Messages
+                {t('messages') || 'Messages'}
               </Button>
             </CardContent>
           </Card>
@@ -172,11 +202,11 @@ const EmployerDashboard = () => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle>Recent Job Posts</CardTitle>
-                <CardDescription>Your latest job vacancies</CardDescription>
+                <CardTitle>{t('recentJobPosts') || 'Recent Job Posts'}</CardTitle>
+                <CardDescription>{t('recentJobPostsDesc') || 'Your latest job vacancies'}</CardDescription>
               </div>
               <Button variant="outline" size="sm" onClick={() => navigate('/employer/jobs')}>
-                Manage Jobs
+                {t('manageJobs') || 'Manage Jobs'}
               </Button>
             </div>
           </CardHeader>

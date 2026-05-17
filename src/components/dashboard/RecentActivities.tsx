@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 // --- Type Definitions ---
 interface TestAttempt {
@@ -50,6 +51,7 @@ const RecentActivities: React.FC = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { data: activities = [], isLoading, error } = useRecentActivities(user?.uid);
+    const { t } = useLanguage();
 
     const handleActivityClick = (activityId: string) => {
         navigate(`/jitesti/results/${activityId}`);
@@ -58,8 +60,8 @@ const RecentActivities: React.FC = () => {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Recent Activity</CardTitle>
-                <CardDescription>Your latest interactions with our services</CardDescription>
+                <CardTitle>{t('recentActivityTitle') || 'Recent Activity'}</CardTitle>
+                <CardDescription>{t('recentActivityDesc') || 'Your latest interactions with our services'}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
@@ -77,7 +79,7 @@ const RecentActivities: React.FC = () => {
 
                     {!isLoading && !error && activities.length === 0 && (
                         <p className="text-center text-muted-foreground py-8">
-                            No recent Jitesti activities found.
+                            {t('noRecentActivity') || 'No recent Jitesti activities found.'}
                         </p>
                     )}
 
@@ -87,7 +89,7 @@ const RecentActivities: React.FC = () => {
                         const scoreCount = activity.score || 0;
                         const percentage = totalQuestions > 0 ? Math.round((scoreCount / totalQuestions) * 100) : 0;
                         const isPassed = activity.isPassed !== undefined ? activity.isPassed : percentage >= activity.passMark;
-                        const status = isCompleted ? (isPassed ? 'Passed' : 'Failed') : 'Pending';
+                        const status = isCompleted ? (isPassed ? t('passed') || 'Passed' : t('failed') || 'Failed') : t('pending') || 'Pending';
 
                         return (
                             <div 
@@ -107,7 +109,7 @@ const RecentActivities: React.FC = () => {
                                            {percentage}%
                                         </span>
                                     )}
-                                    <Badge variant={status === 'Passed' ? 'default' : status === 'Pending' ? 'secondary' : 'destructive'}>
+                                    <Badge variant={status === t('passed') || status === 'Passed' ? 'default' : status === t('pending') || status === 'Pending' ? 'secondary' : 'destructive'}>
                                         {status}
                                     </Badge>
                                 </div>

@@ -39,7 +39,7 @@ const CourseCompletion = () => {
     const certificateData = {
       name: user.displayName || user.email || 'Anonymous',
       course: course.course_name_en,
-      date: new Date().toLocaleDateString(),
+      date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     };
 
     const firestoreData = {

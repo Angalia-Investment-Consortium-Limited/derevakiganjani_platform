@@ -46,8 +46,9 @@ const Notifications = () => {
       return;
     }
 
+    const targetIds = user?.roles?.[0] === 'Driver' ? [user.uid, 'ALL_DRIVERS'] : [user.uid];
     const notificationsRef = collection(db, 'notifications');
-    const q = query(notificationsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const q = query(notificationsRef, where('userId', 'in', targetIds), orderBy('createdAt', 'desc'));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedNotifications = snapshot.docs.map(doc => ({

@@ -33,10 +33,21 @@ export const generateRecruitmentAnalytics = onSchedule({
         // --- 3. Category Data Setup ---
         const categoryStatsMap = new Map<string, { category: string, jobs: number, applications: number, totalSalaryRange: number }>();
 
+        // --- 4. Valid Jobs Tracking ---
+        const validJobIds = new Set<string>();
+
         // First pass: Iterate over all jobs
         const jobsSnapshot = await db.collection("jobs").get();
         jobsSnapshot.forEach(doc => {
             const data = doc.data();
+            
+            // Ignore draft jobs and jobs without a status (to match admin dashboard behavior)
+            const status = data.status ? data.status.toLowerCase() : null;
+            if (!status || status === 'draft') {
+                return;
+            }
+
+            validJobIds.add(doc.id);
             totalJobPosts++;
 
             // Track Employer Stats
@@ -74,6 +85,12 @@ export const generateRecruitmentAnalytics = onSchedule({
         const appsSnapshot = await db.collection("job_applications").get();
         appsSnapshot.forEach(doc => {
             const data = doc.data();
+            
+            // Ignore applications that don't belong to a valid job
+            if (!data.jobId || !validJobIds.has(data.jobId)) {
+                return;
+            }
+
             totalApplications++;
             
             const status = (data.status || 'applied').toLowerCase();

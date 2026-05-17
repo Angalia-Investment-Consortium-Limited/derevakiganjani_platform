@@ -33,6 +33,7 @@ interface FormQuestion {
   options: FormAnswerOption[];
   explanation_en: string;
   explanation_sw?: string;
+  image_url?: string;
 }
 
 const generateLocalId = () => `local_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -61,6 +62,7 @@ const LessonBuilder = () => {
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isQuestionUploading, setIsQuestionUploading] = useState<Record<string, boolean>>({});
   
   const [courses, setCourses] = useState<{ id: string, name: string }[]>([]);
   const [selectedCourseId, setSelectedCourseId] = useState(courseId || "");
@@ -156,6 +158,7 @@ const LessonBuilder = () => {
         question_text_sw: "",
         explanation_en: "",
         explanation_sw: "",
+        image_url: "",
         options: [
           { local_id: generateLocalId(), option_text_en: "", option_text_sw: "", is_correct: true },
           { local_id: generateLocalId(), option_text_en: "", option_text_sw: "", is_correct: false },
@@ -226,6 +229,35 @@ const LessonBuilder = () => {
     }
   };
 
+  const handleQuestionFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, questionLocalId: string) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    
+    setIsQuestionUploading(prev => ({ ...prev, [questionLocalId]: true }));
+    try {
+        const file = files[0];
+        if (!file.type.startsWith('image/')) {
+            toast({ variant: 'destructive', title: 'Unsupported format', description: 'Please upload an Image.' });
+            return;
+        }
+        const path = `lesson_questions/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+        const url = await uploadFile(file, path);
+        
+        setQuestions(questions.map(q => {
+            if (q.local_id === questionLocalId) {
+                return { ...q, image_url: url };
+            }
+            return q;
+        }));
+        toast({ title: 'Image Uploaded', description: 'Image successfully attached to question.' });
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Upload failed', description: 'Failed to upload image.' });
+    } finally {
+        setIsQuestionUploading(prev => ({ ...prev, [questionLocalId]: false }));
+        if (e.target) e.target.value = '';
+    }
+  };
+
   const handleSave = async () => {
     const activeCourseId = courseId || selectedCourseId;
     if (!formData.title || !activeCourseId) {
@@ -265,6 +297,7 @@ const LessonBuilder = () => {
             explanation_sw: formQuestion.explanation_sw,
             options: options,
             correct_answer: correctOptionId,
+            image_url: formQuestion.image_url || "",
         };
       });
 
@@ -536,6 +569,27 @@ const LessonBuilder = () => {
                           newQuestions[qIndex].question_text_sw = e.target.value;
                           setQuestions(newQuestions);
                         }} />
+                      </div>
+
+                      <div className="space-y-2 pt-2">
+                        <Label>Question Image (Optional)</Label>
+                        <div className="flex items-center gap-4">
+                            {question.image_url ? (
+                                <div className="relative">
+                                    <img src={question.image_url} alt="Question preview" className="h-20 w-auto rounded-md border" />
+                                    <Button size="icon" variant="destructive" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => {
+                                        setQuestions(questions.map(q => q.local_id === question.local_id ? { ...q, image_url: "" } : q));
+                                    }}>
+                                        <X className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2">
+                                    <Input type="file" accept="image/*" onChange={(e) => handleQuestionFileUpload(e, question.local_id)} disabled={isQuestionUploading[question.local_id]} className="w-[250px]" />
+                                    {isQuestionUploading[question.local_id] && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+                                </div>
+                            )}
+                        </div>
                       </div>
 
                       <div className="space-y-3 pt-2">

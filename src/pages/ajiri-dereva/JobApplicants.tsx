@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Eye, UserCheck, Calendar, XCircle, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Search, Eye, UserCheck, Calendar, XCircle, CheckCircle2, MessageSquare, ArrowLeft } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { useJobApplicants } from '@/hooks/useJobs';
@@ -16,6 +16,7 @@ import { db } from '@/lib/firebase';
 import { doc, updateDoc, addDoc, collection, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import { notificationService } from '@/services/notificationService';
 
 const JobApplicants = () => {
   const navigate = useNavigate();
@@ -32,6 +33,7 @@ const JobApplicants = () => {
       case 'Submitted':
         return 'bg-blue-500/10 text-blue-500';
       case 'Viewed':
+      case 'Under Review':
         return 'bg-muted text-muted-foreground';
       case 'Shortlisted':
         return 'bg-success/10 text-success';
@@ -73,6 +75,25 @@ const JobApplicants = () => {
         }
       }
 
+      // Notify the driver of the status change
+      try {
+        const employerName = (user as any)?.full_name || (user as any)?.company_name || user?.email || "The employer";
+        const message = actionStatus === 'Under Review' 
+          ? `${employerName} is currently reviewing your application for the position of '${jobTitle}'.`
+          : actionStatus === 'Hired'
+          ? `Congratulations! ${employerName} has hired you for the position of '${jobTitle}'.`
+          : `${employerName} has updated your application status to ${actionStatus} for the position of '${jobTitle}'.`;
+          
+        await notificationService.sendSystem(
+          app.driverId,
+          `Application Status: ${actionStatus}`,
+          message,
+          { jobId: app.jobId }
+        );
+      } catch (notifErr) {
+        console.error("Failed to send notification:", notifErr);
+      }
+
       toast({
         title: `${actionStatus} Successful`,
         description: `${applicantName} has been marked as ${actionStatus}.`,
@@ -83,6 +104,14 @@ const JobApplicants = () => {
     } finally {
       setUpdatingId(null);
     }
+  };
+
+  const handleViewProfile = async (app: any, driverName: string) => {
+    // If the application is just Submitted, mark it as Under Review since the employer has opened the profile
+    if (app.status === 'Submitted') {
+      await handleAction(app, 'Under Review', driverName);
+    }
+    navigate(`/employer/drivers/${app.driverId}`);
   };
 
   return (
@@ -125,7 +154,7 @@ const JobApplicants = () => {
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="submitted">Submitted</SelectItem>
-                  <SelectItem value="viewed">Viewed</SelectItem>
+                  <SelectItem value="viewed">Viewed / Under Review</SelectItem>
                   <SelectItem value="shortlisted">Shortlisted</SelectItem>
                   <SelectItem value="interview">Interview</SelectItem>
                   <SelectItem value="hired">Hired</SelectItem>
@@ -219,7 +248,7 @@ const JobApplicants = () => {
                                 <Button 
                                   size="sm" 
                                   variant="ghost"
-                                  onClick={() => navigate(`/employer/drivers/${app.driverId}`)}
+                                  onClick={() => handleViewProfile(app, driverName)}
                                   title="View Profile"
                                 >
                                   <Eye className="h-4 w-4" />
@@ -247,6 +276,14 @@ const JobApplicants = () => {
                                   title="Send Message"
                                 >
                                   <MessageSquare className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost"
+                                  onClick={() => handleAction(app, 'Hired', driverName)}
+                                  title="Hire"
+                                >
+                                  <CheckCircle2 className="h-4 w-4 text-green-600" />
                                 </Button>
                                 <Button 
                                   size="sm" 

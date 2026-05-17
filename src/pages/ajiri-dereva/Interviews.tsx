@@ -151,6 +151,27 @@ const Interviews = () => {
     try {
         const interviewRef = doc(db, "interviews", interviewId);
         await updateDoc(interviewRef, { status });
+        
+        // Find the interview to get candidate details for the notification
+        const interview = interviews.find(i => i.id === interviewId);
+        if (interview && interview.candidateId) {
+            // we need to lookup candidate's driverId from shortlist since candidateId is shortlistId
+            // However, shortlist isn't easily accessible if we only have interviews. 
+            // Wait, does interview save candidateId as driverId or shortlistId?
+            // In handleSchedule, we save candName, jobId, etc. We didn't save driverId.
+            // Let's lookup candidateId in shortlistedCandidates to find driverId.
+            const candidate = shortlistedCandidates.find(c => c.id === interview.candidateId);
+            if (candidate && candidate.driverId) {
+                const employerName = (user as any)?.full_name || (user as any)?.company_name || user?.email || "The employer";
+                await notificationService.sendSystem(
+                    candidate.driverId,
+                    `Interview Status: ${status}`,
+                    `${employerName} has updated your interview status for '${interview.jobTitle}' to ${status}.`,
+                    { jobId: interview.jobId }
+                );
+            }
+        }
+        
         toast({ title: "Success", description: `Interview status updated to ${status}.` });
     } catch (error) {
         toast({ title: "Error", description: "Failed to update interview status.", variant: "destructive" });
@@ -162,6 +183,8 @@ const Interviews = () => {
       case 'Confirmed': return 'bg-success/10 text-success';
       case 'Requested': return 'bg-warning/10 text-warning';
       case 'Completed': return 'bg-blue-500/10 text-blue-500';
+      case 'Passed': return 'bg-green-600/10 text-green-600';
+      case 'Failed': return 'bg-destructive/10 text-destructive';
       case 'Cancelled': return 'bg-destructive/10 text-destructive';
       default: return '';
     }
@@ -208,7 +231,10 @@ const Interviews = () => {
                                     <Button size="sm" variant="ghost" onClick={() => navigate(`/employer/messages?driverId=${interview.candidateId}&driverName=${encodeURIComponent(interview.candidateName)}&jobTitle=${encodeURIComponent(`Interview: ${interview.jobTitle} - ${interview.date}`)}`)} title="Message">
                                         <MessageCircle className="h-4 w-4 text-primary" />
                                     </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => handleAction(interview.id, 'Cancelled')} title="Cancel">
+                                    <Button size="sm" variant="ghost" onClick={() => handleAction(interview.id, 'Passed')} title="Mark as Passed">
+                                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                    </Button>
+                                    <Button size="sm" variant="ghost" onClick={() => handleAction(interview.id, 'Failed')} title="Mark as Failed">
                                         <XCircle className="h-4 w-4 text-destructive" />
                                     </Button>
                                 </TableCell>

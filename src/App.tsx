@@ -121,6 +121,7 @@ import CVCreationRequests from "./pages/admin/CVCreationRequests";
 import CVBuilder from "./pages/admin/CVBuilder";
 import CVView from "./pages/cv/CVView";
 import { AdminLayoutRoot } from "./components/admin/AdminLayoutRoot";
+import { FloatingChatWidget } from "./components/chat/FloatingChatWidget";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -131,6 +132,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <FloatingChatWidget />
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />

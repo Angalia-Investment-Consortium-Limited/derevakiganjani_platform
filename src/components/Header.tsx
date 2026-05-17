@@ -9,6 +9,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 const DerevaLogo = "/logo.png";
 import { useAuth } from '@/contexts/AuthContext';
 import { useCVCreation } from '@/hooks/useCVCreation';
+import { useUnreadMessages } from '@/hooks/useUnreadMessages';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ export const Header = () => {
   const { currentRequest: cvRequest } = useCVCreation();
 
   const [unreadCount, setUnreadCount] = useState(0);
+  const unreadMessagesCount = useUnreadMessages();
 
   useEffect(() => {
     if (!isAuthenticated || !user?.uid) return;
@@ -131,10 +133,15 @@ export const Header = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate(user?.roles?.[0] === 'Employer' ? '/employer/messages' : '/ajira/messages')}
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('open-chat-widget'));
+                }}
                 className="relative"
               >
                 <MessageSquare className="h-5 w-5" />
+                {unreadMessagesCount > 0 && (
+                  <span className="absolute top-1 right-2 w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                )}
               </Button>
 
               {/* Notifications */}
@@ -405,6 +412,19 @@ export const Header = () => {
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Contact Support
                     </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => { window.dispatchEvent(new CustomEvent('open-chat-widget')); setMobileMenuOpen(false); }}
+                      className="w-full justify-start relative"
+                    >
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Messages
+                      {unreadMessagesCount > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          {unreadMessagesCount}
+                        </span>
+                      )}
+                    </Button>
                   </>
                 )}
                 {user?.roles?.[0] === 'Employer' && (
@@ -436,6 +456,15 @@ export const Header = () => {
                     <Button variant="outline" onClick={() => { navigate('/employer/support'); setMobileMenuOpen(false); }} className="w-full justify-start">
                       <MessageSquare className="mr-2 h-4 w-4" />
                       Contact Support
+                    </Button>
+                    <Button variant="outline" onClick={() => { window.dispatchEvent(new CustomEvent('open-chat-widget')); setMobileMenuOpen(false); }} className="w-full justify-start relative">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      Messages
+                      {unreadMessagesCount > 0 && (
+                        <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                          {unreadMessagesCount}
+                        </span>
+                      )}
                     </Button>
                   </>
                 )}

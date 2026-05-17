@@ -13,7 +13,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegions, useDistricts } from '@/hooks/useLicense';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, uploadFile } from '@/lib/firebase';
 import { useNavigate } from 'react-router-dom';
 import {
   Breadcrumb,
@@ -32,6 +32,39 @@ const OutsourceDriver = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  const QUALIFICATIONS = [
+    "Primary Education (STD VII)",
+    "Secondary Education (Form IV)",
+    "Advance Secondary Education (Form VI)",
+    "Certificate",
+    "Diploma",
+    "Advance Diploma",
+    "Bachelor's Degree",
+    "Valid driver's license with clean records",
+    "Experience in driving heavy goods vehicles",
+    "Experience in driving light vehicles",
+    "Experience in driving buses"
+  ];
+
+  const TRAININGS = [
+    "VIP grade II certificate from NIT",
+    "VIP grade I certificate from NIT",
+    "Senior Driver certificate from NIT",
+    "PSV certificate from NIT",
+    "PSV certificate from VETA",
+    "PSV certificate from NIT or VETA",
+    "An HGV certificate from NIT",
+    "An HGV certificate from VETA",
+    "An HGV certificate from NIT or VETA",
+    "Defensive Driving Certificate",
+    "GCLA Certificate",
+    "Knowledge of Four-Wheel Drive (4WD) System",
+    "Knowledge of First Aid and CPR procedures",
+    "OSHA Fit for Job test report/certificate",
+    "LATRA certification",
+    "Travel Passport/National ID"
+  ];
+
   const [formData, setFormData] = useState({
     driverLevel: '',
     vehicleType: '',
@@ -42,7 +75,11 @@ const OutsourceDriver = () => {
     district: '',
     requirements: '',
     contactNumber: '',
+    requiredQualifications: [] as string[],
+    requiredTrainings: [] as string[],
   });
+
+  const [companyDocumentFile, setCompanyDocumentFile] = useState<File | null>(null);
 
   useEffect(() => {
     if (profile && (profile as any).phone_number) {
@@ -52,17 +89,27 @@ const OutsourceDriver = () => {
 
   const { regions } = useRegions();
   const { districts: rawDistricts } = useDistricts(formData.region);
-  const districts = formData.region === 'Dar es Salaam' ? 
-    ['Ilala', 'Kinondoni', 'Temeke', 'Kigamboni', 'Ubungo'] : rawDistricts.map((d: any) => d.name || d);
+  const districts = rawDistricts.map((d: any) => d.name || d);
 
-  const handleInputChange = (field: string, value: string) => {
+  const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleCheckboxChange = (field: 'requiredQualifications' | 'requiredTrainings', item: string, checked: boolean) => {
+    setFormData((prev) => {
+      const currentList = prev[field];
+      if (checked) {
+        return { ...prev, [field]: [...currentList, item] };
+      } else {
+        return { ...prev, [field]: currentList.filter((i) => i !== item) };
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.driverLevel || !formData.vehicleType || !formData.contractDuration || !formData.startDate || !formData.region || !formData.numberOfDrivers || !formData.contactNumber) {
-      toast({ title: 'Missing Fields', description: 'Please fill in all required fields.', variant: 'destructive' });
+    if (!formData.driverLevel || !formData.vehicleType || !formData.contractDuration || !formData.startDate || !formData.region || !formData.numberOfDrivers || !formData.contactNumber || !companyDocumentFile) {
+      toast({ title: 'Missing Fields', description: 'Please fill in all required fields, including the company activities document attachment.', variant: 'destructive' });
       return;
     }
 
@@ -70,10 +117,17 @@ const OutsourceDriver = () => {
     try {
       const employerId = (profile as any)?.userId || user?.uid || '';
       
+      let companyDocumentUrl = '';
+      if (companyDocumentFile) {
+        const path = `outsource_documents/${employerId}/${Date.now()}_${companyDocumentFile.name}`;
+        companyDocumentUrl = await uploadFile(companyDocumentFile, path);
+      }
+      
       const requestPayload = {
         employerId,
         companyName: (profile as any)?.company_name || 'Unknown Company',
         ...formData,
+        companyDocumentUrl,
         status: 'Request Submitted',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
@@ -96,7 +150,10 @@ const OutsourceDriver = () => {
         district: '',
         requirements: '',
         contactNumber: (profile as any)?.phone_number || '',
+        requiredQualifications: [],
+        requiredTrainings: []
       });
+      setCompanyDocumentFile(null);
       navigate('/employer/outsource-requests'); // Redirect to tracking dashboard
     } catch (error) {
       console.error("Error submitting outsource request:", error);
@@ -134,7 +191,7 @@ const OutsourceDriver = () => {
           </p>
         </div>
 
-        <Card>
+        <Card className="mb-6">
           <CardHeader>
             <CardTitle>Driver Requirements</CardTitle>
             <CardDescription>Specify exactly what type of driver and contract you need.</CardDescription>
@@ -181,6 +238,7 @@ const OutsourceDriver = () => {
                         <SelectItem value="Specialized">Specialized (e.g. Forklift, Crane)</SelectItem>
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-blue-600 font-medium">Please submit different forms if you need drivers for more than one type of vehicle.</p>
                   </div>
                 </div>
                 
@@ -196,6 +254,49 @@ const OutsourceDriver = () => {
                     />
                   </div>
                 </div>
+
+                <div className="pt-4 border-t border-slate-100">
+                  <Label className="text-base mb-3 block">Required Qualification and Experience</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {QUALIFICATIONS.map((qual) => (
+                      <div key={qual} className="flex items-start space-x-2">
+                        <Checkbox 
+                          id={`qual-${qual}`} 
+                          checked={formData.requiredQualifications.includes(qual)}
+                          onCheckedChange={(checked) => handleCheckboxChange('requiredQualifications', qual, checked as boolean)}
+                        />
+                        <label
+                          htmlFor={`qual-${qual}`}
+                          className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {qual}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-slate-100">
+                  <Label className="text-base mb-3 block">Required Training and Certifications</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {TRAININGS.map((train) => (
+                      <div key={train} className="flex items-start space-x-2">
+                        <Checkbox 
+                          id={`train-${train}`} 
+                          checked={formData.requiredTrainings.includes(train)}
+                          onCheckedChange={(checked) => handleCheckboxChange('requiredTrainings', train, checked as boolean)}
+                        />
+                        <label
+                          htmlFor={`train-${train}`}
+                          className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {train}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
 
               {/* Logistics */}
@@ -295,8 +396,24 @@ const OutsourceDriver = () => {
                  <h3 className="text-lg font-semibold flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" /> Additional Information
                  </h3>
+                 <div className="bg-blue-50/50 p-4 rounded-md border border-blue-100 mb-4">
+                    <Label htmlFor="companyDocument" className="text-base">Company Main Activities Document <span className="text-red-500">*</span></Label>
+                    <p className="text-sm text-muted-foreground mb-3 mt-1">Please attach a document detailing the company's main activities or those for which you need drivers (PDF, DOC/DOCX).</p>
+                    <Input 
+                      id="companyDocument" 
+                      type="file" 
+                      accept=".pdf,.doc,.docx"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          setCompanyDocumentFile(e.target.files[0]);
+                        }
+                      }}
+                      className="bg-white"
+                    />
+                 </div>
+
                  <div className="space-y-2">
-                    <Label htmlFor="requirements">Specialized Requirements or Instructions</Label>
+                    <Label htmlFor="requirements">Specialized Requirements or Instructions (Optional)</Label>
                     <Textarea 
                       id="requirements" 
                       placeholder="e.g. Cross-border driving experience required, needs valid passport, expected to work weekends..."
@@ -323,6 +440,32 @@ const OutsourceDriver = () => {
               </div>
 
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Outsourcing Status Panel */}
+        <Card className="mt-8 bg-slate-50 border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-lg">Outsourcing Process Timeline</CardTitle>
+            <CardDescription>
+              We ensure a smooth recruitment and onboarding process. You will receive alerts via SMS and Email for each step taken by MDV Fleet:
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <ul className="space-y-3 text-sm">
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Request successfully submitted</li>
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Request is under review</li>
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> More information required (if applicable)</li>
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Driver sourcing started (max of 2 days)</li>
+               </ul>
+               <ul className="space-y-3 text-sm">
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Recruitment and selection started (max of 5 days)</li>
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Driver assessment started (max of 5 days)</li>
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Defensive driving training started (max of 3 days)</li>
+                 <li className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"></div> Deployment of driver</li>
+               </ul>
+            </div>
           </CardContent>
         </Card>
       </main>

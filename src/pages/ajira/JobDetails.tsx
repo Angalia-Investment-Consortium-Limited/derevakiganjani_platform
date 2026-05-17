@@ -136,20 +136,40 @@ const JobDetails = () => {
                   <p className="text-muted-foreground whitespace-pre-wrap">{job.description}</p>
                 </div>
 
+                {job.required_qualification_and_experience && job.required_qualification_and_experience.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold mb-3">Required Qualification and Experience</h3>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {job.required_qualification_and_experience.map((item, index) => <li key={index}>{item}</li>)}
+                    </ul>
+                  </div>
+                )}
+
+                {job.required_training_and_certification && job.required_training_and_certification.length > 0 && (
+                  <div>
+                    <h3 className="text-xl font-semibold mb-3">Required Training and Certification</h3>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {job.required_training_and_certification.map((item, index) => <li key={index}>{item}</li>)}
+                    </ul>
+                  </div>
+                )}
+
                 <div>
                   <h3 className="text-xl font-semibold mb-3">Required Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {job.skills.map((skill, index) => <Badge key={index} variant="secondary">{skill}</Badge>)}
-                  </div>
+                  {job.skills_required_html ? (
+                    <div className="prose prose-sm max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: job.skills_required_html }} />
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {(job.required_skills || []).map((skill, index) => <Badge key={index} variant="secondary">{skill}</Badge>)}
+                    </div>
+                  )}
                 </div>
 
-                {job.benefits && job.benefits.length > 0 && (
-                    <div>
-                        <h3 className="text-xl font-semibold mb-3">Benefits</h3>
-                        <div className="flex flex-wrap gap-2">
-                            {job.benefits.map((benefit, index) => <Badge key={index} variant="default">{benefit}</Badge>)}
-                        </div>
-                    </div>
+                {job.how_to_apply && (
+                  <div>
+                    <h3 className="text-xl font-semibold mb-3">How to Apply</h3>
+                    <p className="text-muted-foreground">{job.how_to_apply}</p>
+                  </div>
                 )}
 
                 {employer && (

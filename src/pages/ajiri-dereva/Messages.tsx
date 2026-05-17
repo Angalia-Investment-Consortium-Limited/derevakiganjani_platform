@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Conversation {
@@ -103,7 +103,8 @@ const Messages = () => {
               jobTitle: urlJobTitle ? decodeURIComponent(urlJobTitle) : 'Application Inquiry',
               lastMessage: 'Conversation started',
               lastMessageTimestamp: serverTimestamp(),
-              unread: 0,
+              unreadDriver: 1,
+              unreadEmployer: 0,
               jobId: 'direct'
             });
             // Let the onSnapshot pick it up and next render loop will find 'existing'
@@ -124,6 +125,13 @@ const Messages = () => {
 
     setLoadingMessages(true);
     const q = query(collection(db, 'conversations', selectedConversation.id, 'messages'), orderBy('timestamp', 'asc'));
+
+    const clearUnread = async () => {
+      try {
+        await updateDoc(doc(db, 'conversations', selectedConversation.id), { unreadEmployer: 0 });
+      } catch (err) {}
+    };
+    clearUnread();
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: Message[] = [];
@@ -156,7 +164,8 @@ const Messages = () => {
       await updateDoc(conversationRef, {
         lastMessage: messageText,
         lastMessageTimestamp: serverTimestamp(),
-        // TODO: Handle unread logic
+        unreadDriver: increment(1),
+        unreadEmployer: 0,
       });
 
       setMessageText('');

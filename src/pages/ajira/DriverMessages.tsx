@@ -18,7 +18,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, addDoc, serverTimestamp, doc, updateDoc, increment } from 'firebase/firestore';
 import { formatDistanceToNow } from 'date-fns';
 
 interface Conversation {
@@ -84,6 +84,13 @@ const DriverMessages = () => {
     setLoadingMessages(true);
     const q = query(collection(db, 'conversations', selectedConversation.id, 'messages'), orderBy('timestamp', 'asc'));
 
+    const clearUnread = async () => {
+      try {
+        await updateDoc(doc(db, 'conversations', selectedConversation.id), { unreadDriver: 0 });
+      } catch (err) {}
+    };
+    clearUnread();
+
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const msgs: Message[] = [];
       snapshot.forEach(doc => msgs.push({ id: doc.id, ...doc.data() } as Message));
@@ -115,6 +122,8 @@ const DriverMessages = () => {
       await updateDoc(conversationRef, {
         lastMessage: messageText,
         lastMessageTimestamp: serverTimestamp(),
+        unreadEmployer: increment(1),
+        unreadDriver: 0,
       });
 
       setMessageText('');

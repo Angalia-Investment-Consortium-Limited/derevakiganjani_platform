@@ -37,9 +37,11 @@ const JobPostDetail = () => {
     region: 'Dar es Salaam',
     district: 'Kinondoni',
     salaryRange: '600,000 - 900,000 TZS',
-    benefits: 'Health insurance, accommodation, transport allowance',
-    description: 'We are looking for experienced truck drivers to join our growing logistics team. The ideal candidate will have a clean driving record and excellent time management skills.',
     skills: 'Defensive driving, Route planning, Vehicle maintenance knowledge',
+    skills_required_html: '<p>Defensive driving</p><ul><li>Route planning</li><li>Vehicle maintenance knowledge</li></ul>',
+    required_qualification_and_experience: ['Secondary Education (Form IV)', 'Valid driver’s license with clean records'],
+    required_training_and_certification: ['Defensive Driving Certificate', 'LATRA certification'],
+    how_to_apply: 'Attach CV to apply',
     deadline: '2025-02-15',
     startDate: '2025-03-01',
     postedOn: '2025-01-20',
@@ -209,15 +211,43 @@ const JobPostDetail = () => {
                   <p className="text-muted-foreground">{jobPost.description}</p>
                 </div>
 
-                <div>
-                  <h3 className="font-semibold mb-2">Required Skills</h3>
-                  <p className="text-muted-foreground">{jobPost.skills}</p>
-                </div>
+                {jobPost.required_qualification_and_experience && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Required Qualification and Experience</h3>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {jobPost.required_qualification_and_experience.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {jobPost.required_training_and_certification && (
+                  <div>
+                    <h3 className="font-semibold mb-2">Required Training and Certification</h3>
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                      {jobPost.required_training_and_certification.map((item, i) => (
+                        <li key={i}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 <div>
-                  <h3 className="font-semibold mb-2">Benefits</h3>
-                  <p className="text-muted-foreground">{jobPost.benefits}</p>
+                  <h3 className="font-semibold mb-2">Required Skills</h3>
+                  {jobPost.skills_required_html ? (
+                    <div className="prose prose-sm max-w-none text-muted-foreground" dangerouslySetInnerHTML={{ __html: jobPost.skills_required_html }} />
+                  ) : (
+                    <p className="text-muted-foreground">{jobPost.skills}</p>
+                  )}
                 </div>
+
+                {jobPost.how_to_apply && (
+                  <div>
+                    <h3 className="font-semibold mb-2">How to Apply</h3>
+                    <p className="text-muted-foreground">{jobPost.how_to_apply}</p>
+                  </div>
+                )}
 
                 <div>
                   <h3 className="font-semibold mb-2">Experience Required</h3>

@@ -1,11 +1,8 @@
-
 import { jsPDF } from 'jspdf';
 import { getStorage, ref, uploadString, getDownloadURL } from 'firebase/storage';
 
-// URLs for all assets in the public folder
-const logoUrl = '/logo.png';
-// const signatureUrl = '/signature.jpeg'; // REMOVED: Replaced with text signature
-const mdvLogoUrl = '/logo2.png';
+import logoUrl from '@/assets/logo.png';
+import mdvLogoUrl from '@/assets/mdv-logo.png';
 
 interface CertificateData {
   name: string;
@@ -35,102 +32,121 @@ const getImageDataUrl = async (url: string): Promise<string | null> => {
 };
 
 export const generateCertificate = async (data: CertificateData, userId: string): Promise<string> => {
-    const doc = new jsPDF();
+    // We'll use portrait A4 as before, but adjust the layout since the mock is more tightly packed,
+    // or use landscape. Let's stick to portrait as previously used, but format properly.
+    // Wait, let's use landscape, it looks much better for a certificate!
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+    });
+
+    // Landscape A4: width 297, height 210
+    const centerX = 297 / 2; // 148.5
+
+    const qrCodeMessage = 'This certificate is issued by Dereva Kiganjani, a proud digital platform of MDV Fleet Limited.';
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrCodeMessage)}`;
 
     // Fetch all images concurrently
-    const [logoDataUrl, mdvLogoDataUrl] = await Promise.all([
+    const [logoDataUrl, mdvLogoDataUrl, qrCodeDataUrl] = await Promise.all([
         getImageDataUrl(logoUrl),
-        getImageDataUrl(mdvLogoUrl)
+        getImageDataUrl(mdvLogoUrl),
+        getImageDataUrl(qrCodeUrl)
     ]);
 
-    // --- Certificate Layout ---
-    doc.setDrawColor(0, 105, 217); // Blue border
-    doc.setLineWidth(1.5);
-    doc.rect(5, 5, doc.internal.pageSize.width - 10, doc.internal.pageSize.height - 10);
-
-    // 1. Certificate ID (Top Right)
-    const certId = `DK-${Math.random().toString(36).substring(2, 8).toUpperCase()}-${new Date().getFullYear()}`;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Certificate ID: ${certId}`, 195, 15, { align: 'right' });
-
-    // 2. Add MDV Logo (Top Left)
+    // 1. MDV Fleet Logo (Top Center)
     if (mdvLogoDataUrl) {
-        doc.addImage(mdvLogoDataUrl, 'PNG', 15, 15, 40, 20);
+        doc.addImage(mdvLogoDataUrl, 'PNG', centerX - 30, 15, 60, 20);
+    } else {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(16);
+        doc.setTextColor(0, 200, 200);
+        doc.text('MDV FLEET LIMITED LOGO', centerX, 25, { align: 'center' });
     }
 
-    // 3. Add Main Logo (Top Center)
-    if (logoDataUrl) {
-        doc.addImage(logoDataUrl, 'PNG', 70, 15, 70, 35);
-    }
-
-    // 2. Certificate Title (Restored)
+    // 2. CERTIFICATE OF COMPLETION
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(30);
-    doc.setTextColor(40, 40, 40);
-    doc.text('CERTIFICATE OF COMPLETION', 105, 60, { align: 'center' });
+    doc.setFontSize(36);
+    doc.setTextColor(0, 0, 0); // Black
+    doc.text('CERTIFICATE OF COMPLETION', centerX, 60, { align: 'center' });
 
-    // --- Main Content ---
+    // 3. This is to certify that
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(16);
-    doc.setTextColor(100, 100, 100);
-    doc.text('Proudly Presented To', 105, 80, { align: 'center' });
+    doc.setFontSize(22);
+    doc.setTextColor(128, 128, 128); // Gray
+    doc.text('This is to certify that', centerX, 80, { align: 'center' });
 
+    // 4. Name with Yellow Highlight Background
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(32);
+    const nameWidth = doc.getTextWidth(data.name);
+    const highlightPadding = 15;
+    
+    // Draw yellow rectangle
+    doc.setFillColor(252, 211, 77); // Yellowish highlight color (#fcd34d)
+    doc.rect(centerX - (nameWidth / 2) - highlightPadding, 100 - 12, nameWidth + (highlightPadding * 2), 16, 'F');
+    
+    // Draw Name Text
+    doc.setTextColor(0, 0, 0); // Black
+    doc.text(data.name, centerX, 100, { align: 'center', baseline: 'middle' });
+
+    // Line below name
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(30, 115, 267, 115);
+
+    // 5. has successfully completed and passed
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(22);
+    doc.setTextColor(128, 128, 128);
+    doc.text('has successfully completed and passed', centerX, 135, { align: 'center' });
+
+    // 6. Course Name
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(26);
-    doc.setTextColor(0, 105, 217);
-    doc.text(data.name, 105, 100, { align: 'center' });
+    doc.setTextColor(128, 128, 128);
+    doc.text(data.course, centerX, 155, { align: 'center' });
 
+    // 7. Date
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(14);
-    doc.setTextColor(100, 100, 100);
-    doc.text('For successfully completing the course:', 105, 120, { align: 'center' });
-
-    doc.setFont('helvetica', 'bold');
     doc.setFontSize(20);
-    doc.setTextColor(40, 40, 40);
-    doc.text(data.course, 105, 135, { align: 'center' });
+    doc.setTextColor(128, 128, 128);
+    doc.text(`on ${data.date}`, centerX, 175, { align: 'center' });
 
-    // --- Signatures & Issuing Info ---
-    const signatureY = 175;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
+    // --- Bottom Section ---
+    const bottomY = 175;
 
-    // Issue Date
-    doc.setLineWidth(0.5);
-    doc.line(40, signatureY, 100, signatureY);
-    doc.text('Issue Date', 70, signatureY + 5, { align: 'center' });
-    doc.text(data.date, 70, signatureY + 10, { align: 'center' });
-
-    // 3. Add Text-Based Signature
-    doc.setFont('times', 'italic');
-    doc.setFontSize(22);
-    doc.setTextColor(50, 50, 50); 
-    doc.text('David Michael', 155, signatureY - 7, { align: 'center' }); // Cursive text signature
-    doc.setFont('helvetica', 'normal'); // Reset font
-    doc.line(130, signatureY, 180, signatureY); // Line for signature
-    doc.setFontSize(12);
-    doc.text('Authorized Signature', 155, signatureY + 5, { align: 'center' });
-
-
-    // 4. Add MDV Logo (Bottom Right)
-    if (mdvLogoDataUrl) {
-        doc.addImage(mdvLogoDataUrl, 'PNG', 150, signatureY + 10, 30, 15);
-        doc.setFontSize(10);
-        doc.setTextColor(100,100,100);
-        doc.text('Issued by: MDV Vehicle Fleet Limited', 165, signatureY + 30, { align: 'center' });
-    }
-
-    // 5. Add Dereva Kiganjani Footer (Bottom Center)
-    const footerY = 265;
+    // 8. Bottom Left: iDEREVA Logo
     if (logoDataUrl) {
-        doc.addImage(logoDataUrl, 'PNG', 95, footerY, 20, 10);
-        doc.setFontSize(9);
-        doc.setTextColor(150, 150, 150);
-        doc.text('Generated from the Dereva Kiganjani platform', 105, footerY + 15, { align: 'center' });
+        doc.addImage(logoDataUrl, 'PNG', 30, bottomY - 10, 50, 20);
     }
+
+    // 9. Bottom Center: QR Code
+    if (qrCodeDataUrl) {
+        doc.addImage(qrCodeDataUrl, 'PNG', centerX - 15, bottomY - 15, 30, 30);
+    } else {
+        doc.setFillColor(74, 122, 203);
+        doc.rect(centerX - 15, bottomY - 15, 30, 30, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(255, 255, 255);
+        doc.text('QR CODE', centerX, bottomY, { align: 'center' });
+    }
+
+    // 10. Bottom Right: Signature
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(210, bottomY, 267, bottomY);
     
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(0, 0, 0);
+    doc.text('David Michael', 210, bottomY + 8, { align: 'left' });
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text('Managing Director', 210, bottomY + 14, { align: 'left' });
+
     // --- PDF Generation and Upload ---
     const pdfAsString = doc.output('datauristring');
     const storage = getStorage();

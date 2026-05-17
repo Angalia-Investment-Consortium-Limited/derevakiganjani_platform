@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -18,14 +20,66 @@ import { notificationService } from '@/services/notificationService';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore';
 
-// Define a type for the form data that is different from the Job type
-// because the form uses strings for skills and benefits.
-type JobPostFormData = Omit<Job, 'required_skills' | 'benefits' | 'posted_date' | 'salary'> & {
-  required_skills: string;
-  benefits: string;
+type JobPostFormData = Omit<Job, 'posted_date' | 'salary'> & {
   salaryMin: number;
   salaryMax: number;
 };
+
+const qualificationsOptions = [
+  "Primary Education (STD VII)",
+  "Secondary Education (Form IV)",
+  "Advance Secondary Education (Form VI)",
+  "Certificate",
+  "Diploma",
+  "Advance Diploma",
+  "Bachelor's Degree",
+  "Valid driver’s license with clean records",
+  "Experience in driving heavy goods vehicles",
+  "Experience in driving light vehicles",
+  "Experience in driving buses"
+];
+
+const trainingOptions = [
+  "VIP grade II certificate from NIT",
+  "VIP grade I certificate from NIT",
+  "Senior Driver certificate from NIT",
+  "PSV certificate from NIT",
+  "PSV certificate from VETA",
+  "PSV certificate from NIT or VETA",
+  "An HGV certificate from NIT",
+  "An HGV certificate from VETA",
+  "An HGV certificate from NIT or VETA",
+  "Defensive Driving Certificate",
+  "GCLA Certificate",
+  "Knowledge of Four-Wheel Drive (4WD) System",
+  "Knowledge of First Aid and CPR procedures",
+  "OSHA Fit for Job test report/certificate",
+  "LATRA certification",
+  "Travel Passport/National ID"
+];
+
+const howToApplyOptions = [
+  "Clicking this link to apply (directs driver to the employer’s platform)",
+  "Attach CV to apply",
+  "Use the driver job profile to apply"
+];
+
+const licenseCategories = [
+  { id: 'A', label: 'A - Motorcycles' },
+  { id: 'A1', label: 'A1 - Motor tricycle' },
+  { id: 'A2', label: 'A2 - Light motorcycle' },
+  { id: 'A3', label: 'A3 - Motorcycle (disable)' },
+  { id: 'B', label: 'B - Light vehicles' },
+  { id: 'B1', label: 'B1 - Light vehicle (disable)' },
+  { id: 'C', label: 'C - Trucks' },
+  { id: 'C1', label: 'C1 - Medium trucks' },
+  { id: 'C2', label: 'C2 - Medium buses' },
+  { id: 'C3', label: 'C3 - Medium vehicle with trailer' },
+  { id: 'D', label: 'D - Heavy buses' },
+  { id: 'E', label: 'E - Heavy trucks with trailer' },
+  { id: 'F', label: 'F - Tractors' },
+  { id: 'G', label: 'G - Earth-moving equipment' }
+];
 
 const JobPostForm = () => {
   const navigate = useNavigate();
@@ -46,12 +100,16 @@ const JobPostForm = () => {
     vehicleType: '',
     required_license_category: [],
     minimum_experience_years: 0,
-    required_skills: '',
+    required_skills: [],
+    skills_required_html: '',
+    required_qualification_and_experience: [],
+    required_training_and_certification: [],
+    how_to_apply: '',
     region: '',
     district: '',
     salaryMin: 0,
     salaryMax: 0,
-    benefits: '',
+    benefits: [],
     job_description: '',
     application_deadline: undefined,
     startDate: undefined,
@@ -84,7 +142,7 @@ const JobPostForm = () => {
 
   useEffect(() => {
     if (isEditMode && job) {
-      const { required_skills, benefits, posted_date, salary, ...restOfJob } = job;
+      const { posted_date, salary, ...restOfJob } = job;
 
       const formatToYYYYMMDD = (val: any) => {
         if (!val) return '';
@@ -103,8 +161,12 @@ const JobPostForm = () => {
         ...restOfJob,
         salaryMin: salary?.from || 0,
         salaryMax: salary?.to || 0,
-        required_skills: Array.isArray(required_skills) ? required_skills.join(', ') : '',
-        benefits: Array.isArray(benefits) ? benefits.join(', ') : '',
+        skills_required_html: restOfJob.skills_required_html || '',
+        required_qualification_and_experience: restOfJob.required_qualification_and_experience || [],
+        required_training_and_certification: restOfJob.required_training_and_certification || [],
+        how_to_apply: restOfJob.how_to_apply || '',
+        benefits: [],
+        required_skills: [],
         application_deadline: formatToYYYYMMDD(job.application_deadline),
         startDate: formatToYYYYMMDD(job.startDate),
       });
@@ -126,8 +188,12 @@ const JobPostForm = () => {
       ...restFormData,
       company_name: selectedEmployer?.name || 'Unknown',
       salary: { from: salaryMin || 0, to: salaryMax || 0 },
-      required_skills: typeof formData.required_skills === 'string' ? formData.required_skills.split(',').map(s => s.trim()).filter(Boolean) : [],
-      benefits: typeof formData.benefits === 'string' ? formData.benefits.split(',').map(b => b.trim()).filter(Boolean) : [],
+      skills_required_html: formData.skills_required_html || '',
+      required_qualification_and_experience: formData.required_qualification_and_experience || [],
+      required_training_and_certification: formData.required_training_and_certification || [],
+      how_to_apply: formData.how_to_apply || '',
+      benefits: [],
+      required_skills: [],
       status
     };
 
@@ -229,7 +295,8 @@ const JobPostForm = () => {
               <div>
                 <Label className="mb-2 block">{t('License Category (Select all that apply)')}</Label>
                 <div className="flex flex-wrap gap-3">
-                  {['A', 'A1', 'A2', 'A3', 'B', 'B1', 'C', 'C1', 'C2', 'C3', 'D', 'E'].map(cat => {
+                  {licenseCategories.map(catObj => {
+                    const cat = catObj.id;
                     const isSelected = (formData.required_license_category || []).includes(cat);
                     return (
                       <button
@@ -256,7 +323,73 @@ const JobPostForm = () => {
                 </div>
               </div>
               <div><Label htmlFor="minExperience">{t('Minimum Experience Years')}</Label><Input id="minExperience" type="number" min="0" value={formData.minimum_experience_years || 0} onChange={(e) => setFormData({ ...formData, minimum_experience_years: parseInt(e.target.value) || 0 })} /></div>
-              <div><Label htmlFor="skills">{t('Skills Requirements')}</Label><Textarea id="skills" value={formData.required_skills || ''} onChange={(e) => setFormData({ ...formData, required_skills: e.target.value })} placeholder={t('Skills Placeholder')} rows={4} /></div>
+              <div className="space-y-2">
+                <Label>Required Qualification and Experience</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {qualificationsOptions.map(option => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`qual-${option}`}
+                        checked={formData.required_qualification_and_experience?.includes(option)}
+                        onCheckedChange={() => {
+                          const current = formData.required_qualification_and_experience || [];
+                          if (current.includes(option)) setFormData({ ...formData, required_qualification_and_experience: current.filter(c => c !== option) });
+                          else setFormData({ ...formData, required_qualification_and_experience: [...current, option] });
+                        }}
+                      />
+                      <Label htmlFor={`qual-${option}`} className="font-normal text-sm">
+                        {option}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Required Training and Certification</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {trainingOptions.map(option => (
+                    <div key={option} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`train-${option}`}
+                        checked={formData.required_training_and_certification?.includes(option)}
+                        onCheckedChange={() => {
+                          const current = formData.required_training_and_certification || [];
+                          if (current.includes(option)) setFormData({ ...formData, required_training_and_certification: current.filter(c => c !== option) });
+                          else setFormData({ ...formData, required_training_and_certification: [...current, option] });
+                        }}
+                      />
+                      <Label htmlFor={`train-${option}`} className="font-normal text-sm">
+                        {option}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Skills Required</Label>
+                <div className="bg-background rounded-md border">
+                  <ReactQuill 
+                    theme="snow" 
+                    value={formData.skills_required_html || ''} 
+                    onChange={(content) => setFormData({ ...formData, skills_required_html: content })} 
+                    className="min-h-[150px]"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="howToApply">How to Apply (Optional)</Label>
+                <Select onValueChange={(v) => setFormData({ ...formData, how_to_apply: v })} value={formData.how_to_apply || ''}>
+                  <SelectTrigger><SelectValue placeholder="Select how candidates should apply" /></SelectTrigger>
+                  <SelectContent>
+                    {howToApplyOptions.map(option => (
+                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
 
@@ -274,7 +407,7 @@ const JobPostForm = () => {
                 <div><Label htmlFor="salaryMin">{t('Minimum Salary')}</Label><Input id="salaryMin" value={String(formData.salaryMin || 0)} onChange={(e) => setFormData({ ...formData, salaryMin: parseInt(e.target.value) || 0 })} placeholder="e.g., 500000" /></div>
                 <div><Label htmlFor="salaryMax">{t('Maximum Salary')}</Label><Input id="salaryMax" value={String(formData.salaryMax || 0)} onChange={(e) => setFormData({ ...formData, salaryMax: parseInt(e.target.value) || 0 })} placeholder="e.g., 800000" /></div>
               </div>
-              <div><Label htmlFor="benefits">{t('Benefits')}</Label><Textarea id="benefits" value={formData.benefits || ''} onChange={(e) => setFormData({ ...formData, benefits: e.target.value })} placeholder={t('Benefits Placeholder')} rows={3} /></div>
+
             </CardContent>
           </Card>
 

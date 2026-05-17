@@ -6,9 +6,11 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, getCountFromServer } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 const Admin = () => {
   const { roles } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,15 +159,15 @@ const Admin = () => {
   });
 
   const kpis = stats ? [
-    { label: 'Total Users', value: stats.totalUsers?.toString() || '0' },
-    { label: 'Total Drivers', value: stats.totalDrivers?.toString() || '0' },
-    { label: 'Total Employers', value: stats.totalEmployers?.toString() || '0' },
-    { label: 'Job Applications', value: stats.totalJobApplications?.toString() || '0' },
+    { label: t('totalUsers') || 'Total Users', value: stats.totalUsers?.toString() || '0' },
+    { label: t('totalDrivers') || 'Total Drivers', value: stats.totalDrivers?.toString() || '0' },
+    { label: t('totalEmployers') || 'Total Employers', value: stats.totalEmployers?.toString() || '0' },
+    { label: t('jobApplications') || 'Job Applications', value: stats.totalJobApplications?.toString() || '0' },
   ] : [
-    { label: 'Total Users', value: '-' },
-    { label: 'Total Drivers', value: '-' },
-    { label: 'Total Employers', value: '-' },
-    { label: 'Job Applications', value: '-' },
+    { label: t('totalUsers') || 'Total Users', value: '-' },
+    { label: t('totalDrivers') || 'Total Drivers', value: '-' },
+    { label: t('totalEmployers') || 'Total Employers', value: '-' },
+    { label: t('jobApplications') || 'Job Applications', value: '-' },
   ];
 
   return (
@@ -173,8 +175,8 @@ const Admin = () => {
       <div className="space-y-8">
         {/* Header Section */}
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">Manage the entire Dereva Huduma platform</p>
+          <h1 className="text-3xl font-bold">{t('adminDashboardTitle') || 'Admin Dashboard'}</h1>
+          <p className="text-muted-foreground">{t('adminDashboardDesc') || 'Manage the entire Dereva Huduma platform'}</p>
         </div>
 
         {/* Quick KPIs */}
@@ -183,7 +185,7 @@ const Admin = () => {
             <Card className="col-span-full">
               <CardContent className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <span className="ml-2">Loading dashboard statistics...</span>
+                <span className="ml-2">{t('loadingStats') || 'Loading dashboard statistics...'}</span>
               </CardContent>
             </Card>
           ) : error ? (
@@ -212,7 +214,7 @@ const Admin = () => {
 
         {/* Module Cards */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Platform Modules</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('platformModules') || 'Platform Modules'}</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {visibleModules.map((module) => (
               <ServiceCard

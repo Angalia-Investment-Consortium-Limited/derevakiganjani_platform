@@ -272,6 +272,11 @@ const LessonViewer = () => {
                                      </CardTitle>
                                  </CardHeader>
                                  <CardContent className="pt-4 space-y-4">
+                                     {question.image_url && (
+                                         <div className="flex justify-center mb-4 rounded-lg overflow-hidden border bg-muted/10 p-2">
+                                             <img src={question.image_url} alt="Question image" className="max-h-[300px] object-contain" />
+                                         </div>
+                                     )}
                                      <RadioGroup 
                                         value={selectedAnswers[qId]} 
                                         onValueChange={(val) => {
