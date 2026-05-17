@@ -1,6 +1,6 @@
 {
   "index.html": {
-    "file": "assets/index-G6yei2Ey.js",
+    "file": "assets/index-Boj6Xgkg.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -9,7 +9,7 @@
       "node_modules/canvg/lib/index.es.js"
     ],
     "css": [
-      "assets/index-DUcVh-7-.css"
+      "assets/index-Df4F3_Hq.css"
     ],
     "assets": [
       "assets/logo-DQrYtaup.png",
@@ -20,11 +20,12 @@
       "assets/22-Bl1sFxk2.jpg",
       "assets/10-IHOW4F6J.jpg",
       "assets/20-XyvcA0Hw.jpg",
-      "assets/35-C8QjWFVy.jpg"
+      "assets/35-C8QjWFVy.jpg",
+      "assets/mdv-logo-BClIfvh5.png"
     ]
   },
   "node_modules/canvg/lib/index.es.js": {
-    "file": "assets/index.es-DMZZ6m_F.js",
+    "file": "assets/index.es-QFbbb6om.js",
     "name": "index.es",
     "src": "node_modules/canvg/lib/index.es.js",
     "isDynamicEntry": true,
@@ -73,5 +74,9 @@
   "src/assets/logo.png": {
     "file": "assets/logo-DQrYtaup.png",
     "src": "src/assets/logo.png"
+  },
+  "src/assets/mdv-logo.png": {
+    "file": "assets/mdv-logo-BClIfvh5.png",
+    "src": "src/assets/mdv-logo.png"
   }
 }
